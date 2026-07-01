@@ -13,15 +13,28 @@
       "isMain": true,
       "parentId": null,
       "target": 45869,
-      "actual": 45869,
+      "actual": 290841,
       "unit": "$/wk",
       "direction": "higher_better",
       "source": "Sales Board / NetSuite",
       "rollupMethod": "sum",
-      "contributors": ["rep_nick", "rep_michael", "rep_jamie"],
+      "contributors": [
+        "rep_nick",
+        "rep_michael",
+        "rep_jamie"
+      ],
       "flag": "Target 45,869/wk is the board-of-record (live sheet). Prior summary cited 69,162 — confirm canonical with Tony.",
       "note": "Sales month rows are empty on the board; CEO board pulls weekly rows directly.",
-      "series": [26167, 417517, 282907, 223888, 465244, 293217, 292271, 290841]
+      "series": [
+        26167,
+        417517,
+        282907,
+        223888,
+        465244,
+        293217,
+        292271,
+        290841
+      ]
     },
     {
       "id": "rev_inside",
@@ -30,15 +43,28 @@
       "isMain": true,
       "parentId": null,
       "target": 11477,
-      "actual": 11477,
+      "actual": 52207,
       "unit": "$/wk",
       "direction": "higher_better",
       "source": "Sales Board / NetSuite",
       "rollupMethod": "sum",
-      "contributors": ["rep_rodolfo", "rep_fabiola", "rep_kitty"],
+      "contributors": [
+        "rep_rodolfo",
+        "rep_fabiola",
+        "rep_kitty"
+      ],
       "flag": null,
       "note": "Target 11,476.9/wk rounded to 11,477.",
-      "series": [3434, 82801, 48928, 39962, 32163, 50935, 80198, 52207]
+      "series": [
+        3434,
+        82801,
+        48928,
+        39962,
+        32163,
+        50935,
+        80198,
+        52207
+      ]
     },
     {
       "id": "rev_total",
@@ -47,15 +73,27 @@
       "isMain": true,
       "parentId": null,
       "target": 57346,
-      "actual": 57346,
+      "actual": 343048,
       "unit": "$/wk",
       "direction": "higher_better",
       "source": "Sales Board / NetSuite",
       "rollupMethod": "sum",
-      "contributors": ["rev_outside", "rev_inside"],
+      "contributors": [
+        "rev_outside",
+        "rev_inside"
+      ],
       "flag": null,
       "note": "Target 57,345.9/wk rounded to 57,346.",
-      "series": [29601, 500318, 331835, 263850, 497408, 344151, 372470, 343048]
+      "series": [
+        29601,
+        500318,
+        331835,
+        263850,
+        497408,
+        344151,
+        372470,
+        343048
+      ]
     },
     {
       "id": "calls_outside",
@@ -64,14 +102,23 @@
       "isMain": false,
       "parentId": "rev_outside",
       "target": 25,
-      "actual": null,
+      "actual": 128,
       "unit": "calls/wk",
       "direction": "higher_better",
       "source": "HubSpot",
       "rollupMethod": "sum",
       "contributors": [],
       "flag": null,
-      "series": [0, 40, 110, 15, 43, 30, 130, 128]
+      "series": [
+        0,
+        40,
+        110,
+        15,
+        43,
+        30,
+        130,
+        128
+      ]
     },
     {
       "id": "calls_inside",
@@ -80,14 +127,23 @@
       "isMain": false,
       "parentId": "rev_inside",
       "target": 450,
-      "actual": null,
+      "actual": 301,
       "unit": "calls/wk",
       "direction": "higher_better",
       "source": "HubSpot",
       "rollupMethod": "sum",
       "contributors": [],
       "flag": null,
-      "series": [14, 308, 403, 435, 385, 364, 362, 301]
+      "series": [
+        14,
+        308,
+        403,
+        435,
+        385,
+        364,
+        362,
+        301
+      ]
     },
     {
       "id": "new_opps_outside",
@@ -96,14 +152,23 @@
       "isMain": false,
       "parentId": "rev_outside",
       "target": 6,
-      "actual": null,
+      "actual": 2,
       "unit": "opps/wk",
       "direction": "higher_better",
       "source": "HubSpot",
       "rollupMethod": "sum",
       "contributors": [],
       "flag": null,
-      "series": [0, 2, 0, 0, 0, 3, 2, 2]
+      "series": [
+        0,
+        2,
+        0,
+        0,
+        0,
+        3,
+        2,
+        2
+      ]
     },
     {
       "id": "new_quotes_inside",
@@ -112,14 +177,23 @@
       "isMain": false,
       "parentId": "rev_inside",
       "target": 75,
-      "actual": null,
+      "actual": 42,
       "unit": "quotes/wk",
       "direction": "higher_better",
       "source": "HubSpot",
       "rollupMethod": "sum",
       "contributors": [],
       "flag": null,
-      "series": [2, 6, 14, 7, 33, 64, 62, 42]
+      "series": [
+        2,
+        6,
+        14,
+        7,
+        33,
+        64,
+        62,
+        42
+      ]
     },
     {
       "id": "credits_remakes",
@@ -128,14 +202,23 @@
       "isMain": false,
       "parentId": "rev_total",
       "target": 0,
-      "actual": null,
+      "actual": 2,
       "unit": "cases/wk",
       "direction": "lower_better",
       "source": "NetSuite",
       "rollupMethod": "sum",
       "contributors": [],
       "flag": null,
-      "series": [0, 1, 0, 0, 4, 0, 2, 2]
+      "series": [
+        0,
+        1,
+        0,
+        0,
+        4,
+        0,
+        2,
+        2
+      ]
     },
     {
       "id": "rep_nick",
@@ -144,7 +227,7 @@
       "isMain": false,
       "parentId": "rev_outside",
       "target": 13832,
-      "actual": null,
+      "actual": 67027,
       "unit": "$/wk",
       "direction": "higher_better",
       "source": "HubSpot / Bowler",
@@ -152,12 +235,69 @@
       "contributors": [],
       "flag": null,
       "note": "Outside rep. WE target 13,832/wk.",
-      "series": [3123, 54572, 52919, 44616, 96124, 70298, 77370, 67027],
+      "series": [
+        3123,
+        54572,
+        52919,
+        44616,
+        96124,
+        70298,
+        77370,
+        67027
+      ],
       "repSubs": {
-        "calls": { "target": null, "series": [0, 0, 6, 0, 12, 15, 37, 25] },
-        "coldCalls": { "target": null, "series": [0, 0, 1, 1, 6, 4, 6, 9] },
-        "meetings": { "target": null, "series": [0, 0, 0, 0, 0, 0, 0, 0] },
-        "newOpps": { "target": 2, "series": [0, 0, 0, 0, 0, 2, 0, 0] }
+        "calls": {
+          "target": null,
+          "series": [
+            0,
+            0,
+            6,
+            0,
+            12,
+            15,
+            37,
+            25
+          ]
+        },
+        "coldCalls": {
+          "target": null,
+          "series": [
+            0,
+            0,
+            1,
+            1,
+            6,
+            4,
+            6,
+            9
+          ]
+        },
+        "meetings": {
+          "target": null,
+          "series": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "newOpps": {
+          "target": 2,
+          "series": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            2,
+            0,
+            0
+          ]
+        }
       }
     },
     {
@@ -167,7 +307,7 @@
       "isMain": false,
       "parentId": "rev_outside",
       "target": 15256,
-      "actual": null,
+      "actual": 64457,
       "unit": "$/wk",
       "direction": "higher_better",
       "source": "HubSpot / Bowler",
@@ -175,12 +315,69 @@
       "contributors": [],
       "flag": null,
       "note": "Outside rep. WE target 15,256/wk.",
-      "series": [5573, 251444, 46647, 67913, 264624, 59362, 80792, 64457],
+      "series": [
+        5573,
+        251444,
+        46647,
+        67913,
+        264624,
+        59362,
+        80792,
+        64457
+      ],
       "repSubs": {
-        "calls": { "target": 25, "series": [0, 39, 56, 10, 12, 12, 84, 99] },
-        "coldCalls": { "target": 5, "series": [0, 1, 15, 1, 5, 1, 21, 41] },
-        "meetings": { "target": null, "series": [0, 0, 0, 0, 0, 9, 0, 0] },
-        "newOpps": { "target": 2, "series": [0, 2, 0, 0, 0, 0, 2, 1] }
+        "calls": {
+          "target": 25,
+          "series": [
+            0,
+            39,
+            56,
+            10,
+            12,
+            12,
+            84,
+            99
+          ]
+        },
+        "coldCalls": {
+          "target": 5,
+          "series": [
+            0,
+            1,
+            15,
+            1,
+            5,
+            1,
+            21,
+            41
+          ]
+        },
+        "meetings": {
+          "target": null,
+          "series": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            9,
+            0,
+            0
+          ]
+        },
+        "newOpps": {
+          "target": 2,
+          "series": [
+            0,
+            2,
+            0,
+            0,
+            0,
+            0,
+            2,
+            1
+          ]
+        }
       }
     },
     {
@@ -190,7 +387,7 @@
       "isMain": false,
       "parentId": "rev_outside",
       "target": 16781,
-      "actual": null,
+      "actual": 159357,
       "unit": "$/wk",
       "direction": "higher_better",
       "source": "HubSpot / Bowler",
@@ -198,12 +395,69 @@
       "contributors": [],
       "flag": null,
       "note": "Outside rep. WE target 16,781/wk.",
-      "series": [17471, 111501, 183341, 111359, 104496, 163556, 134109, 159357],
+      "series": [
+        17471,
+        111501,
+        183341,
+        111359,
+        104496,
+        163556,
+        134109,
+        159357
+      ],
       "repSubs": {
-        "calls": { "target": null, "series": [0, 1, 48, 5, 19, 3, 9, 4] },
-        "coldCalls": { "target": null, "series": [0, 0, 1, 0, 0, 0, 0, 0] },
-        "meetings": { "target": null, "series": [0, 0, 0, 0, 0, 0, 0, 0] },
-        "newOpps": { "target": 2, "series": [0, 0, 0, 0, 0, 1, 0, 1] }
+        "calls": {
+          "target": null,
+          "series": [
+            0,
+            1,
+            48,
+            5,
+            19,
+            3,
+            9,
+            4
+          ]
+        },
+        "coldCalls": {
+          "target": null,
+          "series": [
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "meetings": {
+          "target": null,
+          "series": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "newOpps": {
+          "target": 2,
+          "series": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            1
+          ]
+        }
       }
     },
     {
@@ -231,7 +485,7 @@
       "isMain": false,
       "parentId": "rev_inside",
       "target": 3290,
-      "actual": null,
+      "actual": 13455,
       "unit": "$/wk",
       "direction": "higher_better",
       "source": "HubSpot / Bowler",
@@ -239,7 +493,16 @@
       "contributors": [],
       "flag": "Inside rep non-revenue subs use a different column offset — only revenue usable until Inside tabs are remapped.",
       "note": "Inside rep. Revenue only — non-revenue sub columns misaligned.",
-      "series": [0, 4337, 8253, 5227, 5686, 7067, 18259, 13455]
+      "series": [
+        0,
+        4337,
+        8253,
+        5227,
+        5686,
+        7067,
+        18259,
+        13455
+      ]
     },
     {
       "id": "rep_fabiola",
@@ -248,7 +511,7 @@
       "isMain": false,
       "parentId": "rev_inside",
       "target": 2483,
-      "actual": null,
+      "actual": 21568,
       "unit": "$/wk",
       "direction": "higher_better",
       "source": "HubSpot / Bowler",
@@ -256,7 +519,16 @@
       "contributors": [],
       "flag": "Inside rep non-revenue subs use a different column offset — only revenue usable until Inside tabs are remapped.",
       "note": "Inside rep. Revenue only.",
-      "series": [1554, 56344, 10119, 6415, 11107, 12386, 15411, 21568]
+      "series": [
+        1554,
+        56344,
+        10119,
+        6415,
+        11107,
+        12386,
+        15411,
+        21568
+      ]
     },
     {
       "id": "rep_kitty",
@@ -265,7 +537,7 @@
       "isMain": false,
       "parentId": "rev_inside",
       "target": 5704,
-      "actual": null,
+      "actual": 17184,
       "unit": "$/wk",
       "direction": "higher_better",
       "source": "HubSpot / Bowler",
@@ -273,11 +545,29 @@
       "contributors": [],
       "flag": "Inside rep non-revenue subs use a different column offset — only revenue usable until Inside tabs are remapped.",
       "note": "Inside rep. Revenue only. Target 5,703.9 rounded to 5,704.",
-      "series": [1880, 22120, 30556, 28320, 15371, 31481, 46528, 17184]
+      "series": [
+        1880,
+        22120,
+        30556,
+        28320,
+        15371,
+        31481,
+        46528,
+        17184
+      ]
     }
   ],
-  "outsideReps": ["rep_nick", "rep_michael", "rep_jamie", "rep_eric"],
-  "insideReps": ["rep_rodolfo", "rep_fabiola", "rep_kitty"],
+  "outsideReps": [
+    "rep_nick",
+    "rep_michael",
+    "rep_jamie",
+    "rep_eric"
+  ],
+  "insideReps": [
+    "rep_rodolfo",
+    "rep_fabiola",
+    "rep_kitty"
+  ],
   "gaps": [
     "Eric rep tab entirely empty — placeholder rep.",
     "Sales Inside reps' non-revenue subs: column offsets differ; only revenue usable.",

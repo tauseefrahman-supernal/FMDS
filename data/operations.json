@@ -5,8 +5,16 @@
   "mechanism": "independent",
   "rollupMethod": "independent",
   "mechanismNote": "Mechanism B — WE main is entered independently, NOT computed as an average or sum of location subs. Roll-up rule to confirm with Jim Kozel.",
-  "locations": ["mexico", "norcross", "houston", "canada"],
-  "noDataLocations": ["dr", "hpi"],
+  "locations": [
+    "mexico",
+    "norcross",
+    "houston",
+    "canada"
+  ],
+  "noDataLocations": [
+    "dr",
+    "hpi"
+  ],
   "noDataNote": "DR (Dominican Republic): placeholder columns exist but are entirely empty — no data. HPI: no OTP/PPLH/Materials column on the COO board; HPI appears only in Purchasing/Logistic sub-KPIs.",
   "kpis": [
     {
@@ -16,12 +24,17 @@
       "isMain": true,
       "parentId": null,
       "target": 0.985,
-      "actual": 0.863,
+      "actual": 0.541,
       "unit": "ratio",
       "direction": "higher_better",
       "source": "COO Board / hand-keyed weekly literals",
       "rollupMethod": "independent",
-      "contributors": ["otp_mexico", "otp_norcross", "otp_houston", "otp_canada"],
+      "contributors": [
+        "otp_mexico",
+        "otp_norcross",
+        "otp_houston",
+        "otp_canada"
+      ],
       "flag": null,
       "story": {
         "title": "T3 OTP Story (Jun 24 review)",
@@ -31,24 +44,122 @@
         "mechanismNote": "Mechanism B — main OTP is an independently entered number; simple vs. weighted average across locations is unconfirmed."
       },
       "monthlyActuals": {
-        "we": { "jan": 0.9682, "feb": 0.9708, "mar": 0.863 },
-        "mexico": { "jan": 0.9388, "feb": 0.9552, "mar": 0.7504 },
-        "norcross": { "jan": 0.9896, "feb": 0.9818, "mar": 0.9552 },
-        "houston": { "jan": 0.9926, "feb": 0.9950, "mar": 0.9770 },
-        "canada": { "jan": 0.9790, "feb": 0.9625, "mar": 0.9264 },
-        "dr": { "jan": null, "feb": null, "mar": null, "nodata": true },
-        "hpi": { "nodata": true, "note": "No OTP column on COO board." }
+        "we": {
+          "jan": 0.9682,
+          "feb": 0.9708,
+          "mar": 0.863
+        },
+        "mexico": {
+          "jan": 0.9388,
+          "feb": 0.9552,
+          "mar": 0.7504
+        },
+        "norcross": {
+          "jan": 0.9896,
+          "feb": 0.9818,
+          "mar": 0.9552
+        },
+        "houston": {
+          "jan": 0.9926,
+          "feb": 0.995,
+          "mar": 0.977
+        },
+        "canada": {
+          "jan": 0.979,
+          "feb": 0.9625,
+          "mar": 0.9264
+        },
+        "dr": {
+          "jan": null,
+          "feb": null,
+          "mar": null,
+          "nodata": true
+        },
+        "hpi": {
+          "nodata": true,
+          "note": "No OTP column on COO board."
+        }
       },
       "weeklyActuals": {
-        "weeks": [15, 16, 17, 18, 19, 20, 21, 22, 23],
-        "we": [0.716, 0.660, 0.674, 0.683, 0.598, 0.644, 0.665, 0.698, 0.736],
-        "mexico": [0.546, 0.445, 0.477, 0.525, 0.394, 0.442, 0.475, 0.549, 0.541],
-        "norcross": [0.984, 0.951, 0.970, 0.880, 0.954, 0.915, 0.863, 0.858, 0.957],
-        "houston": [0.970, 0.966, 0.925, 0.817, 0.964, 0.981, 0.992, 1.000, 0.996],
-        "canada": [0.945, 0.863, 0.884, 0.952, 0.931, 0.913, 0.848, 0.970, 0.933]
+        "weeks": [
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23
+        ],
+        "we": [
+          0.716,
+          0.66,
+          0.674,
+          0.683,
+          0.598,
+          0.644,
+          0.665,
+          0.698,
+          0.736
+        ],
+        "mexico": [
+          0.546,
+          0.445,
+          0.477,
+          0.525,
+          0.394,
+          0.442,
+          0.475,
+          0.549,
+          0.541
+        ],
+        "norcross": [
+          0.984,
+          0.951,
+          0.97,
+          0.88,
+          0.954,
+          0.915,
+          0.863,
+          0.858,
+          0.957
+        ],
+        "houston": [
+          0.97,
+          0.966,
+          0.925,
+          0.817,
+          0.964,
+          0.981,
+          0.992,
+          1,
+          0.996
+        ],
+        "canada": [
+          0.945,
+          0.863,
+          0.884,
+          0.952,
+          0.931,
+          0.913,
+          0.848,
+          0.97,
+          0.933
+        ]
       },
       "fullSeriesNote": "Weeks 1–13 WE main (fuller series): [0.948, 0.943, 0.970, 0.985, 0.995, 0.987, 0.989, 0.966, 0.941, 0.912, 0.934, 0.873, 0.817].",
-      "series": [0.546, 0.445, 0.477, 0.525, 0.394, 0.442, 0.475, 0.549, 0.541]
+      "series": [
+        0.546,
+        0.445,
+        0.477,
+        0.525,
+        0.394,
+        0.442,
+        0.475,
+        0.549,
+        0.541
+      ]
     },
     {
       "id": "otp_mexico",
@@ -58,14 +169,24 @@
       "parentId": "otp",
       "location": "mexico",
       "target": 0.985,
-      "actual": 0.7504,
+      "actual": 0.541,
       "unit": "ratio",
       "direction": "higher_better",
       "source": "COO Board / hand-keyed",
       "rollupMethod": null,
       "contributors": [],
       "flag": "RED — primary drag on WE OTP. Weekly range wk15–23: 0.39–0.55. T3 story: sample-volume surge inflated denominator; 1,917-sample backlog; overtime deployed.",
-      "series": [0.546, 0.445, 0.477, 0.525, 0.394, 0.442, 0.475, 0.549, 0.541]
+      "series": [
+        0.546,
+        0.445,
+        0.477,
+        0.525,
+        0.394,
+        0.442,
+        0.475,
+        0.549,
+        0.541
+      ]
     },
     {
       "id": "otp_norcross",
@@ -75,14 +196,24 @@
       "parentId": "otp",
       "location": "norcross",
       "target": 0.985,
-      "actual": 0.9552,
+      "actual": 0.957,
       "unit": "ratio",
       "direction": "higher_better",
       "source": "COO Board / hand-keyed",
       "rollupMethod": null,
       "contributors": [],
       "flag": null,
-      "series": [0.984, 0.951, 0.970, 0.880, 0.954, 0.915, 0.863, 0.858, 0.957]
+      "series": [
+        0.984,
+        0.951,
+        0.97,
+        0.88,
+        0.954,
+        0.915,
+        0.863,
+        0.858,
+        0.957
+      ]
     },
     {
       "id": "otp_houston",
@@ -92,14 +223,24 @@
       "parentId": "otp",
       "location": "houston",
       "target": 0.985,
-      "actual": 0.9770,
+      "actual": 0.996,
       "unit": "ratio",
       "direction": "higher_better",
       "source": "COO Board / hand-keyed",
       "rollupMethod": null,
       "contributors": [],
       "flag": null,
-      "series": [0.970, 0.966, 0.925, 0.817, 0.964, 0.981, 0.992, 1.000, 0.996]
+      "series": [
+        0.97,
+        0.966,
+        0.925,
+        0.817,
+        0.964,
+        0.981,
+        0.992,
+        1,
+        0.996
+      ]
     },
     {
       "id": "otp_canada",
@@ -109,14 +250,24 @@
       "parentId": "otp",
       "location": "canada",
       "target": 0.985,
-      "actual": 0.9264,
+      "actual": 0.933,
       "unit": "ratio",
       "direction": "higher_better",
       "source": "COO Board / hand-keyed",
       "rollupMethod": null,
       "contributors": [],
       "flag": null,
-      "series": [0.945, 0.863, 0.884, 0.952, 0.931, 0.913, 0.848, 0.970, 0.933]
+      "series": [
+        0.945,
+        0.863,
+        0.884,
+        0.952,
+        0.931,
+        0.913,
+        0.848,
+        0.97,
+        0.933
+      ]
     },
     {
       "id": "otp_dr",
@@ -144,18 +295,41 @@
       "isMain": true,
       "parentId": null,
       "target": 67.3,
-      "actual": 72.69,
+      "actual": 73.41,
       "unit": "pcs/hr",
       "direction": "higher_better",
       "source": "COO Board / hand-keyed",
       "rollupMethod": "independent",
-      "contributors": ["pplh_mexico", "pplh_norcross", "pplh_houston", "pplh_canada"],
+      "contributors": [
+        "pplh_mexico",
+        "pplh_norcross",
+        "pplh_houston",
+        "pplh_canada"
+      ],
       "flag": null,
       "note": "WE main monthly: JAN 69.9, FEB 73.76, MAR 72.69. Values are flat monthly rates, not high-variance weekly telemetry.",
       "monthlyActuals": {
-        "we": { "jan": 69.9, "feb": 73.76, "mar": 72.69 }
+        "we": {
+          "jan": 69.9,
+          "feb": 73.76,
+          "mar": 72.69
+        }
       },
-      "series": [71.40, 66.20, 70.12, 71.44, 70.33, 72.09, 74.24, 74.43, 74.32, 72.22, 71.56, 71.88, 73.41]
+      "series": [
+        71.4,
+        66.2,
+        70.12,
+        71.44,
+        70.33,
+        72.09,
+        74.24,
+        74.43,
+        74.32,
+        72.22,
+        71.56,
+        71.88,
+        73.41
+      ]
     },
     {
       "id": "pplh_mexico",
@@ -173,7 +347,17 @@
       "contributors": [],
       "flag": null,
       "note": "JAN–MAR rate 56.23; APR–JUN stepped to 57.32.",
-      "series": [56.23, 56.23, 56.23, 56.23, 56.23, 56.23, 56.23, 56.23, 56.23]
+      "series": [
+        56.23,
+        56.23,
+        56.23,
+        56.23,
+        56.23,
+        56.23,
+        56.23,
+        56.23,
+        56.23
+      ]
     },
     {
       "id": "pplh_norcross",
@@ -183,7 +367,7 @@
       "parentId": "pplh",
       "location": "norcross",
       "target": 67.3,
-      "actual": 99.50,
+      "actual": 99.5,
       "unit": "pcs/hr",
       "direction": "higher_better",
       "source": "COO Board / hand-keyed",
@@ -191,7 +375,17 @@
       "contributors": [],
       "flag": null,
       "note": "JAN–MAR rate 99.50; APR–JUN stepped to 101.49.",
-      "series": [99.50, 99.50, 99.50, 99.50, 99.50, 99.50, 99.50, 99.50, 99.50]
+      "series": [
+        99.5,
+        99.5,
+        99.5,
+        99.5,
+        99.5,
+        99.5,
+        99.5,
+        99.5,
+        99.5
+      ]
     },
     {
       "id": "pplh_houston",
@@ -209,7 +403,17 @@
       "contributors": [],
       "flag": null,
       "note": "JAN–MAR rate 63.65; APR–JUN stepped to 64.83.",
-      "series": [63.65, 63.65, 63.65, 63.65, 63.65, 63.65, 63.65, 63.65, 63.65]
+      "series": [
+        63.65,
+        63.65,
+        63.65,
+        63.65,
+        63.65,
+        63.65,
+        63.65,
+        63.65,
+        63.65
+      ]
     },
     {
       "id": "pplh_canada",
@@ -227,7 +431,17 @@
       "contributors": [],
       "flag": null,
       "note": "JAN–MAR rate 109.47; APR–JUN stepped to 111.66.",
-      "series": [109.47, 109.47, 109.47, 109.47, 109.47, 109.47, 109.47, 109.47, 109.47]
+      "series": [
+        109.47,
+        109.47,
+        109.47,
+        109.47,
+        109.47,
+        109.47,
+        109.47,
+        109.47,
+        109.47
+      ]
     },
     {
       "id": "pplh_dr",
@@ -279,10 +493,29 @@
       "direction": "lower_better",
       "source": "COO Board / cached from Mfg Gross Margin [4]",
       "rollupMethod": "independent",
-      "contributors": ["materials_mexico", "materials_norcross", "materials_houston", "materials_canada"],
+      "contributors": [
+        "materials_mexico",
+        "materials_norcross",
+        "materials_houston",
+        "materials_canada"
+      ],
       "flag": null,
       "note": "WE main has weekly actuals only (no monthly roll filled). Location subs are single flat literals from external Mfg Gross Margin feed.",
-      "series": [0.096, 0.138, 0.111, 0.023, 0.106, 0.129, 0.124, 0.104, 0.109, 0.122, 0.123, 0.118, 0.126]
+      "series": [
+        0.096,
+        0.138,
+        0.111,
+        0.023,
+        0.106,
+        0.129,
+        0.124,
+        0.104,
+        0.109,
+        0.122,
+        0.123,
+        0.118,
+        0.126
+      ]
     },
     {
       "id": "materials_mexico",
@@ -299,7 +532,9 @@
       "rollupMethod": null,
       "contributors": [],
       "flag": null,
-      "series": [0.114]
+      "series": [
+        0.114
+      ]
     },
     {
       "id": "materials_norcross",
@@ -316,7 +551,9 @@
       "rollupMethod": null,
       "contributors": [],
       "flag": null,
-      "series": [0.093]
+      "series": [
+        0.093
+      ]
     },
     {
       "id": "materials_houston",
@@ -333,7 +570,9 @@
       "rollupMethod": null,
       "contributors": [],
       "flag": null,
-      "series": [0.052]
+      "series": [
+        0.052
+      ]
     },
     {
       "id": "materials_canada",
@@ -350,7 +589,9 @@
       "rollupMethod": null,
       "contributors": [],
       "flag": null,
-      "series": [0.073]
+      "series": [
+        0.073
+      ]
     },
     {
       "id": "materials_dr",
