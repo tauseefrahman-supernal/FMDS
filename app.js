@@ -13,10 +13,11 @@
  *   Standard Work   — always visible
  */
 
-import { createStore } from './lib/store.js';
-import { renderTeamBoard } from './views/teamboard.js';
-import { renderKpi }       from './views/kpi.js';
-import { renderMyBoard }   from './views/myboard.js';
+import { createStore }        from './lib/store.js';
+import { renderTeamBoard }    from './views/teamboard.js';
+import { renderLocationBoard } from './views/teamboard-location.js';
+import { renderKpi }          from './views/kpi.js';
+import { renderMyBoard }      from './views/myboard.js';
 
 const app   = document.getElementById('app');
 const store = createStore({ departments: [], dept: null });
@@ -122,8 +123,12 @@ function renderLayout(dept, activeView) {
 
 // ─── View dispatcher ────────────────────────────────────────────────────────
 function dispatchView(dept, view, mount) {
+  // Location-model departments (Mechanism B) get the location-aware board
+  const isLocationDept = dept.layerModel === 'location' || dept.mechanism === 'independent';
   switch (view) {
-    case 'team':  renderTeamBoard(dept, mount); break;
+    case 'team':
+      isLocationDept ? renderLocationBoard(dept, mount) : renderTeamBoard(dept, mount);
+      break;
     case 'kpi':   renderKpi(dept, mount);       break;
     case 'my':    renderMyBoard(dept, mount);   break;
     case 'solve':
