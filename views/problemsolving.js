@@ -185,9 +185,10 @@ function renderRedKpiSelector(dept) {
     return `<p class="text-muted">No red or amber KPIs currently — no 8-step needed.</p>`;
   }
 
+  const ragLabel = { green: '● Green', amber: '▲ Amber', red: '● Red', nodata: '— No data' };
   const options = redKpis.map(k => {
     const rag = ragStatus(k.actual, k.target, k.direction || 'higher_better');
-    return `<option value="${k.id}">${ragChip(rag)} ${k.name} (${formatVal(k.actual, k.unit)} vs ${formatVal(k.target, k.unit)})</option>`;
+    return `<option value="${k.id}">${ragLabel[rag] || rag} — ${k.name} (${formatVal(k.actual, k.unit)} vs ${formatVal(k.target, k.unit)})</option>`;
   }).join('');
 
   return `
