@@ -1,0 +1,116 @@
+{
+  "title": "8-Step Problem Solving A3",
+  "header": {
+    "fields": ["Title of Problem Solving", "Sponsor", "Leader", "Team", "Rev Date"]
+  },
+  "scoringStrip": ["Safety", "Quality", "Cost", "Time", "Customer", "Effective", "Overall"],
+  "steps": [
+    {
+      "n": 1,
+      "pdca": "PLAN",
+      "name": "Clarify the Problem",
+      "description": "What is unacceptable vs. current — the gap between standard and actual.",
+      "role": "main",
+      "fields": [
+        { "key": "ultimateGoal", "label": "Ultimate Goal", "hint": "The overarching outcome we are striving for." },
+        { "key": "standard", "label": "Standard", "hint": "What SHOULD be happening (the target / expected condition)." },
+        { "key": "current", "label": "Current Situation", "hint": "What IS happening right now (the observed condition)." },
+        { "key": "gap", "label": "Gap = Problem", "hint": "Standard minus Current — this is the problem statement." },
+        { "key": "chart", "label": "Chart", "hint": "Visual showing the gap over time (actual vs target)." }
+      ]
+    },
+    {
+      "n": 2,
+      "pdca": "PLAN",
+      "name": "Break Down the Problem",
+      "description": "What, where, when, who — narrow to the point of occurrence.",
+      "role": "sub",
+      "fields": [
+        { "key": "prioritizedProblem", "label": "Prioritized Problem at point of occurrence", "hint": "The specific, localized sub-problem to solve (after stratification)." }
+      ]
+    },
+    {
+      "n": 3,
+      "pdca": "PLAN",
+      "name": "Objective",
+      "description": "Do what, to what, by when — measurable.",
+      "role": "sub",
+      "fields": [
+        { "key": "doWhat", "label": "Do What", "hint": "The action verb and subject." },
+        { "key": "toWhat", "label": "To What", "hint": "The specific KPI or metric being improved." },
+        { "key": "byWhen", "label": "By When", "hint": "Target date." },
+        { "key": "chart", "label": "Chart", "hint": "Target line on the KPI trend." }
+      ]
+    },
+    {
+      "n": 4,
+      "pdca": "PLAN",
+      "name": "Root Cause",
+      "description": "At point of occurrence, fact-based — keep asking why. Fishbone / 6M method.",
+      "role": "sub",
+      "fields": [
+        { "key": "why1", "label": "Why 1", "hint": "First why — directly observable." },
+        { "key": "why2", "label": "Why 2", "hint": "Why did Why 1 happen?" },
+        { "key": "why3", "label": "Why 3", "hint": "Why did Why 2 happen?" },
+        { "key": "why4", "label": "Why 4", "hint": "Why did Why 3 happen?" },
+        { "key": "why5", "label": "Why 5", "hint": "Why did Why 4 happen? (root cause level)" },
+        { "key": "fishbone6M", "label": "Fishbone / 6M Categories", "hint": "Classify root cause: Man · Method · Machine · Material · Environment → Root Cause" },
+        { "key": "rootCause", "label": "Root Cause", "hint": "The single systemic root cause confirmed by the 5-Whys and 6M." }
+      ]
+    },
+    {
+      "n": 5,
+      "pdca": "PLAN",
+      "name": "Brainstorm Countermeasures",
+      "description": "List potential countermeasures to the root cause.",
+      "role": "sub",
+      "fields": [
+        { "key": "countermeasures", "label": "Countermeasure Candidates", "hint": "List all plausible countermeasures to the confirmed root cause. Prioritize next." }
+      ]
+    },
+    {
+      "n": 6,
+      "pdca": "DO",
+      "name": "Implement Selected Countermeasure",
+      "description": "Quickly implement & measure. Action register with R-Y-G-C status.",
+      "role": "activity",
+      "fields": [
+        {
+          "key": "actionRegister",
+          "label": "Action Register",
+          "hint": "One row per countermeasure: No. | Implementation Plan | Start Date | Due Date | Responsible | Status (R=Behind / Y=At Risk / G=On Track / C=Completed). Up to 10 rows.",
+          "columns": ["no", "plan", "startDate", "dueDate", "responsible", "status"],
+          "statusEnum": ["R", "Y", "G", "C"],
+          "statusLegend": { "R": "Behind", "Y": "At Risk", "G": "On Track", "C": "Completed" }
+        }
+      ]
+    },
+    {
+      "n": 7,
+      "pdca": "CHECK",
+      "name": "Monitor Results & Processes",
+      "description": "Evaluate overall result + the process.",
+      "role": "results",
+      "fields": [
+        { "key": "measurementStart", "label": "Measurement — Start", "hint": "Baseline actual when problem was confirmed." },
+        { "key": "measurementEnd", "label": "Measurement — End", "hint": "Actual after implementing countermeasures." },
+        { "key": "newTarget", "label": "New Target", "hint": "Revised target if countermeasure redefined the baseline." },
+        { "key": "kpi", "label": "KPI", "hint": "The KPI being tracked." },
+        { "key": "chart", "label": "Chart — Actual vs Target", "hint": "Visual of the KPI trajectory before and after implementation." }
+      ]
+    },
+    {
+      "n": 8,
+      "pdca": "ACT",
+      "name": "Standardize Successful Process",
+      "description": "Standardize, Yokoten — lock in the improvement and share it.",
+      "role": "results",
+      "fields": [
+        { "key": "processDocuments", "label": "Process Documents Created/Updated", "hint": "List every BWI/SWI or SOP that was created or updated as a result. Link to the WMS SW Update Request ticket." },
+        { "key": "training", "label": "Training on New Process(es)", "hint": "Who was trained, and when." },
+        { "key": "yokoten", "label": "Yokoten Plan", "hint": "How the improvement is communicated in-plant and to other plants (cross-pollination)." },
+        { "key": "improvementImage", "label": "Improvement Image or Chart", "hint": "Before/after visual confirming the process change." }
+      ]
+    }
+  ]
+}
