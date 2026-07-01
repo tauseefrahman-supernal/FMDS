@@ -1,0 +1,63 @@
+{
+  "id": "operations-shortcode",
+  "title": "Short-Code Order Entry — Standard Work for Remake Jobs (Galls Color & Similar Programs)",
+  "deptId": "operations",
+  "docType": "BWI",
+  "purpose": "To define the correct short-code selection and order-entry process for remake jobs (including high-volume programs such as Galls color), preventing the standard-work breakage that produces preventable credits and inflates OTP denominators.",
+  "scope": "All Operations order-entry staff and plant leads (Mexico, Norcross, Houston, Canada) processing remake orders under short-code routing. Applies whenever a job is designated a remake and must be re-entered under a distinct order type.",
+  "linkedForms": [
+    "WMS SW Update Requests (SharePoint)",
+    "OTP Tracker (COO Board)",
+    "KZ tracker — Pricing Credit Memos (KZ-346)"
+  ],
+  "note": "This SOP represents the standard-work gap identified in the T3 OTP story (Jun 24 review): a $40K breakage event where the wrong short-code was applied to a Galls color remake run, causing preventable credits and inflating the OTP denominator. Jim Kozel's question: 'I want to see what part of the standard work broke.' This BWI documents the corrected process. Values are real (OTP target 0.985; Mexico Mar 0.750; Galls color backlog 1,917 samples).",
+  "steps": [
+    {
+      "n": 1,
+      "mainStep": "Identify the job type before entering the order",
+      "keyPoints": "Check whether the job is a first-run or a remake. For remake jobs, the short-code is different from the standard production code. Do not assume — verify against the original order number.",
+      "reason": "Applying the wrong short-code routes the job incorrectly in WPS, assigns incorrect material costs, and causes a credit memo when the billing hits NetSuite. Each credit is tracked on the OTP board (Materials $/Revenue and Back Credits KPIs). The Feb–Mar 2026 Galls color spike generated ~$40K in preventable credits from this error."
+    },
+    {
+      "n": 2,
+      "mainStep": "Look up the correct short-code for the program in the WMS code table",
+      "keyPoints": "Open WMS → Order Entry → Short-Code Reference Table. Match the program name (e.g. 'Galls Color', 'Embroidery Remake') to its designated remake code. The remake code is never the same as the first-run code for the same program.",
+      "reason": "The Short-Code Reference Table is the single source of truth for routing. Using a memorized or guessed code is the key point that 'makes or breaks' this step — it is the root cause in KZ-346 (Pricing Credit Memos Feb '26)."
+    },
+    {
+      "n": 3,
+      "mainStep": "Enter the order using the verified remake short-code",
+      "keyPoints": "Confirm: short-code field matches the reference table entry; original order number is linked in the 'Source Order' field; job is flagged as REMAKE in the work-order header. Do not proceed if any of these three are missing.",
+      "reason": "The 'REMAKE' flag triggers the correct floor routing so the plant team knows this is a rework job — prevents double-counting in the OTP denominator (a remake that is then tracked as a new job inflates the denominator, worsening the OTP percentage even if the plant delivers on time)."
+    },
+    {
+      "n": 4,
+      "mainStep": "Verify the order before releasing to the floor",
+      "keyPoints": "Two-person check: the entering clerk and the plant supervisor both confirm the short-code and REMAKE flag before releasing. For high-volume programs (>500 units), the lead must also approve.",
+      "reason": "The Galls color backlog reached 1,917 samples in part because a batch of incorrectly coded orders was released and only caught at billing. A pre-release two-person check for high-volume programs stops the error before it compounds. Quality check at the point of occurrence."
+    },
+    {
+      "n": 5,
+      "mainStep": "Log the remake in the OTP tracker at the start of the week",
+      "keyPoints": "Add the remake job count to the weekly OTP tracker (COO Board denominator column) immediately when the order is released. Do not wait until week-end.",
+      "reason": "Mexico OTP ran 0.39–0.55 weekly (weeks 15–23) in part because the denominator was inflated by unreported sample-surge volumes. Timely logging gives Jim and the plant lead visibility to the true denominator before the week closes, allowing early escalation."
+    },
+    {
+      "n": 6,
+      "mainStep": "If a credit is required, initiate the KZ process",
+      "keyPoints": "Any preventable credit (Standard = $0) triggers an 8-Step Problem Solving entry. Log in the KZ Tracker (Operations tab). Assign an owner and start date. Do not absorb credits silently.",
+      "reason": "Preventable credits are a system signal, not a one-off. KZ-346 (Pricing Credit Memos) and KZ-339 (Credit and Rebill) both started with credits that were initially absorbed. The 8-step is how the plant confirms root cause and updates this standard work (Step 8 Yokoten)."
+    }
+  ],
+  "revisions": [
+    {
+      "date": "2026-07-01",
+      "revision": "01",
+      "description": "Original document — drafted from T3 OTP story (Jun 24) and KZ-346 Pricing Credit Memos discovery. Captures the short-code standard-work breakage root cause identified by Jim Kozel.",
+      "requester": "Supernal / FMDS OS build"
+    }
+  ],
+  "elaborated": "Supernal",
+  "revised": null,
+  "approved": null
+}

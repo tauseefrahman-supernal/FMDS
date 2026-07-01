@@ -1,0 +1,63 @@
+{
+  "id": "service-prospecting",
+  "title": "Service Prospecting — WEI & HP Outbound Call Process",
+  "deptId": "service",
+  "docType": "BWI",
+  "purpose": "To standardize the prospecting and outbound-call workflow for Service reps managing WEI and Hero's Pride accounts, ensuring consistent follow-through from initial outreach to opportunity creation.",
+  "scope": "All Service reps on Team JC and Team Noel handling WEI outbound calls, HP New Quotes, and WEI New Opportunity tracking.",
+  "linkedForms": [
+    "HubSpot New Opportunity form",
+    "HP New Quote submission (NetSuite)",
+    "WMS SW Update Requests"
+  ],
+  "note": "This SOP is structured from the BWI format discovered in WE standard-work artifacts. The prospecting process and activity targets are drawn from the Service board (weekly targets: # Calls 251/wk, # WEI New Opps 48/wk, # HP New Quotes 10/wk per rep). Time-with-customer is flagged as a fast-follow metric gap — calls and meetings are current proxies.",
+  "steps": [
+    {
+      "n": 1,
+      "mainStep": "Prepare your weekly target list",
+      "keyPoints": "Pull your assigned accounts from HubSpot; confirm your WEI revenue target (e.g. Diane 26,960/wk, Cullen 20,358/wk, Dylan 25,377/wk, Colten 18,883/wk); note any open opportunities from prior week.",
+      "reason": "Ensures every rep starts the week with a clear, prioritized call list aligned to the weekly board targets — reduces wasted outreach and ensures on-target revenue pacing."
+    },
+    {
+      "n": 2,
+      "mainStep": "Log each outbound call in HubSpot immediately after completion",
+      "keyPoints": "Record call disposition (reached / voicemail / no answer); note outcome in contact record; if an opportunity surface — open a WEI New Opp immediately.",
+      "reason": "# Calls is a board-tracked KPI (target 251/wk all reps). Unlogged calls create a gap between real activity and the FMDS board actuals, making the data unreliable. Immediate logging prevents end-of-week re-keying errors."
+    },
+    {
+      "n": 3,
+      "mainStep": "Create a WEI New Opportunity when a prospect signals intent",
+      "keyPoints": "Open the HubSpot Opportunity record on the call (do not wait); set estimated close date and value; link to the account; tag as WEI.",
+      "reason": "# WEI New Opps (target 48/wk board-level) is a leading indicator for Incoming Revenue WE. Delayed entry overstates open-quote lag and distorts the pipeline view for the L2 leader."
+    },
+    {
+      "n": 4,
+      "mainStep": "Submit HP New Quotes via NetSuite same day",
+      "keyPoints": "HP New Quote target is 10/wk per rep (Diane baseline). Quote must include pricing, artwork spec, and ship-to before submission. Route to HP processing queue.",
+      "reason": "HP Quotes are a separate revenue stream (Incoming Rev HPI target 36,755/wk). Late or incomplete quotes create the HP pipeline gap flagged in the KZ-303 (HP Quote-to-Order shortfall $80,859)."
+    },
+    {
+      "n": 5,
+      "mainStep": "Apply the 3-Touch Rule for open WEI Opportunities over 14 days",
+      "keyPoints": "Touch 1: email with value summary. Touch 2: follow-up call within 48 hrs. Touch 3: internal escalation to team lead if no response by day 14. Log every touch in HubSpot.",
+      "reason": "Countermeasure from KZ-303 (Hero's Pride Quote-to-Order Revenue). No standardized follow-up process was the confirmed root cause of the $80,859 shortfall. This rule closes that gap."
+    },
+    {
+      "n": 6,
+      "mainStep": "Review your board actuals every Monday with your Team Lead (JC or Noel)",
+      "keyPoints": "Compare your weekly revenue actual vs target; check # Calls, # WEI New Opps, # HP New Quotes vs targets; flag any gap for the 8-step if you are below target 2 consecutive weeks.",
+      "reason": "L2 Leader Standard Work includes a weekly board review. The rep's L1 My Board data feeds the L2 Team Board — accurate weekly data is the input the team lead and the system depend on for RAG status."
+    }
+  ],
+  "revisions": [
+    {
+      "date": "2026-07-01",
+      "revision": "01",
+      "description": "Original document — embedded in FMDS OS prototype from Service board discovery. Based on WE BWI format and Service board KPI targets.",
+      "requester": "Supernal / FMDS OS build"
+    }
+  ],
+  "elaborated": "Supernal",
+  "revised": null,
+  "approved": null
+}

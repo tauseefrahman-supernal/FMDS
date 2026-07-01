@@ -1,0 +1,143 @@
+{
+  "title": "Leader Standard Work (LSW) — ODG Role Cadence",
+  "source": "ODG LSW - 10-2025.xlsx (role-based checklist) + Formato LSW-Exec-Dir-Mgr. Rev'01.xlsx (exec planner)",
+  "note": "Cadence rows extracted from the ODG LSW sheet. Three roles present: VP of ODG, ODG Manager, ODG Specialist. ~36 recurring activities per role. Format: Activity | Daily | Weekly | Bi-Weekly | Monthly | Quarterly | Hours | Description. The exec planner adds Strategic/Tactical classification, Work Type, Focus, % Time allocation, and Hoshin linkage.",
+  "roles": ["VP of ODG", "ODG Manager", "ODG Specialist"],
+  "frequencyEnum": ["Daily", "4x/Wk", "2x/Wk", "Weekly", "Bi-Weekly", "3x/Mo", "Monthly", "Bi-Monthly", "Quarterly", "Semi-Annual", "Annual", "Every-Other-Year"],
+  "workTypeEnum": ["Meeting", "Audit", "Administrative", "Environmental Scan", "Standard Work", "Email", "Video", "Recognition", "Community"],
+  "cadenceRows": [
+    {
+      "activity": "Check ODG FMDS Data",
+      "frequency": "Daily",
+      "workType": "Administrative",
+      "stratTactical": "Tactical",
+      "focus": "FMDS",
+      "description": "Review ODG board KPIs (Training Plan vs Actual, SRR). Confirm data is current and accurate before the daily start-up.",
+      "boardLink": "odg"
+    },
+    {
+      "activity": "ODG Start-up Meeting",
+      "frequency": "Daily",
+      "workType": "Meeting",
+      "stratTactical": "Tactical",
+      "focus": "FMDS",
+      "description": "Daily start-up / FMDS board review / activities. Attendees: ODG team. Brief standup — what's red, who owns it, what's the plan.",
+      "boardLink": "odg"
+    },
+    {
+      "activity": "Check SW Library Audits",
+      "frequency": "Daily",
+      "workType": "Audit",
+      "stratTactical": "Tactical",
+      "focus": "Standard Work",
+      "description": "Ensures the most current version of each BWI/SWI is available in the SharePoint SW library. Flag any out-of-revision documents for update via WMS SW Update Requests.",
+      "boardLink": null
+    },
+    {
+      "activity": "FMDS Pulse Checks — All Boards",
+      "frequency": "Weekly",
+      "workType": "Audit",
+      "stratTactical": "Tactical",
+      "focus": "FMDS",
+      "description": "Weekly review of all department FMDS boards (Operations, Sales, Service, Marketing, HR, IT). Confirm actuals are entered and RAG is current. Flag any board with missing data.",
+      "boardLink": null
+    },
+    {
+      "activity": "Check Executive FMDS Board (Randy's Board)",
+      "frequency": "Weekly",
+      "workType": "Administrative",
+      "stratTactical": "Strategic",
+      "focus": "FMDS",
+      "description": "Roll-up of data for the CEO board. Tuesdays. Ensure the Leadership OS inputs are accurate before Randy's review.",
+      "boardLink": null,
+      "specificDay": "Tuesday"
+    },
+    {
+      "activity": "8-Step Problem-Solving Coaching",
+      "frequency": "Weekly",
+      "workType": "Standard Work",
+      "stratTactical": "Tactical",
+      "focus": "Problem Solving",
+      "description": "Coach department leaders and ODG Specialists on active 8-step KZ records. Review step progress in the tracker. Priority: Operations (~30 records) then Finance/Sales.",
+      "boardLink": "odg",
+      "kzTrackerLink": true
+    },
+    {
+      "activity": "SRR Audits",
+      "frequency": "Weekly",
+      "workType": "Audit",
+      "stratTactical": "Tactical",
+      "focus": "SRR",
+      "description": "Confirm Strategic Review Rhythm adherence by department. Only Operations is currently running at ~50%; all other depts at 0. Score and update SRR board (ODG FMDS.xlsx cols EM–FA).",
+      "boardLink": "odg"
+    },
+    {
+      "activity": "Quality Review Meeting",
+      "frequency": "Monthly",
+      "workType": "Meeting",
+      "stratTactical": "Strategic",
+      "focus": "Quality",
+      "description": "Standing monthly meeting — last Wednesday. Cross-functional quality review covering OTP, CSAT, Back Credits & Remakes, SRR adherence.",
+      "specificDay": "Last Wednesday of month"
+    },
+    {
+      "activity": "Quality Pre-Review Meeting",
+      "frequency": "Monthly",
+      "workType": "Meeting",
+      "stratTactical": "Tactical",
+      "focus": "Quality",
+      "description": "Two days prior to the Quality Review Meeting. Prepare data and flag open KZ items that need resolution before the review.",
+      "specificDay": "2 days before last Wednesday"
+    },
+    {
+      "activity": "STW / PM / BWI Checks",
+      "frequency": "Monthly",
+      "workType": "Audit",
+      "stratTactical": "Tactical",
+      "focus": "Standard Work",
+      "description": "Leaders ensure Standard Work is followed, updated, and taught. Audit a sample of BWIs per department against current practice. Flag gaps for WMS SW Update Request tickets.",
+      "boardLink": null
+    },
+    {
+      "activity": "Development Plan Checks",
+      "frequency": "Quarterly",
+      "workType": "Administrative",
+      "stratTactical": "Strategic",
+      "focus": "People",
+      "description": "Review individual development plans for ODG team members and cross-department leaders enrolled in ODG training programs."
+    },
+    {
+      "activity": "Train-the-Trainer Certification",
+      "frequency": "Quarterly",
+      "workType": "Standard Work",
+      "stratTactical": "Strategic",
+      "focus": "Training",
+      "description": "Eric signs off on trainers who are certified to deliver ODG programs (FMDS, 8-Step, BWI, JIT). Certification is the quality gate before a trainer delivers independently."
+    },
+    {
+      "activity": "L1-L2 COO Hoshin & KPI Review",
+      "frequency": "Weekly",
+      "workType": "Meeting",
+      "stratTactical": "Strategic",
+      "focus": "Hoshin / KPI",
+      "description": "Layer 1–2 Hoshin and KPI review. Attendees: COO + L2 Operations lead. Links the FMDS board actuals to Hoshin strategic deliverables. Drives accountability for red KPIs (e.g. Mexico OTP).",
+      "boardLink": "operations"
+    },
+    {
+      "activity": "Layer 1-1 Hoshin/KPI/Tactical Weekly Meeting with CEO",
+      "frequency": "Weekly",
+      "workType": "Meeting",
+      "stratTactical": "Strategic",
+      "focus": "Hoshin / KPI",
+      "description": "Executive-level roll-up. CEO + direct reports. The KPI cascade from department FMDS boards feeds this meeting. This is where the ▲ 'rolls up to Leadership OS' pointer points.",
+      "boardLink": null
+    }
+  ],
+  "timeAllocationModel": {
+    "note": "From Formato LSW-Exec-Dir-Mgr. Rev'01.xlsx — President example (Andrew K., 70-hr week): structured work ~82% / problem-solving & coaching ~18% / Hoshin/strategic deliverables tracked separately. The time budget is the explicit, auditable allocation that ensures coaching time is protected.",
+    "buckets": [
+      { "label": "Structured Work", "pct": 0.82, "illustrative": true },
+      { "label": "Problem-Solving & Coaching", "pct": 0.18, "illustrative": true }
+    ]
+  }
+}
