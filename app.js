@@ -19,6 +19,8 @@ import { renderLocationBoard }    from './views/teamboard-location.js';
 import { renderKpi }              from './views/kpi.js';
 import { renderMyBoard }          from './views/myboard.js';
 import { renderProblemSolving }   from './views/problemsolving.js';
+import { renderStandardWork }     from './views/standardwork.js';
+import { bakedReply }             from './lib/agent.js';
 
 const app   = document.getElementById('app');
 const store = createStore({ departments: [], dept: null });
@@ -81,7 +83,7 @@ async function loadDeptView(deptId, view) {
   renderLayout(deptFull, view);
 }
 
-// ─── Layout: shell + left rail + view mount ────────────────────────────────
+// ─── Layout: shell + left rail + view mount + agent panel ──────────────────
 function renderLayout(dept, activeView) {
   const views = [
     { id: 'team',  label: 'Team Board' },
@@ -96,6 +98,13 @@ function renderLayout(dept, activeView) {
        class="nav-link ${activeView === v.id ? 'nav-link--active' : ''}">
       ${v.label}
     </a>`).join('');
+
+  // HR agent-poke CTA only shown on HR department
+  const agentPokeBtn = dept.id === 'hr'
+    ? `<button class="agent-poke-btn" onclick="window._agentPoke()">
+         Ping Clarissa (ADP poke)
+       </button>`
+    : '';
 
   app.innerHTML = `
     <div class="app-shell">
@@ -115,11 +124,38 @@ function renderLayout(dept, activeView) {
           ${navLinks}
         </nav>
         <main class="view-mount" id="view-mount"></main>
+        <aside class="agent-panel" id="agent-panel">
+          <div class="agent-panel__header">
+            <span class="agent-panel__title">AI Assistant</span>
+            <span class="agent-panel__dept text-muted">${dept.name}</span>
+          </div>
+          <div class="agent-panel__intents">
+            <button class="agent-intent-btn" onclick="window._agentAsk('explain-red')">
+              Why is the headline KPI red?
+            </button>
+            <button class="agent-intent-btn" onclick="window._agentAsk('find-sop')">
+              Find governing SOP
+            </button>
+            ${agentPokeBtn}
+          </div>
+          <div class="agent-panel__input-row">
+            <input id="agent-input" class="agent-input" type="text"
+                   placeholder="Ask about this board…"
+                   onkeydown="if(event.key==='Enter') window._agentSubmit()">
+            <button class="agent-send-btn" onclick="window._agentSubmit()">Ask</button>
+          </div>
+          <div class="agent-panel__response" id="agent-response">
+            <p class="text-muted" style="font-size:0.8rem;padding:8px 0">
+              Ask a question or choose a shortcut above.
+            </p>
+          </div>
+        </aside>
       </div>
     </div>`;
 
   const mount = document.getElementById('view-mount');
   dispatchView(dept, activeView, mount);
+  attachAgentHandlers(dept);
 }
 
 // ─── View dispatcher ────────────────────────────────────────────────────────
@@ -136,14 +172,61 @@ function dispatchView(dept, view, mount) {
       renderProblemSolving(dept, mount);
       break;
     case 'sop':
-      mount.innerHTML = `<div class="card mt-6">
-        <h2>Standard Work</h2>
-        <p class="text-muted mt-2">SOP library + LSW cadence — Phase 5 (Task 12).</p>
-      </div>`;
+      renderStandardWork(dept, mount);
       break;
     default:
       renderTeamBoard(dept, mount);
   }
+}
+
+// ─── Agent panel handlers ───────────────────────────────────────────────────
+function attachAgentHandlers(dept) {
+  const responseEl = document.getElementById('agent-response');
+  if (!responseEl) return;
+
+  function showResponse(text) {
+    responseEl.innerHTML = `
+      <div class="agent-response-bubble">
+        <div class="agent-response-label">FMDS Agent</div>
+        <pre class="agent-response-text">${escHtml(text)}</pre>
+      </div>`;
+  }
+
+  window._agentAsk = (intent) => {
+    const reply = bakedReply(dept.id, intent, { kpi: dept.headlineKpi });
+    showResponse(reply);
+  };
+
+  window._agentPoke = () => {
+    const reply = bakedReply(dept.id, 'agent-poke', {});
+    showResponse(reply);
+  };
+
+  window._agentSubmit = () => {
+    const input = document.getElementById('agent-input');
+    const question = input ? input.value.trim() : '';
+    if (!question) return;
+
+    // Route free-text questions to the best intent
+    let intent = 'explain-red';
+    const q = question.toLowerCase();
+    if (q.includes('sop') || q.includes('standard work') || q.includes('bwi')) {
+      intent = 'find-sop';
+    } else if (q.includes('adp') || q.includes('poke') || q.includes('clarissa')) {
+      intent = 'agent-poke';
+    }
+    const reply = bakedReply(dept.id, intent, { kpi: dept.headlineKpi, question });
+    showResponse(reply);
+    if (input) input.value = '';
+  };
+}
+
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 
 // ─── Home (placeholder for Task 14) ────────────────────────────────────────
@@ -193,7 +276,7 @@ function renderHome() {
     </div>`;
 }
 
-// ─── Styles for shell layout ────────────────────────────────────────────────
+// ─── Styles for shell layout + agent panel ─────────────────────────────────
 const shellStyles = `
   .app-shell { display:flex; flex-direction:column; min-height:100vh; }
 
@@ -263,6 +346,149 @@ const shellStyles = `
     min-width: 0;
     padding: 24px 0 48px 24px;
     border-left: 1px solid var(--slate-200);
+    /* right border handled by agent panel */
+  }
+
+  /* ── Agent panel — right-docked, visually distinct from 8-step wizard ── */
+  .agent-panel {
+    width: 280px;
+    flex-shrink: 0;
+    padding: 20px 0 48px 16px;
+    border-left: 1px solid var(--slate-200);
+    position: sticky;
+    top: 52px;
+    max-height: calc(100vh - 52px);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .agent-panel__header {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--slate-200);
+  }
+
+  .agent-panel__title {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  .agent-panel__dept {
+    font-size: 0.75rem;
+  }
+
+  .agent-panel__intents {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .agent-intent-btn {
+    text-align: left;
+    padding: 7px 10px;
+    border: 1px solid var(--slate-200);
+    border-radius: var(--radius);
+    background: var(--slate-50);
+    font-size: 0.78rem;
+    color: var(--slate-700);
+    cursor: pointer;
+    transition: background 0.1s, border-color 0.1s;
+    font-family: inherit;
+  }
+
+  .agent-intent-btn:hover {
+    background: var(--accent-light);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .agent-poke-btn {
+    text-align: left;
+    padding: 7px 10px;
+    border: 1px solid #ffd8a8;
+    border-radius: var(--radius);
+    background: #fff9f0;
+    font-size: 0.78rem;
+    color: #c7620a;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.1s;
+  }
+
+  .agent-poke-btn:hover { background: #fff3e0; }
+
+  .agent-panel__input-row {
+    display: flex;
+    gap: 6px;
+  }
+
+  .agent-input {
+    flex: 1;
+    min-width: 0;
+    padding: 6px 9px;
+    border: 1px solid var(--slate-300);
+    border-radius: var(--radius);
+    font-size: 0.8rem;
+    font-family: inherit;
+    color: var(--slate-900);
+    background: #fff;
+  }
+
+  .agent-input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent-light);
+  }
+
+  .agent-send-btn {
+    padding: 6px 10px;
+    border: none;
+    border-radius: var(--radius);
+    background: var(--accent);
+    color: #fff;
+    font-size: 0.78rem;
+    cursor: pointer;
+    font-family: inherit;
+    flex-shrink: 0;
+    transition: opacity 0.1s;
+  }
+
+  .agent-send-btn:hover { opacity: 0.88; }
+
+  .agent-panel__response {
+    flex: 1;
+  }
+
+  .agent-response-bubble {
+    background: var(--slate-50);
+    border: 1px solid var(--slate-200);
+    border-radius: var(--radius);
+    padding: 10px 12px;
+  }
+
+  .agent-response-label {
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 6px;
+  }
+
+  .agent-response-text {
+    font-size: 0.78rem;
+    white-space: pre-wrap;
+    font-family: inherit;
+    color: var(--slate-700);
+    line-height: 1.55;
+    margin: 0;
   }
 
   /* Home grid */
