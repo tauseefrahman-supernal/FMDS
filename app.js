@@ -13,11 +13,12 @@
  *   Standard Work   — always visible
  */
 
-import { createStore }        from './lib/store.js';
-import { renderTeamBoard }    from './views/teamboard.js';
-import { renderLocationBoard } from './views/teamboard-location.js';
-import { renderKpi }          from './views/kpi.js';
-import { renderMyBoard }      from './views/myboard.js';
+import { createStore }            from './lib/store.js';
+import { renderTeamBoard }        from './views/teamboard.js';
+import { renderLocationBoard }    from './views/teamboard-location.js';
+import { renderKpi }              from './views/kpi.js';
+import { renderMyBoard }          from './views/myboard.js';
+import { renderProblemSolving }   from './views/problemsolving.js';
 
 const app   = document.getElementById('app');
 const store = createStore({ departments: [], dept: null });
@@ -132,10 +133,7 @@ function dispatchView(dept, view, mount) {
     case 'kpi':   renderKpi(dept, mount);       break;
     case 'my':    renderMyBoard(dept, mount);   break;
     case 'solve':
-      mount.innerHTML = `<div class="card mt-6">
-        <h2>Problem-Solving</h2>
-        <p class="text-muted mt-2">8-step wizard + KZ tracker — Phase 5 (Task 11).</p>
-      </div>`;
+      renderProblemSolving(dept, mount);
       break;
     case 'sop':
       mount.innerHTML = `<div class="card mt-6">
