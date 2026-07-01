@@ -15,3 +15,6 @@ test('lower_better: IT ticket 200min vs 240 target = green', () => {
 test('null actual = nodata', () => {
   assert.equal(ragStatus(null, 0.985), 'nodata');
 });
+test('NaN target = nodata', () => {
+  assert.equal(ragStatus(0.99, NaN), 'nodata');
+});
