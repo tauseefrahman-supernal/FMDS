@@ -52,13 +52,14 @@ test('getReasonsByDept returns all entries for dept', () => {
 test('seedDemoReasons seeds once and is idempotent', () => {
   // Clear seed flag so seed runs
   localStorage.removeItem('fmds_reasons_seeded');
-  const before = getReasonsByEntity({ deptId: 'sales', entityId: 'rep_diane' }).length;
+  // Diane's demo entries are now in deptId:'service' (she is a Service / Team JC rep)
+  const before = getReasonsByEntity({ deptId: 'service', entityId: 'rep_diane' }).length;
   seedDemoReasons();
-  const after = getReasonsByEntity({ deptId: 'sales', entityId: 'rep_diane' }).length;
+  const after = getReasonsByEntity({ deptId: 'service', entityId: 'rep_diane' }).length;
   assert.ok(after > before, 'seed added entries');
   // Second call should not double-add
   seedDemoReasons();
-  const afterAgain = getReasonsByEntity({ deptId: 'sales', entityId: 'rep_diane' }).length;
+  const afterAgain = getReasonsByEntity({ deptId: 'service', entityId: 'rep_diane' }).length;
   assert.equal(afterAgain, after, 'seed is idempotent');
 });
 
