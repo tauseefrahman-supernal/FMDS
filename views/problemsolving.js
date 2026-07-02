@@ -76,7 +76,7 @@ function renderGoldenThread(dept, kpi) {
   const contributors = contributorsOf(dept, kpi.id);
 
   // Build chain: WE main → location contributors → deeper if any
-  const chainItems = [`<span class="gt-node gt-node--l1">L1 Leadership OS</span>`];
+  const chainItems = [`<span class="gt-node gt-node--l1">L3 Leadership OS</span>`];
 
   // Dept main
   const mainKpis = mains(dept);
@@ -348,7 +348,13 @@ function renderWizardStep(dept, kpi, stepN, template) {
 
   const kzNum    = _activeKZ.kzNumber;
   const pdca     = stepDef.pdca;
-  const draftText = bakedReply(dept.id, 'draft-step', { step: stepN, kpi: kpi?.name || 'KPI', deptId: dept.id });
+  const draftText = bakedReply(dept.id, 'draft-step', {
+    step:      stepN,
+    kpi:       kpi?.name || 'KPI',
+    deptId:    dept.id,
+    kpiActual: kpi?.actual ?? null,
+    kpiTarget: kpi?.target ?? null,
+  });
   const stepsDone = { ..._activeKZ.steps };
 
   // Golden thread
