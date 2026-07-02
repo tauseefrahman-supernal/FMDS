@@ -870,3 +870,143 @@ input[type="text"]:focus, input[type="search"]:focus, select:focus {
   transition: background var(--t-fast), color var(--t-fast), border-color var(--t-fast);
 }
 .topbar-btn:hover { background: var(--accent-tint); color: var(--accent); border-color: var(--accent); }
+
+/* ── Reason Log (R2: human context / reason capture) ───────────────────── */
+
+/* Container that holds entries + inline form */
+.reason-log {
+  margin-top: var(--sp-3);
+  border-top: 1px solid var(--line);
+  padding-top: var(--sp-2);
+}
+
+.reason-log--hero {
+  margin-top: var(--sp-4);
+  padding-top: var(--sp-3);
+}
+
+/* Individual logged reason entry */
+.reason-entry {
+  border-left: 3px solid var(--line-strong);
+  padding: var(--sp-2) var(--sp-3);
+  margin-bottom: var(--sp-2);
+  background: var(--surface-2);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  animation: fadeSlideIn 200ms var(--ease);
+}
+
+.reason-entry--red   { border-left-color: var(--red);   }
+.reason-entry--amber { border-left-color: var(--amber); }
+.reason-entry--green { border-left-color: var(--green); }
+
+.reason-entry__meta {
+  display: flex;
+  gap: var(--sp-2);
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+}
+
+.reason-entry__author { font-weight: 600; color: var(--text); }
+
+.reason-entry__text {
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.45;
+}
+
+/* Inline log form */
+.reason-log__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin-top: var(--sp-2);
+}
+
+.reason-log__input {
+  width: 100%;
+  resize: vertical;
+  font-family: var(--font);
+  font-size: 13px;
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  box-sizing: border-box;
+}
+
+.reason-log__input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-tint);
+}
+
+.reason-log__save {
+  align-self: flex-end;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 5px 14px;
+  font-size: 12px;
+  font-family: var(--font);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--t-fast) var(--ease);
+}
+
+.reason-log__save:hover { background: var(--accent-hover); }
+
+/* btn--sm (used on Save buttons) */
+.btn--sm {
+  padding: 5px 14px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* Completion line (green KPIs) */
+.completion-line {
+  margin-top: var(--sp-2);
+  font-size: 12px;
+  color: var(--green);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  border-top: 1px solid var(--green-bg);
+  padding-top: var(--sp-2);
+}
+
+.completion-line .mono {
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.completion-line__check {
+  font-size: 13px;
+  margin-right: 2px;
+}
+
+/* This week's context panel */
+.week-context {
+  margin-top: var(--sp-6);
+  padding: var(--sp-4);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.week-context__head {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: var(--sp-3);
+}
+
+/* Animation for new reason entries */
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
