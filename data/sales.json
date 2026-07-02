@@ -557,6 +557,12 @@
       ]
     }
   ],
+  "reps": [
+    "rep_nick",
+    "rep_michael",
+    "rep_jamie",
+    "rep_eric"
+  ],
   "outsideReps": [
     "rep_nick",
     "rep_michael",

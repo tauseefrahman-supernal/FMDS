@@ -16,6 +16,7 @@
 import { createStore }            from './lib/store.js';
 import { renderTeamBoard }        from './views/teamboard.js';
 import { renderLocationBoard }    from './views/teamboard-location.js';
+import { renderOdgHub }           from './views/odg-hub.js';
 import { renderKpi }              from './views/kpi.js';
 import { renderMyBoard }          from './views/myboard.js';
 import { renderProblemSolving }   from './views/problemsolving.js';
@@ -160,6 +161,11 @@ function renderLayout(dept, activeView) {
 
 // ─── View dispatcher ────────────────────────────────────────────────────────
 function dispatchView(dept, view, mount) {
+  // ODG gets its dedicated method hub as the team view
+  if (dept.id === 'odg' && view === 'team') {
+    renderOdgHub(dept, mount);
+    return;
+  }
   // Location-model departments (Mechanism B) get the location-aware board
   const isLocationDept = dept.layerModel === 'location' || dept.mechanism === 'independent';
   switch (view) {
@@ -175,6 +181,8 @@ function dispatchView(dept, view, mount) {
       renderStandardWork(dept, mount);
       break;
     default:
+      // ODG: fall back to method hub for unknown views too
+      if (dept.id === 'odg') { renderOdgHub(dept, mount); return; }
       renderTeamBoard(dept, mount);
   }
 }

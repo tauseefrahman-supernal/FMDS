@@ -92,6 +92,22 @@ function renderRepSubs(kpi) {
 function renderRepCard(kpi, dept) {
   if (!kpi) return '<p class="text-muted">Rep not found.</p>';
 
+  // Explicit no-data rep (e.g. Eric in Sales — tab is empty, no target/actuals)
+  if (kpi.nodata) {
+    return `
+      <div class="rep-card card">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+          <div>
+            <h3>${kpi.name}</h3>
+            ${kpi.nodataNote
+              ? `<p class="text-muted text-small mt-2" style="line-height:1.5">${kpi.nodataNote}</p>`
+              : '<p class="text-muted text-small mt-2">No data available for this rep.</p>'}
+          </div>
+          <span class="rag-chip rag-chip--nodata">— No Data</span>
+        </div>
+      </div>`;
+  }
+
   const act   = displayActual(kpi);
   const rag   = ragStatus(act, kpi.target, kpi.direction || 'higher_better');
   const chart = kpi.series && kpi.series.length
