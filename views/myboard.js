@@ -28,7 +28,7 @@ function formatVal(v, unit) {
     if (Math.abs(v) >= 1_000)     return '$' + (v / 1_000).toFixed(0) + 'k';
     return '$' + v.toLocaleString();
   }
-  if (unit === 'ratio') return (v * 100).toFixed(1) + '%';
+  if (unit === 'ratio' || unit === 'percent' || unit === '%' || unit === 'pct') return (v * 100).toFixed(1) + '%';
   if (Math.abs(v) >= 1_000_000) return (v / 1_000_000).toFixed(2) + 'M';
   if (Math.abs(v) >= 1_000)     return (v / 1_000).toFixed(0) + 'k';
   return v.toLocaleString(undefined, { maximumFractionDigits: 2 });
