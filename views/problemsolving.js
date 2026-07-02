@@ -784,6 +784,31 @@ export async function renderProblemSolving(dept, mount) {
   _kzRecords = [];
   _template  = null;
 
+  // R3 handoff: if the hash carries ?kpi=<id> (e.g. from the Why-panel "Run 8-Step" button),
+  // pre-open the wizard for that KPI after data loads.
+  const hashQuery = location.hash.includes('?') ? location.hash.split('?')[1] : '';
+  const preselectKpiId = new URLSearchParams(hashQuery).get('kpi') || null;
+
   mount.innerHTML = `<p class="text-muted" style="padding:24px 0">Loading problem-solving data…</p>`;
   await doRender();
+
+  // Auto-open wizard if a kpi was passed via hash query
+  if (preselectKpiId && _dept && _dept.kpis) {
+    const kpi = _dept.kpis.find(k => k.id === preselectKpiId);
+    if (kpi) {
+      // Pre-select in the dropdown (for visual confirmation)
+      const sel = document.getElementById('ps-kpi-select');
+      if (sel) sel.value = preselectKpiId;
+      // Open the wizard
+      _activeKZ = newKZ({
+        item:   kpi.name || 'Problem',
+        who:    _dept.lead || '',
+        deptId: _dept.id,
+      });
+      _activeKZ._kpiId = preselectKpiId;
+      _currentStep = 1;
+      _stepData    = {};
+      await doRender();
+    }
+  }
 }

@@ -64,7 +64,8 @@ async function route() {
 
   if (parts[0] === 'dept' && parts[1]) {
     const deptId = parts[1];
-    const view   = parts[2] || homeViewFor(session);
+    // Strip any ?query suffix from the view segment (e.g. "solve?kpi=rev_jc" → "solve")
+    const view   = (parts[2] || homeViewFor(session)).split('?')[0];
     await loadDeptView(deptId, view);
   } else {
     // Authenticated but no route → send to the session's home
