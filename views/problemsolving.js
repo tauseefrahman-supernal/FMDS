@@ -246,7 +246,7 @@ function render5Whys6M(stepDef, kzDraftText) {
 // ─── Action register (Step 6) ────────────────────────────────────────────────
 
 function renderActionRegister() {
-  const statusColors = { R: '#e03131', Y: '#e8590c', G: '#2f9e44', C: '#228be6' };
+  const statusColors = { R: 'var(--red)', Y: 'var(--amber)', G: 'var(--green)', C: 'var(--accent)' };
   const statusLabels = { R: 'Behind', Y: 'At Risk', G: 'On Track', C: 'Completed' };
 
   const savedRows = (_stepData[6] && _stepData[6].actionRows) || Array.from({length:5}, (_,i) => ({
@@ -728,8 +728,8 @@ const PS_STYLES = `
   .kpi-table th, .kpi-table td { font-size: 0.85rem; }
 
   /* Badges */
-  .badge--success { background: #d3f9d8; color: #2f9e44; }
-  .badge--info    { background: #dbe4ff; color: #364fc7; }
+  .badge--success { background: var(--green-bg); color: var(--green); }
+  .badge--info    { background: var(--accent-tint); color: var(--accent); }
   .badge--accent  { background: var(--accent-light); color: var(--accent); }
 
   /* Buttons */
