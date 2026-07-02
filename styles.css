@@ -1175,3 +1175,134 @@ input[type="text"]:focus, input[type="search"]:focus, select:focus {
 .why-solve-btn:hover {
   background: var(--accent-light);
 }
+
+/* ============================================================================
+   SOURCES VIEW — R4 "Where your numbers come from"
+   ========================================================================== */
+
+/* ── System badges in the summary header ──────────────────────────────────── */
+.src-sys-badge {
+  display: inline-flex; align-items: center;
+  padding: 4px 10px;
+  border-radius: var(--radius);
+  font-size: 0.73rem; font-weight: 500;
+  border: 1px solid var(--line-strong);
+}
+.src-sys-badge--pulled {
+  background: var(--green-bg); color: var(--green);
+  border-color: rgba(31,157,87,.22);
+}
+.src-sys-badge--manual {
+  background: var(--amber-bg); color: var(--amber);
+  border-color: rgba(224,122,18,.22);
+}
+
+/* ── Status pills (inline in cards and table) ─────────────────────────────── */
+.src-pill {
+  display: inline-flex; align-items: center; gap: 3px;
+  padding: 2px 8px; border-radius: 999px;
+  font-size: 0.68rem; font-weight: 600; white-space: nowrap;
+  border: 1px solid transparent;
+}
+.src-pill--pulled {
+  background: var(--green-bg); color: var(--green);
+  border-color: rgba(31,157,87,.18);
+}
+.src-pill--manual {
+  background: var(--amber-bg); color: var(--amber);
+  border-color: rgba(224,122,18,.18);
+}
+
+/* ── Source cards grid ────────────────────────────────────────────────────── */
+.src-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+}
+.src-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  box-shadow: var(--shadow-sm);
+  border-top-width: 3px;
+}
+.src-card--pulled { border-top-color: var(--green); }
+.src-card--manual { border-top-color: var(--amber); }
+
+.src-card__head {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 8px; margin-bottom: 12px;
+}
+.src-card__name {
+  font-size: 0.8rem; font-weight: 600; color: var(--text); line-height: 1.3;
+  word-break: break-word;
+}
+.src-card__count { font-size: 0.7rem; white-space: nowrap; flex-shrink: 0; }
+
+.src-card__kpis { display: flex; flex-direction: column; gap: 6px; }
+.src-card__kpi-row {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
+  padding: 5px 8px; border-radius: var(--radius-sm);
+  background: var(--surface-2); border: 1px solid var(--line);
+}
+.src-card__kpi-name {
+  flex: 1; min-width: 0;
+  font-size: 0.78rem; color: var(--text); font-weight: 500;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.src-card__kpi-level { font-size: 0.65rem; white-space: nowrap; flex-shrink: 0; }
+
+/* ── Per-KPI table ────────────────────────────────────────────────────────── */
+.src-table { width: 100%; }
+.src-table-kpi-name { font-weight: 500; font-size: 0.83rem; }
+.src-table-flag {
+  font-size: 0.7rem; color: var(--amber); font-weight: 600; white-space: nowrap;
+}
+.src-table-ok {
+  font-size: 0.7rem; color: var(--green); font-weight: 600; white-space: nowrap;
+}
+
+/* ── Flow line card ───────────────────────────────────────────────────────── */
+.src-flow { padding: 20px 24px; }
+.src-flow__head {
+  font-size: 0.78rem; font-weight: 700; letter-spacing: 0.04em;
+  text-transform: uppercase; color: var(--text-muted); margin-bottom: 18px;
+}
+.src-flow__diagram {
+  display: flex; align-items: center; gap: 0; flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.src-flow__node {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 12px 20px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  text-align: center; min-width: 130px;
+}
+.src-flow__node--source { border-color: var(--accent-tint-2); background: var(--accent-tint); }
+.src-flow__node--vault  { border-color: var(--line-strong); background: var(--surface); }
+.src-flow__node--board  { border-color: rgba(31,157,87,.22); background: var(--green-bg); }
+.src-flow__node-icon    { font-size: 1.2rem; }
+.src-flow__node-label   { font-size: 0.78rem; font-weight: 600; color: var(--text); }
+.src-flow__node-sub     { font-size: 0.65rem; color: var(--text-muted); }
+.src-flow__arrow {
+  font-size: 1.3rem; color: var(--slate-400); padding: 0 12px; flex-shrink: 0;
+}
+.src-flow__note { margin-bottom: 12px; line-height: 1.5; }
+
+.src-flow-flag {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 14px; border-radius: var(--radius);
+  background: var(--amber-bg);
+  border: 1px solid rgba(224,122,18,.26);
+  font-size: 0.8rem; color: var(--amber);
+  line-height: 1.5;
+}
+.src-flow-flag--ok {
+  background: var(--green-bg);
+  border-color: rgba(31,157,87,.22);
+  color: var(--green);
+}
+.src-flow-flag__icon { flex-shrink: 0; font-size: 1rem; margin-top: 1px; }

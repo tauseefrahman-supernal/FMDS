@@ -22,6 +22,7 @@ import { renderMyBoard }          from './views/myboard.js';
 import { renderMyDay }            from './views/myday.js';
 import { renderProblemSolving }   from './views/problemsolving.js';
 import { renderStandardWork }     from './views/standardwork.js';
+import { renderSources }          from './views/sources.js';
 import { renderLogin, resolvePersona } from './views/login.js';
 import { bakedReply }             from './lib/agent.js';
 
@@ -350,7 +351,7 @@ function dispatchView(dept, view, mount) {
       dept.id === 'operations' ? renderLocationBoard(dept, mount) : renderTeamBoard(dept, mount);
       break;
     case 'kpi':     renderKpi(dept, mount);     break;
-    case 'sources': renderKpi(dept, mount);     break;
+    case 'sources': renderSources(dept, mount); break;
     case 'my': {
       const session = store.get().session;
       if (session && session.role === 'L1') {
