@@ -86,12 +86,14 @@ async function loadDeptView(deptId, view) {
 
 // ─── Layout: shell + left rail + view mount + agent panel ──────────────────
 function renderLayout(dept, activeView) {
+  // Finance (frozen) gets KPI-only nav — no PS or standard work until Phase 2
+  const isFrozen = dept.frozen === true;
   const views = [
     { id: 'team',  label: 'Team Board' },
     { id: 'kpi',   label: 'KPI' },
     ...(dept.hasL1 ? [{ id: 'my', label: 'My Board' }] : []),
-    { id: 'solve', label: 'Problem-Solving' },
-    { id: 'sop',   label: 'Standard Work' },
+    ...(!isFrozen ? [{ id: 'solve', label: 'Problem-Solving' }] : []),
+    ...(!isFrozen ? [{ id: 'sop',   label: 'Standard Work' }] : []),
   ];
 
   const navLinks = views.map(v => `
@@ -105,6 +107,14 @@ function renderLayout(dept, activeView) {
     ? `<button class="agent-poke-btn" onclick="window._agentPoke()">
          Ping Clarissa (ADP poke)
        </button>`
+    : '';
+
+  // Marketing: Hermes agent note in the agent panel
+  const hermesAgentNote = dept.id === 'marketing'
+    ? `<div style="margin-top:8px;padding:8px 10px;border:1px solid var(--accent-light);border-radius:var(--radius);background:var(--accent-light);font-size:0.75rem;color:var(--accent)">
+         <strong>Hermes agent layer open</strong><br>
+         Carlos's Hermes agent can connect to this board as the Marketing automation layer.
+       </div>`
     : '';
 
   app.innerHTML = `
@@ -139,6 +149,7 @@ function renderLayout(dept, activeView) {
             </button>
             ${agentPokeBtn}
           </div>
+          ${hermesAgentNote}
           <div class="agent-panel__input-row">
             <input id="agent-input" class="agent-input" type="text"
                    placeholder="Ask about this board…"

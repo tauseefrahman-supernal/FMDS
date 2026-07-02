@@ -173,9 +173,29 @@ export function renderTeamBoard(dept, mount) {
     });
   }
 
+  // Frozen banner (Finance Tier 3)
+  const frozenBanner = dept.frozen
+    ? `<div class="frozen-banner" role="status">
+         <strong>⚠ ${dept.frozenNote || 'Frozen — Phase 2'}</strong>
+         <span class="text-muted" style="margin-left:12px;font-size:0.8rem">
+           KPI view only — no interactive problem-solving or standard-work until Phase 2.
+         </span>
+       </div>`
+    : '';
+
+  // Marketing Hermes agent note
+  const hermesNote = dept.id === 'marketing'
+    ? `<div class="agent-note" style="margin-bottom:12px">
+         <span class="badge" style="background:var(--accent-light);color:var(--accent);margin-right:6px">Agent Layer</span>
+         Carlos's <strong>Hermes agent</strong> can wrap this board — the agent integration layer is intentionally left open for Hermes to connect as the Marketing automation layer.
+       </div>`
+    : '';
+
   // Initial render
   mount.innerHTML = `
     <div class="team-board">
+      ${frozenBanner}
+      ${hermesNote}
       <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:16px">
         <div>
           <h2>${dept.name} — Team Board</h2>
@@ -187,7 +207,7 @@ export function renderTeamBoard(dept, mount) {
       </div>
 
       <div class="filter-row" style="margin-bottom:16px">
-        <input id="tb-filter" type="search" placeholder="Filter KPIs…" style="width:240px">
+        <input id="tb-filter" type="search" placeholder="Filter KPIs…" style="width:240px" ${dept.frozen ? 'disabled' : ''}>
       </div>
 
       <div class="table-wrap">
@@ -209,7 +229,9 @@ export function renderTeamBoard(dept, mount) {
       </div>
 
       <p class="text-muted text-small mt-4">
-        Click a row to expand contributors. ⚠ = data flag.
+        ${dept.frozen
+          ? 'Finance is KPI-display only — restructure + NetSuite sunset in progress (Phase 2).'
+          : 'Click a row to expand contributors. ⚠ = data flag.'}
       </p>
     </div>`;
 
