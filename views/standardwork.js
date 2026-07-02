@@ -3,12 +3,13 @@
  *
  * renderStandardWork(dept, mount)
  *
- * Two surfaces:
- *   1. SOP library — list embedded BWIs from data/sops/ (per dept);
- *      opening one shows the Main Step → Key Points → Reason table + revision log.
- *      Shows "Updated by KZ-###" backlink where an 8-step Step 8 linked a SOP.
- *   2. LSW cadence — daily / weekly / monthly leader tasks from data/sops/_lsw.json
- *      (incl. "check the boards", "ensure SW is followed & updated").
+ * SOP library — list embedded BWIs from data/sops/ (per dept);
+ * opening one shows the Main Step → Key Points → Reason table + revision log.
+ * Shows "Updated by KZ-###" backlink where an 8-step Step 8 linked a SOP.
+ *
+ * NOTE: Leader Standard Work / cadence is intentionally OUT of scope here.
+ * FMDS OS is the role-based operator interface for data + problem-solving,
+ * not a leader-routine tracker (that belongs to Leadership OS).
  */
 
 // ─── SOP registry per department ─────────────────────────────────────────────
@@ -306,17 +307,6 @@ function renderLswCadence(lsw) {
 async function doRender() {
   if (!_dept || !_mount) return;
 
-  // Load LSW if not cached
-  if (!_lswData) {
-    try {
-      const res = await fetch('data/sops/_lsw.json');
-      _lswData = await res.json();
-    } catch (e) {
-      console.warn('Could not load _lsw.json', e);
-      _lswData = { cadenceRows: [], source: 'unavailable' };
-    }
-  }
-
   // Determine which SOPs to load for this dept
   const sopPaths = DEPT_SOPS[_dept.id] || [];
   const sopObjects = [];
@@ -356,20 +346,9 @@ async function doRender() {
       </div>`;
   }
 
-  const lswContent = _activeSop ? '' : `
-    <div class="lsw-block" style="margin-top:36px">
-      <h2 style="margin-bottom:4px">Leader Standard Work — Cadence</h2>
-      <p class="text-muted" style="font-size:0.85rem;margin-bottom:20px">
-        Recurring leader tasks: check the boards · ensure SW is followed and updated · 8-step coaching.
-        Source: ${escHtml(_lswData.title || 'LSW cadence')}
-      </p>
-      ${renderLswCadence(_lswData)}
-    </div>`;
-
   _mount.innerHTML = `
     <div class="sw-view">
       ${mainContent}
-      ${lswContent}
     </div>`;
 
   attachSwHandlers(sopObjects);
