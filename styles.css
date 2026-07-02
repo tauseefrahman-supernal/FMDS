@@ -1010,3 +1010,168 @@ input[type="text"]:focus, input[type="search"]:focus, select:focus {
   from { opacity: 0; transform: translateY(-4px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+
+/* ─── R3 Why Panel ─────────────────────────────────────────────────────────── */
+
+.why-panel-row td { padding: 0 !important; }
+
+.why-panel {
+  background: var(--surface-2);
+  border-top: 1px solid var(--line);
+  border-bottom: 2px solid var(--line-strong);
+  padding: 16px 24px 20px 48px;
+  animation: fadeSlideIn 180ms var(--ease);
+}
+
+.why-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.why-panel__title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 0.01em;
+}
+
+.why-panel__section {
+  margin-top: 14px;
+}
+
+.why-panel__section-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+/* Contributors list */
+.why-contributors {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.why-contributor {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 7px 10px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+}
+
+.why-contributor__name {
+  font-weight: 500;
+  color: var(--text);
+  min-width: 140px;
+}
+
+.why-contributor__metrics {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.why-mono {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text);
+}
+
+.why-mono--target { color: var(--text-muted); }
+
+.why-vs {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* Drag indicator */
+.why-drag {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+.why-drag--down    { background: var(--red-bg,  #fff1f2); color: var(--red);   }
+.why-drag--up      { background: var(--green-bg, #f0fdf4); color: var(--green); }
+.why-drag--neutral { background: var(--slate-100, #f1f5f9); color: var(--text-muted); }
+
+/* Floor reason cards */
+.why-floor {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.floor-reason {
+  padding: 8px 12px;
+  border-left: 3px solid var(--line-strong);
+  background: var(--surface);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  font-size: 13px;
+  animation: fadeSlideIn 200ms var(--ease);
+}
+
+.floor-reason--red   { border-left-color: var(--red);   }
+.floor-reason--amber { border-left-color: var(--amber); }
+.floor-reason--green { border-left-color: var(--green); }
+.floor-reason--nodata { border-left-color: var(--text-muted); }
+
+.floor-reason__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 3px;
+}
+
+.floor-reason__author {
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--text);
+}
+
+.floor-reason__time {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.floor-reason__text {
+  color: var(--text);
+  line-height: 1.45;
+}
+
+/* Empty state */
+.why-empty {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 4px 0 0;
+  font-style: italic;
+}
+
+/* "Run 8-Step →" button in Why panel — reuses .btn .btn--ghost .btn--sm */
+.why-solve-btn {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent);
+  border-color: var(--accent);
+  text-decoration: none;
+  padding: 5px 12px;
+  border-radius: var(--radius-sm);
+}
+
+.why-solve-btn:hover {
+  background: var(--accent-light);
+}
