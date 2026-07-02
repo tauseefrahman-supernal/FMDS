@@ -209,6 +209,7 @@ function renderLayout(dept, activeView) {
             <span class="crumb__sep">▸</span>
             <span class="crumb__view">${viewLabel(dept, role, activeView)}</span>
           </div>
+          <button class="topbar-btn assistant-btn" id="assistant-btn" title="AI Assistant">⬡ Assistant</button>
           <button class="inbox-btn" id="inbox-btn" title="Chief of Staff inbox">
             🔔<span class="inbox-btn__count">2</span>
           </button>
@@ -234,6 +235,10 @@ function renderLayout(dept, activeView) {
   // Chief-of-Staff inbox panel toggle
   const inboxBtn = document.getElementById('inbox-btn');
   if (inboxBtn) inboxBtn.addEventListener('click', () => toggleInbox(inboxBtn, dept));
+
+  // AI Assistant drawer toggle
+  const assistantBtn = document.getElementById('assistant-btn');
+  if (assistantBtn) assistantBtn.addEventListener('click', () => toggleAssistant(dept));
 }
 
 // ─── Chief-of-Staff inbox panel ─────────────────────────────────────────────
@@ -273,6 +278,61 @@ function toggleInbox(anchor, dept) {
     };
     document.addEventListener('click', onDoc);
   }, 0);
+}
+
+// ─── AI Assistant right drawer ──────────────────────────────────────────────
+function toggleAssistant(dept) {
+  const existing = document.getElementById('assistant-drawer');
+  if (existing) { existing.remove(); return; }
+
+  const pokeBtn = dept.id === 'hr'
+    ? `<button class="assistant-shortcut assistant-shortcut--poke" data-intent="agent-poke">Ping Clarissa (ADP poke)</button>`
+    : '';
+
+  const drawer = document.createElement('div');
+  drawer.id = 'assistant-drawer';
+  drawer.className = 'assistant-drawer';
+  drawer.innerHTML = `
+    <div class="assistant-drawer__head">
+      <div class="assistant-drawer__title">AI Assistant · <span class="assistant-drawer__dept">${dept.name}</span></div>
+      <button class="assistant-drawer__close" id="assistant-close">×</button>
+    </div>
+
+    <div class="assistant-drawer__shortcuts">
+      <button class="assistant-shortcut" data-intent="explain-red">Why is the headline KPI red?</button>
+      <button class="assistant-shortcut" data-intent="find-sop">Find governing SOP</button>
+      ${pokeBtn}
+    </div>
+
+    <div class="assistant-drawer__reply" id="assistant-reply"></div>
+
+    <div class="assistant-drawer__ask">
+      <textarea id="assistant-input" rows="3" placeholder="Ask about this board…"></textarea>
+      <button class="btn btn--primary assistant-ask-btn" id="assistant-ask">Ask</button>
+    </div>`;
+
+  document.querySelector('.app-main').appendChild(drawer);
+
+  // Close button
+  document.getElementById('assistant-close').addEventListener('click', () => {
+    document.getElementById('assistant-drawer')?.remove();
+  });
+
+  // Shortcut buttons
+  document.querySelectorAll('.assistant-shortcut').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const reply = bakedReply(dept.id, btn.dataset.intent, {});
+      document.getElementById('assistant-reply').textContent = reply;
+    });
+  });
+
+  // Ask button
+  document.getElementById('assistant-ask').addEventListener('click', () => {
+    const input = document.getElementById('assistant-input').value.trim();
+    if (!input) return;
+    const reply = bakedReply(dept.id, 'explain-red', { kpi: input });
+    document.getElementById('assistant-reply').textContent = reply;
+  });
 }
 
 // ─── View dispatcher ────────────────────────────────────────────────────────
