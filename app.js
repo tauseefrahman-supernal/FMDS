@@ -177,11 +177,11 @@ function dispatchView(dept, view, mount) {
     renderOdgHub(dept, mount);
     return;
   }
-  // Location-model departments (Mechanism B) get the location-aware board
-  const isLocationDept = dept.layerModel === 'location' || dept.mechanism === 'independent';
+  // Only Operations (Mechanism B — location-aware board) uses renderLocationBoard.
+  // All other departments, including Logistics (mechanism:'sum'), use renderTeamBoard.
   switch (view) {
     case 'team':
-      isLocationDept ? renderLocationBoard(dept, mount) : renderTeamBoard(dept, mount);
+      dept.id === 'operations' ? renderLocationBoard(dept, mount) : renderTeamBoard(dept, mount);
       break;
     case 'kpi':   renderKpi(dept, mount);       break;
     case 'my':    renderMyBoard(dept, mount);   break;
