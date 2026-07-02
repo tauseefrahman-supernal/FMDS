@@ -57,8 +57,8 @@ function freqColor(freq) {
   if (!freq) return 'var(--slate-400)';
   const f = freq.toLowerCase();
   if (f.includes('daily') || f.includes('4x') || f.includes('2x')) return 'var(--accent)';
-  if (f.includes('weekly') || f.includes('bi-week')) return '#2f9e44';
-  if (f.includes('monthly') || f.includes('3x/mo')) return '#e8590c';
+  if (f.includes('weekly') || f.includes('bi-week')) return 'var(--green)';
+  if (f.includes('monthly') || f.includes('3x/mo')) return 'var(--amber)';
   return 'var(--slate-500)';
 }
 
