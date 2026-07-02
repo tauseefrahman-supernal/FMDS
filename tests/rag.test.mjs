@@ -18,3 +18,9 @@ test('null actual = nodata', () => {
 test('NaN target = nodata', () => {
   assert.equal(ragStatus(0.99, NaN), 'nodata');
 });
+test('target=0 lower_better: 0 incidents = green', () => {
+  assert.equal(ragStatus(0, 0, 'lower_better'), 'green');
+});
+test('target=0 lower_better: 1.2 incidents = red', () => {
+  assert.equal(ragStatus(1.2, 0, 'lower_better'), 'red');
+});
