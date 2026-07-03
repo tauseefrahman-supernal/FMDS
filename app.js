@@ -16,6 +16,7 @@
 import { createStore }            from './lib/store.js';
 import { renderTeamBoard }        from './views/teamboard.js';
 import { renderLocationBoard }    from './views/teamboard-location.js';
+import { renderOverview }         from './views/overview.js';
 import { renderOdgHub }           from './views/odg-hub.js';
 import { renderKpi }              from './views/kpi.js';
 import { renderMyBoard }          from './views/myboard.js';
@@ -339,21 +340,31 @@ function toggleAssistant(dept) {
 
 // ─── View dispatcher ────────────────────────────────────────────────────────
 function dispatchView(dept, view, mount) {
+  const session = store.get().session;
+
   // ODG gets its dedicated method hub as the team view
   if (dept.id === 'odg' && view === 'team') {
     renderOdgHub(dept, mount);
     return;
   }
-  // Only Operations (Mechanism B — location-aware board) uses renderLocationBoard.
-  // All other departments, including Logistics (mechanism:'sum'), use renderTeamBoard.
+
   switch (view) {
+    // 'team' → Overview surface for all departments (role-scoped red/green summary + agent)
     case 'team':
-      dept.id === 'operations' ? renderLocationBoard(dept, mount) : renderTeamBoard(dept, mount);
+      renderOverview(dept, mount, session);
       break;
-    case 'kpi':     renderKpi(dept, mount);     break;
+
+    // 'kpi' → detailed KPI Boards:
+    //   Operations → location board (Mechanism B) with operator contribution drill
+    //   Others     → existing KPI view
+    case 'kpi':
+      dept.id === 'operations'
+        ? renderLocationBoard(dept, mount)
+        : renderKpi(dept, mount);
+      break;
+
     case 'sources': renderSources(dept, mount); break;
     case 'my': {
-      const session = store.get().session;
       if (session && session.role === 'L1') {
         renderMyDay(dept, mount, session.persona);
       } else {
@@ -370,7 +381,7 @@ function dispatchView(dept, view, mount) {
     default:
       // ODG: fall back to method hub for unknown views too
       if (dept.id === 'odg') { renderOdgHub(dept, mount); return; }
-      renderTeamBoard(dept, mount);
+      renderOverview(dept, mount, session);
   }
 }
 

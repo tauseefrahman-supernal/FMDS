@@ -318,14 +318,100 @@ function monthSparkline(monthlyActuals, target) {
   </svg>`;
 }
 
+// ─── Manual / formula entry badge ────────────────────────────────────────────
+
+/**
+ * Badge indicating how a value is entered in the source FMDS Excel board.
+ *   manual  → hand-keyed literal (red-tinted)
+ *   formula → computed by in-sheet formula (blue-tinted)
+ */
+function entryBadge(entryType, formula) {
+  if (!entryType) return '';
+  if (entryType === 'formula') {
+    const title = formula ? `Formula: ${formula}` : 'Computed by in-sheet formula';
+    return `<span class="contrib-badge contrib-badge--formula" title="${title}">formula</span>`;
+  }
+  // manual
+  return `<span class="contrib-badge contrib-badge--manual" title="Hand-keyed literal (manual re-key)">manual</span>`;
+}
+
+/** Render rollup note for OTP or PPLH (from kpi.rollup object) */
+function rollupNote(kpi) {
+  if (!kpi.rollup) return '';
+  const r = kpi.rollup;
+  const color = r.isManualRekey === false
+    ? '#1e40af'  // formula roll-up — blue
+    : '#92400e'; // manual re-key — amber
+  const icon = r.isManualRekey === false ? '⊕' : '↵';
+  return `<div style="font-size:0.68rem;color:${color};padding-left:26px;margin-top:4px;line-height:1.5">
+    ${icon} <strong>${r.isManualRekey === false ? 'Formula roll-up' : 'Manual re-key'}:</strong>
+    ${r.note || (r.formula ? `${r.method} — ${r.formula}` : r.method || '')}
+  </div>`;
+}
+
+/** Render operator/line contribution rows for OTP or PPLH */
+function renderContribRows(kpi) {
+  if (!Array.isArray(kpi.contributions) || !kpi.contributions.length) return '';
+
+  return kpi.contributions.map(c => {
+    const hasVal  = c.value != null;
+    const valStr  = hasVal ? formatLocVal(c.value, c.unit || kpi.unit, kpi.targetType) : '—';
+    const tgtStr  = c.target != null ? formatLocVal(c.target, c.unit || kpi.unit, kpi.targetType) : '—';
+
+    // RAG for this line (only when actual value exists)
+    const lineRag = hasVal && c.target != null
+      ? ragStatus(c.value, c.target, kpi.direction || 'higher_better')
+      : 'nodata';
+
+    const nodataMark = (c.nodata || !hasVal)
+      ? '<span class="badge badge--warning" style="font-size:0.6rem">no data</span>'
+      : '';
+
+    const ownerHtml = c.owner
+      ? `<span style="font-size:0.63rem;color:var(--slate-400);margin-left:6px">${c.owner}</span>`
+      : '';
+
+    const formulaHtml = c.formula
+      ? `<div style="font-size:0.62rem;color:#1e40af;padding-left:62px;margin-top:2px;font-family:var(--font-mono,'IBM Plex Mono',monospace)">${c.formula}</div>`
+      : '';
+
+    // Monthly sparkline if monthlyActuals present on contribution
+    const cSpark = c.monthlyActuals
+      ? monthSparkline(c.monthlyActuals, c.target)
+      : '';
+
+    return `
+      <tr class="contrib-operator-row">
+        <td style="padding-left:56px">
+          <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">
+            <span style="color:var(--slate-300);font-size:0.7rem">├─</span>
+            <span style="font-size:0.8rem">${c.label}</span>
+            ${entryBadge(c.entryType, c.formula)}
+            ${nodataMark}
+            ${ownerHtml}
+          </div>
+          ${formulaHtml}
+        </td>
+        <td class="text-right text-mono" style="font-size:0.8rem">${tgtStr}</td>
+        <td class="text-right text-mono" style="font-size:0.8rem">${valStr}</td>
+        <td>${ragChip(lineRag)}</td>
+        <td></td>
+        <td>${cSpark}</td>
+      </tr>`;
+  }).join('');
+}
+
 /** Render a single per-location KPI row */
 function renderLocKpiRow(kpi, expandedLocKpis) {
   const rag       = locRag(kpi);
   const isExpanded = expandedLocKpis.has(kpi.id);
-  const hasSubLines = Array.isArray(kpi.subLines) && kpi.subLines.length > 0;
-  const hasByBldg   = Array.isArray(kpi.byBuilding) && kpi.byBuilding.length > 0;
-  const hasSups     = Array.isArray(kpi.supervisors) && kpi.supervisors.length > 0;
-  const hasExpandable = hasSubLines || hasByBldg || hasSups;
+
+  // Contributions (operator/line level) take priority over subLines for OTP/PPLH
+  const hasContribs  = Array.isArray(kpi.contributions) && kpi.contributions.length > 0;
+  const hasSubLines  = !hasContribs && Array.isArray(kpi.subLines) && kpi.subLines.length > 0;
+  const hasByBldg    = !hasContribs && !hasSubLines && Array.isArray(kpi.byBuilding) && kpi.byBuilding.length > 0;
+  const hasSups      = !hasContribs && !hasSubLines && !hasByBldg && Array.isArray(kpi.supervisors) && kpi.supervisors.length > 0;
+  const hasExpandable = hasContribs || hasSubLines || hasByBldg || hasSups;
 
   const spark = kpi.monthlyActuals
     ? monthSparkline(kpi.monthlyActuals, kpi.target)
@@ -347,6 +433,12 @@ function renderLocKpiRow(kpi, expandedLocKpis) {
                style="padding:2px 6px;font-size:0.7rem;border-radius:3px">${isExpanded ? '▼' : '▶'}</button>`
     : '<span style="display:inline-block;width:22px"></span>';
 
+  // Contribution count badge (for OTP/PPLH with contributions)
+  const contribCountBadge = hasContribs && !isExpanded
+    ? `<span style="font-size:0.63rem;padding:1px 6px;border-radius:3px;background:var(--slate-100);
+           color:var(--slate-600);margin-left:4px">${kpi.contributions.length} lines</span>`
+    : '';
+
   let rows = `
     <tr class="main-row ${hasExpandable ? 'main-row--expandable' : ''}" data-loc-kpi-id="${kpi.id}">
       <td>
@@ -358,10 +450,12 @@ function renderLocKpiRow(kpi, expandedLocKpis) {
           ${flagHtml}
           ${mxOnlyBadge}
           ${nodataBadge}
+          ${contribCountBadge}
         </div>
         ${kpi.unitNote ? `<div style="font-size:0.68rem;color:#92400e;padding-left:26px;margin-top:2px">⚠ ${kpi.unitNote}</div>` : ''}
         ${kpi.nodataNote ? `<div style="font-size:0.68rem;color:var(--slate-500);padding-left:26px;margin-top:2px">${kpi.nodataNote}</div>` : ''}
         ${kpi.flagDetail ? `<div style="font-size:0.68rem;color:#b91c1c;padding-left:26px;margin-top:2px">⚠ ${kpi.flagDetail}</div>` : ''}
+        ${hasContribs ? rollupNote(kpi) : ''}
       </td>
       <td class="text-right text-mono">${kpi.target == null ? '—' : formatLocVal(kpi.target, kpi.unit, kpi.targetType)}</td>
       <td class="text-right text-mono">${kpi.nodata || kpi.actual == null ? '—' : formatLocVal(kpi.actual, kpi.unit, kpi.targetType)}</td>
@@ -370,43 +464,47 @@ function renderLocKpiRow(kpi, expandedLocKpis) {
       <td>${spark}</td>
     </tr>`;
 
-  // Expanded sub-rows
+  // Expanded rows: operator contributions (for OTP/PPLH) or sub-lines/buildings/supervisors
   if (isExpanded && hasExpandable) {
-    const items = hasSubLines ? kpi.subLines
-      : hasByBldg ? kpi.byBuilding.map(b => ({
-          line: `Building ${b.building}`,
-          target: b.target, actual: b.actual
-        }))
-      : kpi.supervisors.map(s => ({
-          line: `${s.name} (${s.role})`,
-          target: s.target, actual: s.actual,
-          note: s.note
-        }));
+    if (hasContribs) {
+      rows += renderContribRows(kpi);
+    } else {
+      const items = hasSubLines ? kpi.subLines
+        : hasByBldg ? kpi.byBuilding.map(b => ({
+            line: `Building ${b.building}`,
+            target: b.target, actual: b.actual
+          }))
+        : kpi.supervisors.map(s => ({
+            line: `${s.name} (${s.role})`,
+            target: s.target, actual: s.actual,
+            note: s.note
+          }));
 
-    rows += items.map(sub => {
-      const subActual = sub.actual != null ? sub.actual
-        : (sub.monthlyActuals ? Object.values(sub.monthlyActuals).filter(v => v != null).pop() : null);
-      const subRag = (subActual == null || sub.target == null)
-        ? 'nodata'
-        : ragStatus(subActual, sub.target, kpi.direction || 'higher_better');
-      const subMonthsSpark = sub.monthlyActuals
-        ? monthSparkline(sub.monthlyActuals, sub.target)
-        : '';
-      return `
-        <tr class="contributor-row">
-          <td style="padding-left:48px">
-            <span class="text-muted" style="font-size:0.75rem">↳</span>
-            ${sub.line || sub.name || ''}
-            ${sub.note ? `<span style="font-size:0.65rem;color:var(--slate-500);margin-left:4px">${sub.note}</span>` : ''}
-            ${subActual == null ? '<span class="badge badge--warning">no data</span>' : ''}
-          </td>
-          <td class="text-right text-mono">${sub.target == null ? '—' : formatLocVal(sub.target, kpi.unit, kpi.targetType)}</td>
-          <td class="text-right text-mono">${subActual == null ? '—' : formatLocVal(subActual, kpi.unit, kpi.targetType)}</td>
-          <td>${ragChip(subRag)}</td>
-          <td></td>
-          <td>${subMonthsSpark}</td>
-        </tr>`;
-    }).join('');
+      rows += items.map(sub => {
+        const subActual = sub.actual != null ? sub.actual
+          : (sub.monthlyActuals ? Object.values(sub.monthlyActuals).filter(v => v != null).pop() : null);
+        const subRag = (subActual == null || sub.target == null)
+          ? 'nodata'
+          : ragStatus(subActual, sub.target, kpi.direction || 'higher_better');
+        const subMonthsSpark = sub.monthlyActuals
+          ? monthSparkline(sub.monthlyActuals, sub.target)
+          : '';
+        return `
+          <tr class="contributor-row">
+            <td style="padding-left:48px">
+              <span class="text-muted" style="font-size:0.75rem">↳</span>
+              ${sub.line || sub.name || ''}
+              ${sub.note ? `<span style="font-size:0.65rem;color:var(--slate-500);margin-left:4px">${sub.note}</span>` : ''}
+              ${subActual == null ? '<span class="badge badge--warning">no data</span>' : ''}
+            </td>
+            <td class="text-right text-mono">${sub.target == null ? '—' : formatLocVal(sub.target, kpi.unit, kpi.targetType)}</td>
+            <td class="text-right text-mono">${subActual == null ? '—' : formatLocVal(subActual, kpi.unit, kpi.targetType)}</td>
+            <td>${ragChip(subRag)}</td>
+            <td></td>
+            <td>${subMonthsSpark}</td>
+          </tr>`;
+      }).join('');
+    }
   }
 
   return rows;
@@ -554,6 +652,34 @@ function injectStyles() {
       border: 1px solid var(--accent);
       opacity: 0.85;
     }
+    /* Operator contribution row */
+    .contrib-operator-row {
+      background: #f8fafc;
+    }
+    .contrib-operator-row:hover {
+      background: #f1f5f9;
+    }
+    /* Entry type badges: manual vs formula */
+    .contrib-badge {
+      display: inline-block;
+      font-size: 0.6rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      padding: 1px 5px;
+      border-radius: 3px;
+      vertical-align: middle;
+      cursor: default;
+    }
+    .contrib-badge--manual {
+      background: #fff7ed;
+      color: #9a3412;
+      border: 1px solid #fed7aa;
+    }
+    .contrib-badge--formula {
+      background: #eff6ff;
+      color: #1e40af;
+      border: 1px solid #bfdbfe;
+    }
   `;
   document.head.appendChild(style);
 }
@@ -672,11 +798,11 @@ export function renderLocationBoard(dept, mount) {
     <div class="team-board">
       <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:16px">
         <div>
-          <h2>${dept.name} — Team Board</h2>
-          <p class="text-muted text-small mt-1">L2 · ${dept.lead || ''} · Location model (Mechanism B)</p>
+          <h2>${dept.name} — KPI Boards</h2>
+          <p class="text-muted text-small mt-1">L2 · ${dept.lead || ''} · Location model (Mechanism B) · Click OTP or PPLH to expand operator/line contributions</p>
         </div>
-        <a href="#/dept/${dept.id}/kpi" class="btn btn--ghost" style="font-size:0.8rem">
-          KPI Detail →
+        <a href="#/dept/${dept.id}/team" class="btn btn--ghost" style="font-size:0.8rem">
+          ← Overview
         </a>
       </div>
 
@@ -711,7 +837,11 @@ export function renderLocationBoard(dept, mount) {
       <p class="text-muted text-small mt-4">
         <strong>WE Main</strong> = COO Board independently entered (Mechanism B).
         <strong>Location tabs</strong> = per-location FMDS board (real KPI sets differ by location).
-        ⚠ = data flag. Click a row to expand sub-lines.
+        OTP and PPLH rows show operator/line contributions when expanded —
+        <span style="background:#fff7ed;color:#9a3412;border:1px solid #fed7aa;font-size:0.65rem;padding:1px 5px;border-radius:3px">manual</span>
+        = hand-keyed literal;
+        <span style="background:#eff6ff;color:#1e40af;border:1px solid #bfdbfe;font-size:0.65rem;padding:1px 5px;border-radius:3px">formula</span>
+        = computed by in-sheet formula. ⚠ = data flag. Click a row to expand.
       </p>
     </div>`;
 
