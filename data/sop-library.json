@@ -1,0 +1,1015 @@
+{
+  "_meta": {
+    "description": "Per-department Standard Work document library for the FMDS OS prototype.",
+    "generated": "2026-07-03",
+    "sources": [
+      "WMS SOP drive (World Emblem Management System) — 868 files, flat",
+      "QA SOP drive (Quality Assurance) — 2,525 files, ISO-coded by dept",
+      "ODG Leader SW Archive — 98 files by role/location",
+      "FMDS-New standard-work docs: Standard Work Instruction.xlsx, Role Standard Work.xlsx (AC-FR-087), LSW- Inside Sales Rep.docx, Sample Approval Process.docx, 1-on-1 Review process.docx, World Emblem New Customer Account Setup.pdf"
+    ],
+    "note": "Documents marked representative:true are inferred representatives of a counted doc class where only aggregate counts (not titles) were enumerated in the SharePoint map. All other entries are real titles found in the discovery. href is the SharePoint deep-link where the discovery recorded a webUrl; null where only a file count or folder was known.",
+    "docTypeEnum": ["Policy", "BWI", "SWI", "Procedure", "Form", "Work-Instruction", "LSW", "Template", "Checklist", "Kaizen-A3"],
+    "driveEnum": ["WMS_SOP", "QA_SOP", "ODG_LSW", "ODG_LSW_Archive"]
+  },
+  "departments": {
+    "service": {
+      "id": "service",
+      "name": "Service / Customer Service",
+      "counts": {
+        "WMS_SOP_total": 69,
+        "WMS_SOP_SWI": 51,
+        "WMS_SOP_Procedure": 15,
+        "WMS_SOP_BWI": 2,
+        "QA_SOP_VE_total": 10,
+        "QA_SOP_VE_groups": 5,
+        "QA_SOP_VE_note": "All 5 VE (Ventas/Sales) procedure groups are marked BAJA (discontinued); sales standard work is in WMS SOP instead",
+        "ODG_LSW_Archive_roles": ["Manager - Customer Service", "Supervisor - Customer Service", "Coordinator - Customer Service"],
+        "embedded_BWIs": 1
+      },
+      "drives": ["WMS_SOP", "QA_SOP", "ODG_LSW_Archive"],
+      "documents": [
+        {
+          "title": "Service Prospecting — WEI & HP Outbound Call Process",
+          "docType": "BWI",
+          "area": "Outbound Sales / Prospecting",
+          "product": "WEI / Hero's Pride",
+          "owner": "JC / Noel",
+          "drive": "WMS_SOP",
+          "href": null,
+          "lang": "EN",
+          "embeddedInApp": true,
+          "sopDataPath": "data/sops/service-prospecting.json"
+        },
+        {
+          "title": "Account Report CRM",
+          "docType": "SWI",
+          "area": "CRM / Account Management",
+          "product": null,
+          "owner": null,
+          "drive": "WMS_SOP",
+          "href": null,
+          "lang": "EN",
+          "representative": false
+        },
+        {
+          "title": "Aramark EDI",
+          "docType": "SWI",
+          "area": "Account Management / EDI",
+          "product": "Aramark",
+          "owner": null,
+          "drive": "WMS_SOP",
+          "href": null,
+          "lang": "EN",
+          "representative": false
+        },
+        {
+          "title": "Revenue Tracker Review",
+          "docType": "Procedure",
+          "area": "Sales Performance / Reporting",
+          "product": null,
+          "owner": null,
+          "drive": "WMS_SOP",
+          "href": null,
+          "lang": "EN",
+          "representative": false
+        },
+        {
+          "title": "World Emblem New Customer Account Setup",
+          "docType": "Form",
+          "area": "Customer Onboarding",
+          "product": null,
+          "owner": "Sales / Customer Service / Finance AR",
+          "drive": "WMS_SOP",
+          "href": null,
+          "lang": "EN",
+          "representative": false,
+          "note": "External-facing new account intake form — 4 sections: AP Contact, Billing Address, Shipping Address, Resale Tax Certificate. Cross-refs Accounts Onboarding Double Check.docx and Avalara Certificate New Account.docx."
+        },
+        {
+          "title": "1 on 1 Review Process",
+          "docType": "Procedure",
+          "area": "Sales Performance / Team Management",
+          "product": null,
+          "owner": "Sales Team Lead",
+          "drive": "WMS_SOP",
+          "href": null,
+          "lang": "EN",
+          "representative": false,
+          "note": "Standard Work for Sales Team Lead conducting 1:1 performance reviews. Covers Opportunity Manager (CRM audit), Revenue Tracker (Power BI), Lead Manager, Travel/Calendar review, and Standard Work adherence review."
+        },
+        {
+          "title": "LSW — Inside Sales Rep",
+          "docType": "LSW",
+          "area": "Role Standard Work",
+          "product": null,
+          "owner": "ODG",
+          "drive": "ODG_LSW_Archive",
+          "href": null,
+          "lang": "EN",
+          "representative": false,
+          "note": "Completed Leader Standard Work — hour-by-hour daily schedule Mon–Fri: 8:00 AM Start-of-Day, 8:30 Lead Gen/Prospecting, 10:00 Sales Calls, 11:00 Huddle/1:1, 12:00 Follow-ups, 1:30 Order Entry, 2:30 CRM Admin."
+        },
+        {
+          "title": "Sample Approval Process — Galls Physical Sample Workflow",
+          "docType": "Procedure",
+          "area": "Sample Management / Account Management",
+          "product": "Galls",
+          "owner": "Customer Service / Production / QC / Logistics",
+          "drive": "WMS_SOP",
+          "href": null,
+          "lang": "EN",
+          "representative": false,
+          "note": "10-step cross-department SOP: Design Request → Physical Sample Prep → Shipment to WE Houston → Receipt/Logging → Scan/Digitize → Sample Production → QC → Ship Approval Sample to Galls → Tracking → Galls Review & Approval."
+        },
+        {
+          "title": "Representative SWI — Customer Service (customer account management)",
+          "docType": "SWI",
+          "area": "Account Management",
+          "product": null,
+          "owner": null,
+          "drive": "WMS_SOP",
+          "href": null,
+          "lang": "EN",
+          "representative": true,
+          "note": "Representative of 51 uncoded SWIs in the WMS SOP customer-service cluster"
+        }
+      ]
+    },
+
+    "sales": {
+      "id": "sales",
+      "name": "Sales",
+      "counts": {
+        "WMS_SOP_total": 69,
+        "WMS_SOP_note": "Shared bucket with Customer Service — 69 docs spanning both sales and CS functions",
+        "WMS_SOP_SWI": 51,
+        "WMS_SOP_Procedure": 15,
+        "WMS_SOP_StandardWork": 2,
+        "QA_SOP_VE_total": 10,
+        "QA_SOP_VE_groups": 5,
+        "QA_SOP_VE_active": 0,
+        "QA_SOP_VE_note": "All 5 VE procedure groups are BAJA; no active QA SOP for Sales",
+        "ODG_LSW_Archive_roles": ["Supervisor - Sales", "Coordinator - Sales", "Inside Sales Rep (completed LSW)"],
+        "embedded_BWIs": 0
+      },
+      "drives": ["WMS_SOP", "ODG_LSW_Archive"],
+      "documents": [
+        {
+          "title": "LSW — Inside Sales Rep",
+          "docType": "LSW",
+          "area": "Role Standard Work",
+          "product": null,
+          "owner": "ODG",
+          "drive": "ODG_LSW_Archive",
+          "href": null,
+          "lang": "EN",
+          "representative": false,
+          "note": "Completed LSW for the Inside Sales Rep role — hour-by-hour Mon–Fri schedule covering prospecting, calls, huddle, follow-up, order entry, CRM admin."
+        },
+        {
+          "title": "1 on 1 Review Process",
+          "docType": "Procedure",
+          "area": "Performance Management",
+          "product": null,
+          "owner": "Sales Team Lead",
+          "drive": "WMS_SOP",
+          "href": null,
+          "lang": "EN",
+          "representative": false,
+          "note": "Linked form: '1 on 1 Service Team Format for Team Leads_Jan 2026.docx'. Covers CRM audit, Power BI Revenue Tracker, Lead Manager, Calendar review, and Standard Work adherence check."
+        },
+        {
+          "title": "Sample Approval Process — Galls Physical Sample Workflow",
+          "docType": "Procedure",
+          "area": "Sample Management",
+          "product": "Galls",
+          "owner": "Sales / Customer Service",
+          "drive": "WMS_SOP",
+          "href": null,
+          "lang": "EN",
+          "representative": false
+        },
+        {
+          "title": "World Emblem New Customer Account Setup",
+          "docType": "Form",
+          "area": "Customer Onboarding",
+          "product": null,
+          "owner": "Sales / Finance AR",
+          "drive": "WMS_SOP",
+          "href": null,
+          "lang": "EN",
+          "representative": false
+        },
+        {
+          "title": "Revenue Tracker Review",
+          "docType": "Procedure",
+          "area": "Forecasting / Reporting",
+          "product": null,
+          "owner": null,
+          "drive": "WMS_SOP",
+          "href": null,
+          "lang": "EN",
+          "representative": false
+        },
+        {
+          "title": "Account Report CRM",
+          "docType": "SWI",
+          "area": "CRM Management",
+          "product": null,
+          "owner": null,
+          "drive": "WMS_SOP",
+          "href": null,
+          "lang": "EN",
+          "representative": false
+        },
+        {
+          "title": "Representative SWI — Sales outbound process",
+          "docType": "SWI",
+          "area": "Outbound Sales",
+          "product": null,
+          "owner": null,
+          "drive": "WMS_SOP",
+          "href": null,
+          "lang": "EN",
+          "representative": true,
+          "note": "Representative of ~51 uncoded SWIs in the WMS SOP Sales/CS cluster"
+        }
+      ]
+    },
+
+    "operations": {
+      "id": "operations",
+      "name": "Operations / Production",
+      "counts": {
+        "WMS_SOP_total": 74,
+        "WMS_SOP_SWI": 69,
+        "WMS_SOP_Procedure": 4,
+        "WMS_SOP_note": "Plus ~497 general/uncategorized SWIs (many in Spanish for production sub-processes — Acomodo de órdenes, Afilado navajas automerrow, etc.)",
+        "QA_SOP_PO_total": 292,
+        "QA_SOP_PO_groups": 65,
+        "QA_SOP_PO_docTypes": ["Procedure (PR)", "Form (FR)", "Work Instruction (IN)"],
+        "QA_SOP_PO_note": "65 procedure groups for Mexico production (Bordado Multihead, Merrow, Chopping, Shipping, Auto-merrow, Flexstyle, NBI, Leather, PV+, CNC). Plus separate Production USA folder: 25 files, Level III SWIs for Houston/Norcross.",
+        "ODG_LSW_Archive_roles": ["Manager - Manufacturing", "Supervisor - Embroidery", "Supervisor - Perfect Print", "Supervisor - New Products CNC", "Supervisor - New Products PV+", "Team Leader - Perfect Print", "Team Leader - Single Head", "Team Leader - Flexstyle", "Team Leader - Leather", "Team Leader - NBI", "Team Leader - Direct Embroidery", "Team Leader - Water Spider"],
+        "embedded_BWIs": 1
+      },
+      "drives": ["WMS_SOP", "QA_SOP", "ODG_LSW_Archive"],
+      "documents": [
+        {
+          "title": "Short-Code Order Entry — Standard Work for Remake Jobs (Galls Color & Similar Programs)",
+          "docType": "BWI",
+          "area": "Order Entry / Production Routing",
+          "product": "Galls Color / Remake Jobs",
+          "owner": "Operations / Jim Kozel",
+          "drive": "WMS_SOP",
+          "href": null,
+          "lang": "EN",
+          "embeddedInApp": true,
+          "sopDataPath": "data/sops/operations-shortcode.json"
+        },
+        {
+          "title": "Standard Work Instruction — Operator Level (bilingual EN/ES template)",
+          "docType": "Template",
+          "area": "Production / Manufacturing",
+          "product": null,
+          "owner": "ODG",
+          "drive": "WMS_SOP",
+          "href": null,
+          "lang": "bilingual",
+          "representative": false,
+          "note": "Two-sheet xlsx: Work Chart (time-motion, Seq No/Work Steps/Element Time/SWIP/Quality/Safety) and Work Instruction (Main Step/Critical Point SQDC/Reason/Visual Aids). Also contains completed example: Ticket Intake & Validation (DESK365)."
+        },
+        {
+          "title": "Abastecimiento de hilo",
+          "docType": "SWI",
+          "area": "Production — Thread Supply",
+          "product": null,
+          "owner": null,
+          "drive": "WMS_SOP",
+          "href": null,
+          "lang": "ES",
+          "representative": false
+        },
+        {
+          "title": "Bobbin Tension",
+          "docType": "SWI",
+          "area": "Production — Embroidery Setup",
+          "product": null,
+          "owner": null,
+          "drive": "WMS_SOP",
+          "href": null,
+          "lang": "EN",
+          "representative": false
+        },
+        {
+          "title": "Automerrow",
+          "docType": "SWI",
+          "area": "Production — Automerrow Operations",
+          "product": null,
+          "owner": null,
+          "drive": "WMS_SOP",
+          "href": null,
+          "lang": "EN",
+          "representative": false
+        },
+        {
+          "title": "Arte Flexbroidery",
+          "docType": "SWI",
+          "area": "Production — Flexbroidery",
+          "product": "Flexbroidery",
+          "owner": null,
+          "drive": "WMS_SOP",
+          "href": null,
+          "lang": "EN",
+          "representative": false
+        },
+        {
+          "title": "Ajuste Plan Producción",
+          "docType": "Procedure",
+          "area": "Production Planning",
+          "product": null,
+          "owner": null,
+          "drive": "WMS_SOP",
+          "href": null,
+          "lang": "ES",
+          "representative": false
+        },
+        {
+          "title": "QA SOP — Bordado Multihead (PO-PR, 65 production procedure groups)",
+          "docType": "Procedure",
+          "area": "Production — Embroidery",
+          "product": "Multihead Embroidery",
+          "owner": null,
+          "drive": "QA_SOP",
+          "href": null,
+          "lang": "ES",
+          "representative": true,
+          "note": "Representative of 65 QA SOP procedure groups under PO (Production Mexico): Bordado Multihead, Merrow, Chopping, Shipping, Auto-merrow, Flexstyle, NBI, Leather, PV+, CNC. 292 files total, each group has current procedure + revisions + forms."
+        },
+        {
+          "title": "Production USA — Level III SWIs (Houston / Norcross)",
+          "docType": "Work-Instruction",
+          "area": "Production — USA Plants",
+          "product": null,
+          "owner": null,
+          "drive": "QA_SOP",
+          "href": null,
+          "lang": "EN",
+          "representative": true,
+          "note": "Separate Production USA top-level folder: 25 files, Document Control, Types and Hierarchy Standard, Level III SWIs for Houston and Norcross operations."
+        }
+      ]
+    },
+
+    "marketing": {
+      "id": "marketing",
+      "name": "Marketing",
+      "counts": {
+        "WMS_SOP_total": 0,
+        "QA_SOP_MK_total": 2,
+        "QA_SOP_MK_groups": 2,
+        "QA_SOP_MK_note": "Formato detonación, NDA — minimal formal QA SOP coverage",
+        "ODG_LSW_Archive_roles": ["Manager - Marketing (Mexico)", "Coordinator - Marketing (Mexico)"],
+        "ODG_LSW_live": 0,
+        "ODG_LSW_note": "Marketing folder in the live ODG LSW drive is empty; LSW only in Archive. Randy Carr (Executive) has an LSW in the Executive archive.",
+        "embedded_BWIs": 0
+      },
+      "drives": ["QA_SOP", "ODG_LSW_Archive"],
+      "documents": [
+        {
+          "title": "MK — Formato detonación",
+          "docType": "Form",
+          "area": "Marketing Operations",
+          "product": null,
+          "owner": null,
+          "drive": "QA_SOP",
+          "href": null,
+          "lang": "ES",
+          "representative": false
+        },
+        {
+          "title": "MK — NDA (Non-Disclosure Agreement procedure)",
+          "docType": "Procedure",
+          "area": "Contracts / Legal",
+          "product": null,
+          "owner": null,
+          "drive": "QA_SOP",
+          "href": null,
+          "lang": "ES",
+          "representative": false
+        },
+        {
+          "title": "LSW — Manager Marketing (Mexico, Archive)",
+          "docType": "LSW",
+          "area": "Role Standard Work",
+          "product": null,
+          "owner": "ODG",
+          "drive": "ODG_LSW_Archive",
+          "href": null,
+          "lang": "ES",
+          "representative": true,
+          "note": "LSW for Marketing Manager (Mexico) from ODG LSW Archive. Live ODG LSW drive Marketing folder is currently empty — rollout in progress."
+        },
+        {
+          "title": "LSW — Coordinator Marketing (Mexico, Archive)",
+          "docType": "LSW",
+          "area": "Role Standard Work",
+          "product": null,
+          "owner": "ODG",
+          "drive": "ODG_LSW_Archive",
+          "href": null,
+          "lang": "ES",
+          "representative": true,
+          "note": "LSW for Marketing Coordinator (Mexico) from ODG LSW Archive."
+        }
+      ]
+    },
+
+    "hr": {
+      "id": "hr",
+      "name": "Human Resources",
+      "counts": {
+        "WMS_SOP_total": 10,
+        "WMS_SOP_SWI": 7,
+        "WMS_SOP_BWI": 1,
+        "WMS_SOP_note": "ADP Canada Time-Off, Approving Time-Off ADP, Annual Performance Salary — bilingual docs",
+        "QA_SOP_RH_total": 647,
+        "QA_SOP_RH_groups": 44,
+        "QA_SOP_RH_docTypes": ["Policy (DA)", "Procedure (PR)", "Form (FR)"],
+        "QA_SOP_RH_note": "Largest QA SOP department by file count (647). Covers: Alta/Baja trabajador, Nómina, Reclutamiento, Seguridad e Higiene, Vacaciones, Evaluación desempeño.",
+        "ODG_LSW_Archive_roles": ["Manager - HR", "Coordinator - HR"],
+        "ODG_LSW_live": 0,
+        "ODG_LSW_note": "HR folder in live ODG LSW drive is empty; LSW only in Archive",
+        "embedded_BWIs": 0
+      },
+      "drives": ["WMS_SOP", "QA_SOP", "ODG_LSW_Archive"],
+      "documents": [
+        {
+          "title": "ADP Canada Time-Off",
+          "docType": "SWI",
+          "area": "Payroll / Time Management",
+          "product": "ADP Canada",
+          "owner": null,
+          "drive": "WMS_SOP",
+          "href": null,
+          "lang": "EN",
+          "representative": false
+        },
+        {
+          "title": "Approving Time-Off ADP",
+          "docType": "SWI",
+          "area": "Time Management",
+          "product": "ADP",
+          "owner": null,
+          "drive": "WMS_SOP",
+          "href": null,
+          "lang": "EN",
+          "representative": false
+        },
+        {
+          "title": "Annual Performance Salary",
+          "docType": "SWI",
+          "area": "Performance Management / Compensation",
+          "product": null,
+          "owner": null,
+          "drive": "WMS_SOP",
+          "href": null,
+          "lang": "EN",
+          "representative": false
+        },
+        {
+          "title": "BWI — HR process (WMS SOP, 1 BWI)",
+          "docType": "BWI",
+          "area": "HR Operations",
+          "product": null,
+          "owner": null,
+          "drive": "WMS_SOP",
+          "href": null,
+          "lang": "EN",
+          "representative": true,
+          "note": "One BWI present in the WMS SOP HR cluster — title not enumerated in the discovery; representative entry."
+        },
+        {
+          "title": "RH — Alta/Baja trabajador (QA SOP RH group)",
+          "docType": "Procedure",
+          "area": "Employee Onboarding / Offboarding",
+          "product": null,
+          "owner": null,
+          "drive": "QA_SOP",
+          "href": null,
+          "lang": "ES",
+          "representative": false
+        },
+        {
+          "title": "RH — Reclutamiento (QA SOP RH group)",
+          "docType": "Procedure",
+          "area": "Recruitment",
+          "product": null,
+          "owner": null,
+          "drive": "QA_SOP",
+          "href": null,
+          "lang": "ES",
+          "representative": false
+        },
+        {
+          "title": "RH — Nómina (QA SOP RH group)",
+          "docType": "Procedure",
+          "area": "Payroll",
+          "product": null,
+          "owner": null,
+          "drive": "QA_SOP",
+          "href": null,
+          "lang": "ES",
+          "representative": false
+        },
+        {
+          "title": "RH — Seguridad e Higiene (QA SOP RH group)",
+          "docType": "Policy",
+          "area": "Safety / Compliance",
+          "product": null,
+          "owner": null,
+          "drive": "QA_SOP",
+          "href": null,
+          "lang": "ES",
+          "representative": false
+        },
+        {
+          "title": "RH — Evaluación desempeño (QA SOP RH group)",
+          "docType": "Procedure",
+          "area": "Performance Management",
+          "product": null,
+          "owner": null,
+          "drive": "QA_SOP",
+          "href": null,
+          "lang": "ES",
+          "representative": false
+        },
+        {
+          "title": "RH — 44 QA SOP procedure groups (representative)",
+          "docType": "Procedure",
+          "area": "HR Operations (Mexico)",
+          "product": null,
+          "owner": null,
+          "drive": "QA_SOP",
+          "href": null,
+          "lang": "ES",
+          "representative": true,
+          "note": "Representative of 44 QA SOP procedure groups (647 files) for HR. Named entries above are a sample of the full set."
+        },
+        {
+          "title": "LSW — Manager HR (Archive)",
+          "docType": "LSW",
+          "area": "Role Standard Work",
+          "product": null,
+          "owner": "ODG",
+          "drive": "ODG_LSW_Archive",
+          "href": null,
+          "lang": "EN",
+          "representative": true,
+          "note": "From ODG LSW Archive. Live ODG LSW drive HR folder is empty."
+        }
+      ]
+    },
+
+    "odg": {
+      "id": "odg",
+      "name": "ODG (Organizational Development Group)",
+      "counts": {
+        "WMS_SOP_total": 0,
+        "WMS_SOP_note": "No dedicated WMS SOP cluster for ODG; ODG owns the SW library governance (STW/PM/BWI Checks)",
+        "QA_SOP_total": 0,
+        "ODG_LSW_live_files": 9,
+        "ODG_LSW_live_note": "9 files in the live ODG LSW drive — all IT folder (Executive + Managers). ODG's own LSW is managed here.",
+        "ODG_LSW_Archive_total": 98,
+        "ODG_LSW_Archive_roles": ["VP of ODG", "ODG Manager", "ODG Specialist", "Executive (CEO, COO, Randy Carr, Nick, Tony)", "Director - Art & Digitizing (G. Ramírez)"],
+        "FMDS_new_templates": ["Standard Work Instruction.xlsx (operator SWI)", "Role Standard Work.xlsx (AC-FR-087, LSW template, all-dept)"],
+        "embedded_BWIs": 0,
+        "embedded_LSW": 1
+      },
+      "drives": ["ODG_LSW", "ODG_LSW_Archive"],
+      "documents": [
+        {
+          "title": "Role Standard Work Template (AC-FR-087)",
+          "docType": "Template",
+          "area": "Standard Work Governance",
+          "product": null,
+          "owner": "ODG",
+          "drive": "ODG_LSW",
+          "href": null,
+          "lang": "bilingual",
+          "representative": false,
+          "note": "Bilingual (EN/ES) Role Standard Work template. Sheets: Expectativas de... / ...Expectations. Fields: Role Title, Leader Name, Area, Purpose (IDMP framing), Date; then itemized table: Element #, What?, When?, What to do?, Tool; organized by time period: Before Work, During Work, After Operation, Training, Team Member Care, Problem. This is the template backing the LSW program."
+        },
+        {
+          "title": "Standard Work Instruction Template (operator level)",
+          "docType": "Template",
+          "area": "Operations / Production Standard Work",
+          "product": null,
+          "owner": "ODG",
+          "drive": "ODG_LSW",
+          "href": null,
+          "lang": "bilingual",
+          "representative": false,
+          "note": "Two-sheet xlsx: Work Chart (time-motion sequence) + Work Instruction (Main Step/Critical Point SQDC/Reason/Visual). Completed example included: Ticket Intake & Validation (DESK365) — shows template works for office processes, not just floor ops."
+        },
+        {
+          "title": "LSW — VP of ODG (cadence: daily FMDS check, weekly board pulse, monthly BWI audit)",
+          "docType": "LSW",
+          "area": "Role Standard Work",
+          "product": null,
+          "owner": "ODG",
+          "drive": "ODG_LSW_Archive",
+          "href": null,
+          "lang": "EN",
+          "embeddedInApp": true,
+          "sopDataPath": "data/sops/_lsw.json",
+          "representative": false
+        },
+        {
+          "title": "LSW — ODG Manager",
+          "docType": "LSW",
+          "area": "Role Standard Work",
+          "product": null,
+          "owner": "ODG",
+          "drive": "ODG_LSW_Archive",
+          "href": null,
+          "lang": "EN",
+          "representative": false
+        },
+        {
+          "title": "LSW — ODG Specialist",
+          "docType": "LSW",
+          "area": "Role Standard Work",
+          "product": null,
+          "owner": "ODG",
+          "drive": "ODG_LSW_Archive",
+          "href": null,
+          "lang": "EN",
+          "representative": false
+        },
+        {
+          "title": "LSW — Executive (CEO, COO, Randy Carr, Nick, Tony)",
+          "docType": "LSW",
+          "area": "Executive Standard Work",
+          "product": null,
+          "owner": "ODG",
+          "drive": "ODG_LSW_Archive",
+          "href": null,
+          "lang": "EN",
+          "representative": true,
+          "note": "Executive-level LSWs from the Archive. Format: Formato LSW-Exec-Dir-Mgr. Rev'01.xlsx — two stacked tables: recurring LSW (Meeting/Audit/Admin/Standard Work) + Hoshin/Strategic Deliverables. President example (Andrew K.): 70hr/wk, structured work ~82%, problem-solving/coaching ~18%."
+        }
+      ]
+    },
+
+    "logistics": {
+      "id": "logistics",
+      "name": "Supply Chain / Logistics",
+      "counts": {
+        "WMS_SOP_total": 64,
+        "WMS_SOP_BWI": 27,
+        "WMS_SOP_SWI": 31,
+        "WMS_SOP_note": "BWI-dominant department — 27 of 64 docs are formal BWIs (highest BWI count of any dept in WMS SOP). Representative BWIs: BWI - Envios Globales, BWI - Importaciones, BWI - Recolecciones FedEx, Approval Request Freight.",
+        "QA_SOP_LG_total": 20,
+        "QA_SOP_LG_groups": 2,
+        "QA_SOP_LG_note": "Exportaciones/Importaciones, Control de sellos",
+        "ODG_LSW_Archive_roles": ["Manager - Supply Chain", "Supervisor - Supply Chain", "Coordinator - Supply Chain", "Coordinator - Logística (Mexico)", "Team Leader - Supply Chain"],
+        "embedded_BWIs": 0
+      },
+      "drives": ["WMS_SOP", "QA_SOP", "ODG_LSW_Archive"],
+      "documents": [
+        {
+          "title": "BWI — Envios Globales",
+          "docType": "BWI",
+          "area": "Shipping / Global Freight",
+          "product": null,
+          "owner": null,
+          "drive": "WMS_SOP",
+          "href": null,
+          "lang": "ES",
+          "representative": false
+        },
+        {
+          "title": "BWI — Importaciones",
+          "docType": "BWI",
+          "area": "Import Operations",
+          "product": null,
+          "owner": null,
+          "drive": "WMS_SOP",
+          "href": null,
+          "lang": "ES",
+          "representative": false
+        },
+        {
+          "title": "BWI — Recolecciones FedEx",
+          "docType": "BWI",
+          "area": "FedEx Pickup / Shipping",
+          "product": "FedEx",
+          "owner": null,
+          "drive": "WMS_SOP",
+          "href": null,
+          "lang": "ES",
+          "representative": false
+        },
+        {
+          "title": "Approval Request Freight",
+          "docType": "Procedure",
+          "area": "Freight Approval",
+          "product": null,
+          "owner": null,
+          "drive": "WMS_SOP",
+          "href": null,
+          "lang": "EN",
+          "representative": false
+        },
+        {
+          "title": "BWI — Logistics (27 BWIs in WMS SOP — representative)",
+          "docType": "BWI",
+          "area": "Logistics Operations",
+          "product": null,
+          "owner": null,
+          "drive": "WMS_SOP",
+          "href": null,
+          "lang": "bilingual",
+          "representative": true,
+          "note": "Representative of 27 BWIs in the WMS SOP Logistics cluster. Named entries above are confirmed individual titles from the discovery."
+        },
+        {
+          "title": "LG — Exportaciones / Importaciones (QA SOP group)",
+          "docType": "Procedure",
+          "area": "Export / Import Operations",
+          "product": null,
+          "owner": null,
+          "drive": "QA_SOP",
+          "href": null,
+          "lang": "ES",
+          "representative": false
+        },
+        {
+          "title": "LG — Control de sellos (QA SOP group)",
+          "docType": "Procedure",
+          "area": "Seal Control / Customs Compliance",
+          "product": null,
+          "owner": null,
+          "drive": "QA_SOP",
+          "href": null,
+          "lang": "ES",
+          "representative": false
+        },
+        {
+          "title": "LSW — Manager Supply Chain (Archive)",
+          "docType": "LSW",
+          "area": "Role Standard Work",
+          "product": null,
+          "owner": "ODG",
+          "drive": "ODG_LSW_Archive",
+          "href": null,
+          "lang": "EN",
+          "representative": true
+        }
+      ]
+    },
+
+    "it": {
+      "id": "it",
+      "name": "IT / Systems",
+      "counts": {
+        "WMS_SOP_total": 15,
+        "WMS_SOP_SWI": 14,
+        "WMS_SOP_note": "Add new fabric Episerver, Microsoft Teams Approvals, NetSuite CRM, Business Central",
+        "QA_SOP_SI_total": 102,
+        "QA_SOP_SI_groups": 11,
+        "QA_SOP_SI_note": "Equipo cómputo, Soporte técnico, New hire setup, User termination, Zendesk tickets",
+        "ODG_LSW_live_files": 9,
+        "ODG_LSW_live_note": "IT folder is the ONLY populated folder in the live ODG LSW drive — 9 files: Executive + IT Managers. Most complete LSW coverage of any department.",
+        "ODG_LSW_Archive_roles": ["Manager - IT (Norcross)", "Coordinator - IT"],
+        "embedded_BWIs": 0
+      },
+      "drives": ["WMS_SOP", "QA_SOP", "ODG_LSW"],
+      "documents": [
+        {
+          "title": "Add New Fabric Episerver",
+          "docType": "SWI",
+          "area": "Content Management / eCommerce",
+          "product": "Episerver",
+          "owner": null,
+          "drive": "WMS_SOP",
+          "href": null,
+          "lang": "EN",
+          "representative": false
+        },
+        {
+          "title": "Microsoft Teams Approvals",
+          "docType": "SWI",
+          "area": "Workflow / Collaboration",
+          "product": "Microsoft Teams",
+          "owner": null,
+          "drive": "WMS_SOP",
+          "href": null,
+          "lang": "EN",
+          "representative": false
+        },
+        {
+          "title": "NetSuite CRM",
+          "docType": "SWI",
+          "area": "CRM / ERP",
+          "product": "NetSuite",
+          "owner": null,
+          "drive": "WMS_SOP",
+          "href": null,
+          "lang": "EN",
+          "representative": false
+        },
+        {
+          "title": "Business Central",
+          "docType": "SWI",
+          "area": "ERP / Finance Systems",
+          "product": "Microsoft Business Central",
+          "owner": null,
+          "drive": "WMS_SOP",
+          "href": null,
+          "lang": "EN",
+          "representative": false
+        },
+        {
+          "title": "SI — Equipo cómputo (QA SOP group)",
+          "docType": "Procedure",
+          "area": "Hardware / Equipment",
+          "product": null,
+          "owner": null,
+          "drive": "QA_SOP",
+          "href": null,
+          "lang": "ES",
+          "representative": false
+        },
+        {
+          "title": "SI — Soporte técnico (QA SOP group)",
+          "docType": "Procedure",
+          "area": "Technical Support",
+          "product": "Zendesk",
+          "owner": null,
+          "drive": "QA_SOP",
+          "href": null,
+          "lang": "ES",
+          "representative": false
+        },
+        {
+          "title": "SI — New Hire Setup (QA SOP group)",
+          "docType": "Procedure",
+          "area": "IT Onboarding",
+          "product": null,
+          "owner": null,
+          "drive": "QA_SOP",
+          "href": null,
+          "lang": "ES",
+          "representative": false
+        },
+        {
+          "title": "SI — User Termination (QA SOP group)",
+          "docType": "Procedure",
+          "area": "IT Offboarding",
+          "product": null,
+          "owner": null,
+          "drive": "QA_SOP",
+          "href": null,
+          "lang": "ES",
+          "representative": false
+        },
+        {
+          "title": "SI — Zendesk Tickets (QA SOP group)",
+          "docType": "Procedure",
+          "area": "IT Support / Ticketing",
+          "product": "Zendesk",
+          "owner": null,
+          "drive": "QA_SOP",
+          "href": null,
+          "lang": "ES",
+          "representative": false
+        },
+        {
+          "title": "LSW — IT Executive / Manager (live ODG drive, 9 files)",
+          "docType": "LSW",
+          "area": "Role Standard Work — IT",
+          "product": null,
+          "owner": "ODG",
+          "drive": "ODG_LSW",
+          "href": null,
+          "lang": "EN",
+          "representative": true,
+          "note": "IT is the only department with a populated live ODG LSW drive (9 files: Executive + Managers). Most complete LSW coverage. Form code AC-FR-7.5-050."
+        }
+      ]
+    },
+
+    "finance": {
+      "id": "finance",
+      "name": "Finance / Accounting",
+      "counts": {
+        "WMS_SOP_total": 62,
+        "WMS_SOP_SWI": 50,
+        "WMS_SOP_Procedure": 11,
+        "WMS_SOP_note": "Primary source for Finance — Accounts Payable Process, ACH and EFT Payment, AR Deposits, Bank Transfer. QA SOP coverage is minimal.",
+        "QA_SOP_FI_total": 1,
+        "QA_SOP_FI_groups": 1,
+        "QA_SOP_FI_note": "Only 1 QA SOP procedure: R&D Tax Credit Qualifying Activities",
+        "ODG_LSW_Archive_roles": ["Manager - Accounting", "Manager - AR", "Coordinator - AR (Mexico)", "Coordinator - AR (Norcross)", "Coordinator - AR (Houston)"],
+        "ODG_LSW_live": 0,
+        "ODG_LSW_note": "Finance folder in live ODG LSW drive is empty; LSW only in Archive",
+        "embedded_BWIs": 0
+      },
+      "drives": ["WMS_SOP", "QA_SOP", "ODG_LSW_Archive"],
+      "documents": [
+        {
+          "title": "Accounts Payable Process",
+          "docType": "Procedure",
+          "area": "Accounts Payable",
+          "product": null,
+          "owner": null,
+          "drive": "WMS_SOP",
+          "href": null,
+          "lang": "EN",
+          "representative": false
+        },
+        {
+          "title": "ACH and EFT Payment",
+          "docType": "SWI",
+          "area": "Payments / Banking",
+          "product": null,
+          "owner": null,
+          "drive": "WMS_SOP",
+          "href": null,
+          "lang": "EN",
+          "representative": false
+        },
+        {
+          "title": "AR Deposits",
+          "docType": "SWI",
+          "area": "Accounts Receivable",
+          "product": null,
+          "owner": null,
+          "drive": "WMS_SOP",
+          "href": null,
+          "lang": "EN",
+          "representative": false
+        },
+        {
+          "title": "Bank Transfer",
+          "docType": "SWI",
+          "area": "Treasury / Banking",
+          "product": null,
+          "owner": null,
+          "drive": "WMS_SOP",
+          "href": null,
+          "lang": "EN",
+          "representative": false
+        },
+        {
+          "title": "Finance SWIs (50 WMS SOP — representative)",
+          "docType": "SWI",
+          "area": "Finance Operations",
+          "product": null,
+          "owner": null,
+          "drive": "WMS_SOP",
+          "href": null,
+          "lang": "EN",
+          "representative": true,
+          "note": "Representative of 50 SWIs in the WMS SOP Finance/Accounting cluster. Named entries above are confirmed individual titles."
+        },
+        {
+          "title": "FI — R&D Tax Credit Qualifying Activities",
+          "docType": "Procedure",
+          "area": "Tax / Compliance",
+          "product": null,
+          "owner": null,
+          "drive": "QA_SOP",
+          "href": null,
+          "lang": "EN",
+          "representative": false,
+          "note": "The only QA SOP procedure for Finance (FI code). All other Finance standard work is in WMS SOP."
+        },
+        {
+          "title": "LSW — Manager Accounting (Archive)",
+          "docType": "LSW",
+          "area": "Role Standard Work",
+          "product": null,
+          "owner": "ODG",
+          "drive": "ODG_LSW_Archive",
+          "href": null,
+          "lang": "EN",
+          "representative": true
+        },
+        {
+          "title": "LSW — Manager AR (Archive)",
+          "docType": "LSW",
+          "area": "Role Standard Work",
+          "product": null,
+          "owner": "ODG",
+          "drive": "ODG_LSW_Archive",
+          "href": null,
+          "lang": "EN",
+          "representative": true
+        }
+      ]
+    }
+  }
+}
