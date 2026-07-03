@@ -44,9 +44,21 @@ function ragChip(status) {
   return `<span class="rag-chip rag-chip--${status}">${label}</span>`;
 }
 
-function sourceBadge(source) {
-  if (!source) return '';
-  return `<span class="badge" title="${source}">${source.split(' / ')[0]}</span>`;
+function sourceBadge(source, kpi) {
+  // Prefer targetSource (the FMDS OS sourcing plan) over current source
+  const ts = (kpi && kpi.targetSource) ? kpi.targetSource : source;
+  if (!ts) return '';
+  const isManual = kpi && kpi.manualOnly === true;
+  const label = ts.split(' / ')[0];
+  if (isManual) {
+    return `<span class="badge" title="Manual entry — no source system" style="background:#fee2e2;color:#991b1b;border:1px solid #fca5a5">${label}</span>`;
+  }
+  const wasReKeyed = source && source !== ts &&
+    ['manual', 'hand-keyed', 'coo board', 'literal', 'bowler'].some(tok => source.toLowerCase().includes(tok));
+  if (wasReKeyed) {
+    return `<span class="badge" title="Target: ${ts} (today: re-keyed from ${source})" style="background:#f0fdf4;color:#166534;border:1px solid #86efac">${label}</span>`;
+  }
+  return `<span class="badge" title="${ts}">${label}</span>`;
 }
 
 function flagIcon(flag) {
@@ -73,7 +85,7 @@ function renderContributorRow(kpi, dept) {
       <td class="text-right text-mono">${formatVal(kpi.target, kpi.unit)}</td>
       <td class="text-right text-mono">${formatVal(act, kpi.unit)}</td>
       <td>${kpi.nodata ? '' : ragChip(rag)}</td>
-      <td>${sourceBadge(kpi.source)}</td>
+      <td>${sourceBadge(kpi.source, kpi)}</td>
       <td>${chart}</td>
     </tr>`;
 }
@@ -227,7 +239,7 @@ function renderMainRow(kpi, dept, expanded) {
       <td class="text-right text-mono">${formatVal(kpi.target, kpi.unit)}</td>
       <td class="text-right text-mono">${formatVal(act, kpi.unit)}</td>
       <td>${kpi.nodata ? '' : ragChip(rag)}</td>
-      <td>${sourceBadge(kpi.source)}</td>
+      <td>${sourceBadge(kpi.source, kpi)}</td>
       <td>${chart}</td>
     </tr>`;
 }

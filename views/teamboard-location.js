@@ -62,9 +62,21 @@ function ragChip(status) {
   return `<span class="rag-chip rag-chip--${status}">${label}</span>`;
 }
 
-function sourceBadge(source) {
-  if (!source) return '';
-  return `<span class="badge" title="${source}">${source.split(' / ')[0]}</span>`;
+function sourceBadge(source, kpi) {
+  // Prefer targetSource (the FMDS OS sourcing plan) over current source
+  const ts = (kpi && kpi.targetSource) ? kpi.targetSource : source;
+  if (!ts) return '';
+  const isManual = kpi && kpi.manualOnly === true;
+  const label = ts.split(' / ')[0];
+  if (isManual) {
+    return `<span class="badge" title="Manual entry — no source system" style="background:#fee2e2;color:#991b1b;border:1px solid #fca5a5">${label}</span>`;
+  }
+  const wasReKeyed = source && source !== ts &&
+    ['manual', 'hand-keyed', 'coo board', 'literal', 'bowler'].some(tok => source.toLowerCase().includes(tok));
+  if (wasReKeyed) {
+    return `<span class="badge" title="Target: ${ts} (today: re-keyed from ${source})" style="background:#f0fdf4;color:#166534;border:1px solid #86efac">${label}</span>`;
+  }
+  return `<span class="badge" title="${ts}">${label}</span>`;
 }
 
 // ─── Find location-specific sub-KPI for a main ───────────────────────────────
@@ -175,7 +187,7 @@ function renderMainRow(dept, mainKpi, locationId, expandedIds) {
       <td class="text-right text-mono">${formatVal(mainKpi.target, mainKpi.unit)}</td>
       <td class="text-right text-mono">${isNoData ? '—' : formatVal(displayActualVal, mainKpi.unit)}</td>
       <td>${ragChip(rag)}</td>
-      <td>${sourceBadge(mainKpi.source)}</td>
+      <td>${sourceBadge(mainKpi.source, mainKpi)}</td>
       <td>${chart}</td>
     </tr>`;
 
@@ -211,7 +223,7 @@ function renderMainRow(dept, mainKpi, locationId, expandedIds) {
           <td class="text-right text-mono">${formatVal(subKpi.target, subKpi.unit)}</td>
           <td class="text-right text-mono">${subKpi.nodata ? '—' : formatVal(subAct, subKpi.unit)}</td>
           <td>${ragChip(subRag)}</td>
-          <td>${sourceBadge(subKpi.source)}</td>
+          <td>${sourceBadge(subKpi.source, subKpi)}</td>
           <td>${subChart}</td>
         </tr>`;
     }).join('');
@@ -401,6 +413,29 @@ function renderContribRows(kpi) {
   }).join('');
 }
 
+/**
+ * Source badge for a per-location FMDS board KPI.
+ * Shows targetSource (WPS/Business Central/etc.) if present.
+ * Safety (manualOnly) items get a distinct red badge.
+ * Falls back to "FMDS Board" when no targetSource set.
+ */
+function locSourceBadge(kpi) {
+  if (kpi.manualOnly === true) {
+    return `<span class="badge" title="Manual entry — no source system" style="font-size:0.65rem;background:#fee2e2;color:#991b1b;border:1px solid #fca5a5">Manual entry</span>`;
+  }
+  const ts = kpi.targetSource || kpi.source;
+  if (!ts) {
+    return `<span class="badge" style="font-size:0.65rem">FMDS Board</span>`;
+  }
+  const label = ts.split(' / ')[0];
+  const wasReKeyed = kpi.source && kpi.source !== ts &&
+    ['manual', 'hand-keyed', 'coo board', 'literal', 'bowler'].some(tok => (kpi.source || '').toLowerCase().includes(tok));
+  if (wasReKeyed) {
+    return `<span class="badge" title="Target: ${ts} (today: re-keyed)" style="font-size:0.65rem;background:#f0fdf4;color:#166534;border:1px solid #86efac">${label}</span>`;
+  }
+  return `<span class="badge" title="${ts}" style="font-size:0.65rem">${label}</span>`;
+}
+
 /** Render a single per-location KPI row */
 function renderLocKpiRow(kpi, expandedLocKpis) {
   const rag       = locRag(kpi);
@@ -460,7 +495,7 @@ function renderLocKpiRow(kpi, expandedLocKpis) {
       <td class="text-right text-mono">${kpi.target == null ? '—' : formatLocVal(kpi.target, kpi.unit, kpi.targetType)}</td>
       <td class="text-right text-mono">${kpi.nodata || kpi.actual == null ? '—' : formatLocVal(kpi.actual, kpi.unit, kpi.targetType)}</td>
       <td>${ragChip(rag)}</td>
-      <td><span class="badge" style="font-size:0.65rem">FMDS Board</span></td>
+      <td>${locSourceBadge(kpi)}</td>
       <td>${spark}</td>
     </tr>`;
 
