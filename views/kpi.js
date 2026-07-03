@@ -18,6 +18,7 @@ import { mains, contributorsOf } from '../lib/registry.js';
 import { ragStatus }             from '../lib/rag.js';
 import { svgLine }               from '../lib/charts.js';
 import { explainKpi }            from '../lib/explain.js';
+import { commentThreadHTML, bindComments } from '../lib/comments.js';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -209,6 +210,23 @@ function renderMainRow(kpi, dept, expanded) {
     </tr>`;
 }
 
+// ─── Off-track comment footer (KPI Boards) ───────────────────────────────────
+// Per the design: on KPI Boards, an off-track (red/amber) KPI gets a comment
+// footer where Mark and the lead leave notes. Green KPIs stay clean here — the
+// full "even green has notes" surface lives on the Overview page.
+
+function renderCommentFooter(kpi, dept) {
+  const act = displayActual(kpi);
+  const rag = (act == null || kpi.target == null)
+    ? 'nodata'
+    : ragStatus(act, kpi.target, kpi.direction || 'higher_better');
+  if (rag !== 'red' && rag !== 'amber') return '';
+  const author = `${dept.lead || 'Lead'} (L2)`;
+  return `<div class="kpi-comment-footer" style="margin-top:12px;padding-top:2px;border-top:1px dashed var(--slate-200)">
+    ${commentThreadHTML({ deptId: dept.id, kpi, rag, author, collapsed: false })}
+  </div>`;
+}
+
 // ─── Expansion row (explanation + sub-KPIs + details toggle) ─────────────────
 
 function renderExpansion(kpi, dept) {
@@ -234,6 +252,7 @@ function renderExpansion(kpi, dept) {
             ▸ KPI details (source · RAG rule · owner · cadence)
           </button>
           ${renderDetails(kpi, dept, contribs)}
+          ${renderCommentFooter(kpi, dept)}
         </div>
       </td>
     </tr>`;
@@ -433,6 +452,7 @@ function renderServiceExpansion(kpi, dept, expandedTeamIds, expandedRepIds) {
             ▸ KPI details (source · RAG rule · owner · cadence)
           </button>
           ${renderDetails(kpi, dept, contribs)}
+          ${renderCommentFooter(kpi, dept)}
         </div>
       </td>
     </tr>`;
@@ -520,6 +540,8 @@ export function renderKpi(dept, mount) {
   }
 
   function bindRowEvents() {
+    // Comment threads inside off-track expansions — delegated once on mount.
+    bindComments(mount);
     mount.querySelectorAll('.expand-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();

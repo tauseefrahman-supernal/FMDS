@@ -1306,3 +1306,83 @@ input[type="text"]:focus, input[type="search"]:focus, select:focus {
   color: var(--green);
 }
 .src-flow-flag__icon { flex-shrink: 0; font-size: 1rem; margin-top: 1px; }
+
+/* ── Mark (AI Employee) drawer identity ─────────────────────────────────── */
+.assistant-drawer__ident {
+  display: flex; align-items: center; gap: 10px;
+}
+.assistant-drawer__avatar {
+  width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-mono); font-weight: 700; font-size: 0.9rem;
+  color: #fff; background: linear-gradient(140deg, var(--accent), #6f4bff);
+  box-shadow: 0 0 0 3px var(--accent-tint);
+}
+.assistant-drawer__name { font-size: 0.9rem; font-weight: 700; color: var(--text); line-height: 1.15; }
+.assistant-drawer__role {
+  font-size: 0.64rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--accent);
+}
+.assistant-drawer__reads {
+  padding: 9px 20px; font-size: 0.7rem; line-height: 1.45; color: var(--text-muted);
+  background: var(--canvas); border-bottom: 1px solid var(--line);
+}
+.assistant-drawer__reads b { color: var(--text); font-weight: 600; }
+
+/* ── Comment thread (Mark + human, per-KPI) ─────────────────────────────── */
+.cmt-thread {
+  margin-top: 10px; border-top: 1px solid var(--line);
+  padding-top: 8px;
+}
+.cmt-thread--red   { border-top-color: rgba(217,45,58,.35); }
+.cmt-thread--amber { border-top-color: rgba(224,122,18,.35); }
+.cmt-toggle {
+  background: none; border: none; cursor: pointer; padding: 2px 0;
+  font-size: 0.72rem; font-weight: 700; letter-spacing: 0.02em;
+  color: var(--slate-600); display: inline-flex; align-items: center; gap: 5px;
+}
+.cmt-toggle:hover { color: var(--accent); }
+.cmt-body { margin-top: 8px; display: flex; flex-direction: column; gap: 8px; }
+
+.cmt { display: flex; gap: 8px; align-items: flex-start; }
+.cmt__avatar {
+  width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0; margin-top: 1px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-mono); font-weight: 700; font-size: 0.62rem; color: #fff;
+}
+.cmt__avatar--ai    { background: linear-gradient(140deg, var(--accent), #6f4bff); }
+.cmt__avatar--human { background: var(--slate-500); }
+.cmt__body { flex: 1; min-width: 0; }
+.cmt__meta { display: flex; align-items: center; gap: 6px; margin-bottom: 2px; flex-wrap: wrap; }
+.cmt__author { font-size: 0.7rem; font-weight: 700; color: var(--slate-700); }
+.cmt__ts { font-size: 0.64rem; color: var(--slate-400); font-family: var(--font-mono); }
+.cmt__kind {
+  font-size: 0.58rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
+  padding: 1px 6px; border-radius: 999px;
+}
+.cmt__kind--driving { background: var(--accent-tint); color: var(--accent); }
+.cmt__kind--action  { background: #fef3c7; color: #92400e; }
+.cmt__text { font-size: 0.76rem; line-height: 1.55; color: var(--slate-700); white-space: pre-line; }
+.cmt--lead .cmt__text { color: var(--slate-800); }
+.cmt--ai .cmt__body {
+  background: var(--accent-tint); border-radius: 8px; padding: 7px 10px;
+}
+.cmt--lead .cmt__body { background: var(--accent-tint); }
+.cmt-empty { font-size: 0.72rem; color: var(--slate-400); padding: 2px 0 2px 30px; }
+
+.cmt-form { display: flex; gap: 6px; align-items: flex-end; margin-top: 2px; }
+.cmt-input {
+  flex: 1; resize: vertical; min-height: 34px;
+  font-size: 0.76rem; font-family: inherit; padding: 6px 8px; line-height: 1.4;
+  border: 1px solid var(--line-strong); border-radius: 6px;
+  background: #fff; color: var(--text);
+}
+.cmt-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-tint); }
+.cmt-post {
+  flex-shrink: 0; cursor: pointer; white-space: nowrap;
+  font-size: 0.72rem; font-weight: 600; padding: 7px 12px;
+  border: 1px solid var(--accent); border-radius: 6px;
+  background: var(--accent); color: #fff;
+  transition: background var(--t-fast);
+}
+.cmt-post:hover { background: var(--accent-hover); }

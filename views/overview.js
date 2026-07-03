@@ -24,6 +24,7 @@
 import { mains, byId }  from '../lib/registry.js';
 import { ragStatus }     from '../lib/rag.js';
 import { bakedReply }    from '../lib/agent.js';
+import { commentThreadHTML, bindComments } from '../lib/comments.js';
 
 // ─── Formatters (shared with teamboard pattern) ───────────────────────────────
 
@@ -264,7 +265,7 @@ function injectOverviewStyles() {
 
 // ─── Single status card ───────────────────────────────────────────────────────
 
-function buildStatusCard(dept, kpi, role) {
+function buildStatusCard(dept, kpi, role, author) {
   const isNoData = kpi.nodata || kpi.actual == null;
   const rag = isNoData
     ? 'nodata'
@@ -275,23 +276,25 @@ function buildStatusCard(dept, kpi, role) {
   const actualDisplay = isNoData ? '—' : formatVal(kpi.actual, kpi.unit);
   const targetDisplay = kpi.target != null ? formatVal(kpi.target, kpi.unit) : '—';
 
-  // Agent block: only for red and amber
-  let agentBlock = '';
-  if ((rag === 'red' || rag === 'amber') && !isNoData) {
-    const explanation = kpiAgentExplanation(dept, kpi);
-    agentBlock = `
-      <div class="ov-card__agent">
-        <div class="ov-card__agent-head">
-          <span class="ov-card__agent-dot"></span>
-          AI — why ${rag === 'red' ? 'red' : 'at risk'}
-        </div>
-        <div class="ov-card__agent-body">${escHtml(explanation)}</div>
-      </div>`;
-  }
+  // The AI "why" now lives as Mark's lead note inside the comment thread below
+  // (single source, no duplicate explanation block).
+  const agentBlock = '';
 
   const sourceText = kpi.source
     ? kpi.source.split(' / ')[0]
     : (kpi.rollupMethod === 'independent' ? 'Mechanism B' : '');
+
+  // Comment thread on every card. Red/amber start expanded (highlighted);
+  // green / no-data start collapsed behind a "Notes" toggle.
+  // Mark's lead note uses the dept-aware explanation for red/amber (richer than
+  // the generic template); green/no-data use the default composeMarkNote framing.
+  const collapsed = !(rag === 'red' || rag === 'amber');
+  const markNote = (rag === 'red' || rag === 'amber') && !isNoData
+    ? kpiAgentExplanation(dept, kpi)
+    : undefined;
+  const commentBlock = `<div class="ov-card__comments" style="padding:0 16px 12px">
+      ${commentThreadHTML({ deptId: dept.id, kpi, rag, author, collapsed, markNote })}
+    </div>`;
 
   return `
     <div class="ov-card ov-card--${rag}">
@@ -307,6 +310,7 @@ function buildStatusCard(dept, kpi, role) {
         </div>
       </div>
       ${agentBlock}
+      ${commentBlock}
       <div class="ov-card__footer">
         <span class="ov-card__footer-source">${sourceText}</span>
         <a class="ov-card__kpi-link" href="#/dept/${dept.id}/kpi">Open in KPI Boards →</a>
@@ -326,7 +330,7 @@ function escHtml(str) {
 
 // ─── L2 main-KPI overview ─────────────────────────────────────────────────────
 
-function renderL2Overview(dept, mount) {
+function renderL2Overview(dept, mount, author) {
   const kpiList = mains(dept);
 
   // Sort: red → amber → green → nodata
@@ -362,7 +366,7 @@ function renderL2Overview(dept, mount) {
     if (!groups[key].length) return;
     sections += `<div class="ov-section-label">${label}</div>
       <div class="overview-grid">
-        ${groups[key].map(kpi => buildStatusCard(dept, kpi, 'L2')).join('')}
+        ${groups[key].map(kpi => buildStatusCard(dept, kpi, 'L2', author)).join('')}
       </div>`;
   });
 
@@ -387,10 +391,13 @@ function renderL2Overview(dept, mount) {
       </div>
       ${sections || '<p class="text-muted">No KPI data available.</p>'}
       <p class="text-muted text-small mt-4" style="border-top:1px solid var(--slate-100);padding-top:12px">
-        <strong>Overview</strong> shows department main KPIs by status. Red and amber cards include an AI explanation.
-        Use <strong>KPI Boards</strong> for the full level-by-level breakdown with trends and operator contributions.
+        <strong>Overview</strong> shows department main KPIs by status. Every card carries a
+        <strong>comment thread</strong> — Mark posts what's driving the number, you and the team
+        add tracking notes. Use <strong>KPI Boards</strong> for the full level-by-level breakdown.
       </p>
     </div>`;
+
+  bindComments(mount);
 }
 
 // ─── L1 per-location target view (Operations path) ───────────────────────────
@@ -493,11 +500,15 @@ export function renderOverview(dept, mount, session) {
   injectOverviewStyles();
 
   const role = session && session.role ? session.role : 'L2';
+  const persona = session && session.persona ? session.persona : null;
+  const author = persona && persona.name
+    ? `${persona.name} (${role})`
+    : `${dept.lead || 'Lead'} (${role})`;
 
   if (role === 'L1' && dept.id === 'operations') {
     renderL1OperationsOverview(dept, mount, session ? session.persona : null);
   } else {
     // L2 for all departments (including Operations L2 Jim Kozel view)
-    renderL2Overview(dept, mount);
+    renderL2Overview(dept, mount, author);
   }
 }

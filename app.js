@@ -212,7 +212,7 @@ function renderLayout(dept, activeView) {
             <span class="crumb__sep">▸</span>
             <span class="crumb__view">${viewLabel(dept, role, activeView)}</span>
           </div>
-          <button class="topbar-btn assistant-btn" id="assistant-btn" title="AI Assistant">⬡ Assistant</button>
+          <button class="topbar-btn assistant-btn" id="assistant-btn" title="Mark — your AI employee">◇ Ask Mark</button>
           <button class="inbox-btn" id="inbox-btn" title="Chief of Staff inbox">
             🔔<span class="inbox-btn__count">2</span>
           </button>
@@ -297,8 +297,20 @@ function toggleAssistant(dept) {
   drawer.className = 'assistant-drawer';
   drawer.innerHTML = `
     <div class="assistant-drawer__head">
-      <div class="assistant-drawer__title">AI Assistant · <span class="assistant-drawer__dept">${dept.name}</span></div>
+      <div class="assistant-drawer__ident">
+        <div class="assistant-drawer__avatar">M</div>
+        <div>
+          <div class="assistant-drawer__name">Mark</div>
+          <div class="assistant-drawer__role">AI Employee · <span class="assistant-drawer__dept">${dept.name}</span></div>
+        </div>
+      </div>
       <button class="assistant-drawer__close" id="assistant-close">×</button>
+    </div>
+
+    <div class="assistant-drawer__reads">
+      Mark reasons over your <b>KPI data</b> and the <b>meeting record</b> — weekly
+      <b>T2</b> (leadership), <b>T3</b> (exec review) and team <b>huddles</b> — to explain
+      what's driving each number and track the actions coming out of those meetings.
     </div>
 
     <div class="assistant-drawer__shortcuts">
