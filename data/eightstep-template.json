@@ -1,84 +1,138 @@
 {
   "title": "8-Step Problem Solving A3",
+  "source": "8 Step Problem Solving.docx (AC — WMS), Rev 02 (01/Abr/24)",
+  "purpose": "Identify a problem and take logical steps to a desired solution. Prevent problems before they occur, resolve recurring errors, reduce the impact of each incident.",
+  "pdcaMap": { "PLAN": [1, 2, 3, 4, 5], "DO": [6], "CHECK": [7], "ACT": [8] },
   "header": {
     "fields": ["Title of Problem Solving", "Sponsor", "Leader", "Team", "Rev Date"]
   },
-  "scoringStrip": ["Safety", "Quality", "Cost", "Time", "Customer", "Effective", "Overall"],
+  "fishboneCategories": ["Man", "Method", "Machine", "Material", "Environment", "Measurement"],
+  "scoringMatrix": {
+    "columns": [
+      { "key": "S", "label": "Safety" },
+      { "key": "Q", "label": "Quality" },
+      { "key": "C", "label": "Cost" },
+      { "key": "T", "label": "Time" },
+      { "key": "Cu", "label": "Customer" },
+      { "key": "Ef", "label": "Effective" },
+      { "key": "OA", "label": "Overall" }
+    ],
+    "scale": { "0": "worst", "1": "moderate", "2": "best" },
+    "note": "Score each countermeasure 0/1/2 per dimension. Overall (OA) is the ranked priority, not a simple sum."
+  },
+  "statusEnum": {
+    "R": "Behind",
+    "Y": "At Risk",
+    "G": "On Track",
+    "C": "Completed"
+  },
+  "methods": {
+    "genchiGenbutsu": "Go and see for yourself — practical experience over theoretical knowledge. Used in Steps 2 & 4.",
+    "nemawashi": "Preliminary work to involve other sections/departments — build consensus before committing to a countermeasure. Used in Step 5.",
+    "yokoten": "Share the countermeasure with other processes and locations that could apply it. Used in Step 8."
+  },
+  "odgGate": {
+    "atStep": 6,
+    "reviewers": "Eric / Allison (ODG)",
+    "rule": "Step 6 is an ODG gate — the countermeasure plan is submitted to ODG for review before implementation proceeds. Statuses: pending → submitted → approved / changes-requested."
+  },
+  "sopWriteBack": {
+    "atStep": 8,
+    "rule": "Step 8 writes the improvement back to the SOP library (Standard Work). SOPs are the INPUT to Steps 1–5 and the OUTPUT of Step 8 (Yokoten)."
+  },
   "steps": [
     {
       "n": 1,
       "pdca": "PLAN",
       "name": "Clarify the Problem",
-      "description": "What is unacceptable vs. current — the gap between standard and actual.",
+      "description": "Visualize current vs standard — the gap is the problem. Key words: REDUCE, IMPROVE, ENSURE.",
       "role": "main",
+      "aiPrefill": true,
       "fields": [
-        { "key": "ultimateGoal", "label": "Ultimate Goal", "hint": "The overarching outcome we are striving for." },
-        { "key": "standard", "label": "Standard", "hint": "What SHOULD be happening (the target / expected condition)." },
-        { "key": "current", "label": "Current Situation", "hint": "What IS happening right now (the observed condition)." },
-        { "key": "gap", "label": "Gap = Problem", "hint": "Standard minus Current — this is the problem statement." },
-        { "key": "chart", "label": "Chart", "hint": "Visual showing the gap over time (actual vs target)." }
+        { "key": "ultimateGoal", "label": "Ultimate Goal", "hint": "High-level KPI assurance statement to improve/reduce/ensure." },
+        { "key": "standard", "label": "Standard", "hint": "The current standard. If none exists, you must create one." },
+        { "key": "current", "label": "Current Situation", "hint": "What is actually happening right now." },
+        { "key": "gap", "label": "Gap = Problem", "hint": "The difference between current situation and standard — show it in a callout." },
+        { "key": "chart", "label": "Chart", "hint": "Visual of the gap over time (actual vs target)." }
       ]
     },
     {
       "n": 2,
       "pdca": "PLAN",
       "name": "Break Down the Problem",
-      "description": "What, where, when, who — narrow to the point of occurrence.",
+      "description": "Systematic breakdown large→small. Answer what/where/when/who (NOT why). Genchi Genbutsu to the point of occurrence.",
       "role": "sub",
+      "aiPrefill": true,
+      "method": "genchiGenbutsu",
       "fields": [
-        { "key": "prioritizedProblem", "label": "Prioritized Problem at point of occurrence", "hint": "The specific, localized sub-problem to solve (after stratification)." }
+        { "key": "stratification", "label": "Stratification (what / where / when / who)", "hint": "Break the gap into smaller problems by location, period, job type, product line, team." },
+        { "key": "prioritizedProblem", "label": "Prioritized Problem at point of occurrence", "hint": "Narrow to a single prioritized problem at the point where the gap originates." }
       ]
     },
     {
       "n": 3,
       "pdca": "PLAN",
-      "name": "Objective",
-      "description": "Do what, to what, by when — measurable.",
+      "name": "Target Setting (Objective)",
+      "description": "Set measurable, concrete, challenging targets. Key word: ELIMINATE the prioritized problem at point of occurrence.",
       "role": "sub",
+      "aiPrefill": true,
       "fields": [
-        { "key": "doWhat", "label": "Do What", "hint": "The action verb and subject." },
-        { "key": "toWhat", "label": "To What", "hint": "The specific KPI or metric being improved." },
-        { "key": "byWhen", "label": "By When", "hint": "Target date." },
-        { "key": "chart", "label": "Chart", "hint": "Target line on the KPI trend." }
+        { "key": "doWhat", "label": "Do What?", "hint": "The action verb and subject — ELIMINATE the prioritized problem." },
+        { "key": "toWhat", "label": "To What?", "hint": "The target value / condition." },
+        { "key": "byWhen", "label": "By When?", "hint": "Target date." },
+        { "key": "chart", "label": "Chart", "hint": "Elimination of prioritized problem relative to the big-problem gap." }
       ]
     },
     {
       "n": 4,
       "pdca": "PLAN",
-      "name": "Root Cause",
-      "description": "At point of occurrence, fact-based — keep asking why. Fishbone / 6M method.",
+      "name": "Root Cause Analysis",
+      "description": "At the point of occurrence, fact-based (no assumptions, no blaming). Keep asking Why until a single root cause. 6M fishbone.",
       "role": "sub",
+      "aiPrefill": true,
+      "highLeverage": true,
+      "method": "genchiGenbutsu",
+      "whyLadder": ["why1", "why2", "why3", "why4", "why5"],
       "fields": [
-        { "key": "why1", "label": "Why 1", "hint": "First why — directly observable." },
-        { "key": "why2", "label": "Why 2", "hint": "Why did Why 1 happen?" },
-        { "key": "why3", "label": "Why 3", "hint": "Why did Why 2 happen?" },
-        { "key": "why4", "label": "Why 4", "hint": "Why did Why 3 happen?" },
-        { "key": "why5", "label": "Why 5", "hint": "Why did Why 4 happen? (root cause level)" },
-        { "key": "fishbone6M", "label": "Fishbone / 6M Categories", "hint": "Classify root cause: Man · Method · Machine · Material · Environment → Root Cause" },
-        { "key": "rootCause", "label": "Root Cause", "hint": "The single systemic root cause confirmed by the 5-Whys and 6M." }
+        { "key": "why1", "label": "Why 1", "hint": "Directly observable symptom — what you can see happening.", "fishbone": "Man" },
+        { "key": "why2", "label": "Why 2", "hint": "Why did Why 1 occur?", "fishbone": "Method" },
+        { "key": "why3", "label": "Why 3", "hint": "Why did Why 2 occur?", "fishbone": "Machine" },
+        { "key": "why4", "label": "Why 4", "hint": "Why did Why 3 occur?", "fishbone": "Material" },
+        { "key": "why5", "label": "Why 5", "hint": "Why did Why 4 occur? (root-cause level)", "fishbone": "Environment" },
+        { "key": "rootCause", "label": "Root Cause (confirmed)", "hint": "The single systemic root cause supported by the 5-Whys and 6M." }
       ]
     },
     {
       "n": 5,
       "pdca": "PLAN",
-      "name": "Brainstorm Countermeasures",
-      "description": "List potential countermeasures to the root cause.",
+      "name": "Develop Countermeasures",
+      "description": "Brainstorm many; narrow to the most practical/effective (risk & difficulty). Build consensus (Nemawashi). Score each on the matrix.",
       "role": "sub",
+      "aiPrefill": true,
+      "method": "nemawashi",
+      "scoring": "scoringMatrix",
       "fields": [
-        { "key": "countermeasures", "label": "Countermeasure Candidates", "hint": "List all plausible countermeasures to the confirmed root cause. Prioritize next." }
+        {
+          "key": "countermeasures",
+          "label": "Countermeasure Scoring Matrix",
+          "hint": "One row per candidate; score Safety/Quality/Cost/Time/Customer/Effective 0–2, then set Overall priority.",
+          "columns": ["text", "S", "Q", "C", "T", "Cu", "Ef", "OA"]
+        }
       ]
     },
     {
       "n": 6,
       "pdca": "DO",
-      "name": "Implement Selected Countermeasure",
-      "description": "Quickly implement & measure. Action register with R-Y-G-C status.",
+      "name": "See Countermeasures Through (Implement)",
+      "description": "Implement countermeasures one by one. Submit the plan to the ODG gate before implementing. Track with R-Y-G-C.",
       "role": "activity",
+      "aiPrefill": true,
+      "odgGate": true,
       "fields": [
         {
           "key": "actionRegister",
           "label": "Action Register",
-          "hint": "One row per countermeasure: No. | Implementation Plan | Start Date | Due Date | Responsible | Status (R=Behind / Y=At Risk / G=On Track / C=Completed). Up to 10 rows.",
+          "hint": "No. | Implementation Plan | Start Date | Due Date | Responsible | Status (R=Behind / Y=At Risk / G=On Track / C=Completed). Up to 10 rows.",
           "columns": ["no", "plan", "startDate", "dueDate", "responsible", "status"],
           "statusEnum": ["R", "Y", "G", "C"],
           "statusLegend": { "R": "Behind", "Y": "At Risk", "G": "On Track", "C": "Completed" }
@@ -89,26 +143,31 @@
       "n": 7,
       "pdca": "CHECK",
       "name": "Monitor Results & Processes",
-      "description": "Evaluate overall result + the process.",
+      "description": "Evaluate result + process from three viewpoints (Customer / World Emblem / your own). If failure → return to Step 5.",
       "role": "results",
+      "aiPrefill": false,
       "fields": [
-        { "key": "measurementStart", "label": "Measurement — Start", "hint": "Baseline actual when problem was confirmed." },
-        { "key": "measurementEnd", "label": "Measurement — End", "hint": "Actual after implementing countermeasures." },
-        { "key": "newTarget", "label": "New Target", "hint": "Revised target if countermeasure redefined the baseline." },
         { "key": "kpi", "label": "KPI", "hint": "The KPI being tracked." },
-        { "key": "chart", "label": "Chart — Actual vs Target", "hint": "Visual of the KPI trajectory before and after implementation." }
+        { "key": "measurementStart", "label": "Measurement — Start (baseline)", "hint": "Baseline actual when problem was confirmed." },
+        { "key": "measurementEnd", "label": "Measurement — End (result)", "hint": "Actual after implementing countermeasures." },
+        { "key": "newTarget", "label": "New Target", "hint": "Revised target if the countermeasure redefined the baseline." },
+        { "key": "narrative", "label": "Result Narrative", "hint": "What happened, and why success/failure." },
+        { "key": "chart", "label": "Chart — Actual vs Target", "hint": "KPI trajectory before and after implementation." }
       ]
     },
     {
       "n": 8,
       "pdca": "ACT",
       "name": "Standardize Successful Process",
-      "description": "Standardize, Yokoten — lock in the improvement and share it.",
+      "description": "Standardize the new process and Yokoten it. SOPs are the OUTPUT of this step — write the improvement back to the SOP library.",
       "role": "results",
+      "aiPrefill": false,
+      "sopWriteBack": true,
+      "method": "yokoten",
       "fields": [
-        { "key": "processDocuments", "label": "Process Documents Created/Updated", "hint": "List every BWI/SWI or SOP that was created or updated as a result. Link to the WMS SW Update Request ticket." },
-        { "key": "training", "label": "Training on New Process(es)", "hint": "Who was trained, and when." },
-        { "key": "yokoten", "label": "Yokoten Plan", "hint": "How the improvement is communicated in-plant and to other plants (cross-pollination)." },
+        { "key": "processDocuments", "label": "Process Documents Created/Updated", "hint": "Every BWI/SWI/SOP created or updated. Link to the WMS SW Update Request ticket." },
+        { "key": "training", "label": "Training on New Process(es) — Who & When", "hint": "Who was trained and when (use the Training Log Sheet, RH-FR-6.2-001)." },
+        { "key": "yokoten", "label": "Yokoten Plan", "hint": "Communicate in-plant and to other plants/processes that could apply the countermeasure." },
         { "key": "improvementImage", "label": "Improvement Image or Chart", "hint": "Before/after visual confirming the process change." }
       ]
     }
