@@ -1,0 +1,185 @@
+# FMDS OS / ADS — Build Journal & Conversation Tracker
+
+> A meta-record of how this prototype was built across one long session: the arc of
+> the conversation, every resource and tool used, the strategies and techniques,
+> the decisions and pivots, the bugs we hit and fixed, and what we observed along
+> the way. Written so a future session (new terminal) can pick up with full context.
+>
+> **Product:** FMDS OS — rebranded **ADS (Agentic Data & Operations Platform)**. The
+> OF-003 client-facing prototype for **World Emblem**: the AI **management** layer
+> (L1/L2) beneath **Leadership OS** (the AI executive layer).
+> **Repo:** `/Users/tauseef/Documents/World-Emblem AI Strategy/fmds-os-prototype`
+> **Hosted link (durable):** https://claude.ai/code/artifact/9244eac0-c2ca-4283-8794-0c5bf6c2f84b
+> **Span:** 2026-06-30 → 2026-07-03. **Stack:** vanilla HTML + ES modules, no build
+> step, no runtime deps; Node built-in test runner; Python http.server for local dev.
+
+---
+
+## 1. How the conversation evolved (the arc)
+
+The prototype was not designed up front — it *converged* through ~10 waves of
+direction, each triggered by a new piece of real discovery or a product insight.
+
+| Wave | Trigger (user prompt, paraphrased) | What it produced |
+|------|-------------------------------------|------------------|
+| **0. Recon** | "Did we begin building any FMDS OS prototype?" | Found + retired an earlier throwaway (`prototype-fmds`). Fresh start. |
+| **1. Plan** | "Help me plan my new prototype… I wrote an order form for FMDS (ADS)… pull my Granola transcript with Thomas & Naveen… how it looks for sales/service/marketing/HR/ODG… Randy is my department… read my Notion 'World-Emblem Products'." | Brainstorm → **spec** → **plan**. All 9 depts, 8-step, L1/L2 tiering. |
+| **2. ROI reframe** | Naveen transcript: "use context from Naveen to improve the system… every dept a UI… enables 8-step… some depts L1+L2, some (marketing) L2 only… metric + context tracking per dept." | **ROI thesis = "removes the human poke-chain."** Metric + context per dept. |
+| **3. SOP / 8-step / training** | "Every team has SOPs & standard work… ops very detailed… T3 meeting w/ Randy+Jim… problem-solving at L2 not just L1… story behind an L3 reduction… templates per dept… linked standard work… agent supports human 60–80%… training tracked per human… Carlos ↔ revenue… every board interactive… deep discovery before implementation." | Linked SOP library, digital 8-step assistant, real KZ A3s, training model. |
+| **4. Build** | "Continue without the terminal… Background here… Proceed." | **Subagent-driven build** of all 9 boards + problem-solving + standard work + agent + sources. |
+| **5. Ship a link** | "Lock a hosted link and share it." (local servers kept dying) | **`bundle.py`** → CSP-safe self-contained Artifact. Durable URL minted. |
+| **6. UX/UI redesign** | "Design the UX/UI with our design system… interactive app for dept leaders… eliminate double entry… source→KPI mapping is the biggest artifact… L1 sees own targets/logs reasons… L2 sees who contributed & why… ops has physical boards… simple L2/L1 login." | **Operations console** redesign: login/role gate, dark command rail, IBM Plex, Overview vs KPI-Boards split. |
+| **7. Kill manual entry** | "The whole point is to eliminate manual entry — get data from source systems (WPS SQL + Business Central). Only safety incidents reported on HR. Keep NO manual entry." | Every KPI got a `targetSource`; Sources → **"Sourcing Plan."** Only ~10 safety items `manualOnly`. |
+| **8. Lean Product QA** | "[Lean Product Playbook] does our L1 experience match?… QA + improve… connect the KPI boards… click PPLH Mexico → metric below + agent explanation/dropdown… filter by location… each KPI has an explanation." | **`explainKpi`** (measures·source·why-now); click-in drill on every KPI. |
+| **9. DxD L1 drill + bug hunt** | "[2 DxD files] go into L1 KPIs for both teams & how they connect to systems… lead sees sub-KPIs, clicks into JC & his team… Team Noel merged but the database doesn't roll up right — spot it for me… design the Service L2/L1 board… a notes section where the agent writes what's driving the green." | Service **main→team→rep→sub-KPI** drill; **found the Team Noel roll-up bug**; queued the notes section. |
+| **10. Mark + comments** | "Reframe the AI assistant into **Mark** (AI employee) that opens on the side and reasons over KPIs **+ meeting transcripts** (T2/T3/huddles)… every KPI (red highlighted, green too) gets a **comment section**; on KPI boards a footer when off-track; AI **and** human leave comments; the agent reads them and rolls up 'being actioned' to leadership." | **Mark** reframe + **two-voice per-KPI comment threads** (this session's deliverable). |
+
+**Throughline:** the story moved from *reactive firefighting* (a red waits for a
+manager to notice and poke up the chain) → *predictive, closed-loop operations*
+(FMDS detects → explains the story → routes the 8-step → confirms → updates SOP →
+Mark tracks the action and rolls it up).
+
+---
+
+## 2. Resources used
+
+**Real discovery data (zero invented numbers — the hard rule):**
+- FMDS workbooks: `WE FMDS/`, `WE FMDS/FMDS New/`, `World Emblem Leadership OS (…)/`
+- Two **DxD (Day-by-Day)** files → Service/Sales L1 KPIs + the Team Noel bug
+- The **41 MB `sharepoint-map (1).html`** → linked Standard Work / SOP library
+- **Granola** transcripts: Thomas + Naveen call; the **T3** meeting (Randy, Jim, team)
+- **Notion** page: *World-Emblem Products* (order-form / product framing)
+- Prior artifacts: `WE-Vault/kpis/` cascade deep-dives, `FMDS_OS_Lean_Product_Playbook.md`
+
+**Tools & runtimes:**
+- File tools (Read/Write/Edit), Bash, `git`
+- **Node built-in test runner** (`node --test tests/*.mjs`) — 39 → 64 → **75 tests**
+- **Python `http.server`** (`serve.py`, `no-store`) for local dev on `:8770`
+- **Playwright MCP** — browser verification (login flow, screenshots, DOM asserts)
+- **openpyxl** (`data_only=False`) — pulled real Excel *formulas* for roll-up logic
+- **Anthropic Artifact publishing** — the durable hosted link
+- `scratchpad/bundle.py` — the module→IIFE bundler for the CSP-safe single file
+
+**MCP servers touched:** Granola, Notion, Playwright (Supabase/others available, unused here).
+
+**Skills invoked:** `brainstorming` → `writing-plans` → `subagent-driven-development`
+(implementer + reviewer per task), `frontend-design`, `artifact-design`,
+`finishing-a-development-branch`.
+
+---
+
+## 3. Strategies & techniques that worked
+
+1. **Zero-invented-data discipline.** Every number traces to a real workbook cell,
+   transcript line, or Power BI figure. Illustrative depts are explicitly badged.
+2. **Deep discovery before implementation.** Each wave produced markdown discovery
+   docs under `docs/superpowers/specs/discovery/` *before* any code.
+3. **TDD logic core + browser-verified views.** Pure logic (rollup, rag, registry,
+   explain, comments) is unit-tested; views are verified live in Playwright.
+4. **Subagent-driven development.** Fresh implementer per task, review between tasks,
+   controller keeps context clean. Used again this session for the Service L1 drill.
+5. **Multi-pass builds.** Big features split into serialized passes (Pass A = Service
+   drill + Noel flag; Pass B = Mark + comments) to avoid same-file conflicts.
+6. **Bundle-to-Artifact for a durable demo.** Local servers get culled at turn end,
+   so `bundle.py` concatenates ES modules into `window.__M` IIFEs, embeds JSON +
+   a `fetch` shim + a localStorage guard, and falls fonts back to a system stack
+   (Artifact CSP blocks the Plex webfont). Redeploy with the **same file path →
+   same URL**.
+7. **Design-system-first UI.** Dark graphite command rail + light canvas, IBM Plex
+   Sans/Mono, electric-blue accent `#2f6bff`, RAG reserved strictly for status.
+8. **Progressive IA.** Split **Overview** (red-green summary + agent "why") from
+   **KPI Boards** (level-by-level drill) once the board got dense.
+
+---
+
+## 4. Key decisions & pivots (with rationale)
+
+- **ROI = "removes the poke-chain"** (Naveen). The sellable story, not feature lists.
+- **L2 is the primary user;** L1 built only where real per-rep data exists (Sales,
+  Service, Operations-by-location); notes-only elsewhere.
+- **Problem-solving = their real 8-Step A3 = their Kaizen record** (each a `KZ-###`).
+  Triggered by a red **sub**-KPI; agent pre-drafts steps 1–6; Step 6 = ODG gate;
+  Step 8 = SOP write-back / Yokoten.
+- **Star demo beat = Operations Mexico OTP** (real 0.750; sample-surge inflated the
+  denominator; the $40K short-code standard-work breakage as the worked 8-step).
+- **ODG is the adoption meter** (FMDS 93.2% vs 8-Step 18.9%) — the product thesis.
+- **User correction — LSW is OUT of scope.** Leader Standard Work / cadence belongs
+  to Leadership OS, not FMDS OS. Standard Work view = **SOP library only** (commit 5ba05a7).
+- **User correction — NO manual entry.** I had recommended building a manual-entry
+  UI; corrected: source from **WPS (floor SQL/MES) + Business Central**; only ~10
+  safety-incident items are `manualOnly`.
+- **User correction — Mark, not "assistant."** The agent is a named **AI employee**
+  that reasons over KPIs **and** the meeting record (T2/T3/huddles) and tracks the
+  actions coming out of them.
+
+---
+
+## 5. Bug / fix log
+
+| Bug | Fix |
+|-----|-----|
+| Stale views in Playwright (module caching) | `serve.py` `no-store` header + verify on fresh ports; hash-only nav doesn't reload — use `about:blank` bounce / new port |
+| Operations OTP modeled wrong (cleanup set actual to Mexico's) | Mechanism B: parent OTP actual = 0.863 (WE main), Mexico series on `otp_mexico` |
+| Logistics wrongly used the Operations location board | Gated location board to `dept.id==='operations'` |
+| HR TRIR 1.2 rendered as "120%" | `formatVal` keys off `unit`, not magnitude |
+| Floor reasons didn't surface at L2 | `seedDemoReasons()` auto-runs on browser import |
+| `target=0` safety KPI showed red at 0 incidents | Special-case `target=0` in `ragStatus` |
+| Playwright `select_option` failed on HTML-markup options | Plain-text option labels |
+| Local dev servers culled at turn end (recurring) | Pivot to the hosted Artifact bundle as the demo surface |
+| **Team Noel roll-up bug (found *in the client's data*)** | Reported, not "fixed" — `Data Base!BQ` empty → main = Team JC only ($16.10M) vs true $29.83M; surfaced in-product as a data-quality flag + Mark note. Fix for **Ricardo**: populate `Data Base!BP/BQ` rows 11–79. |
+
+---
+
+## 6. Observations & lessons
+
+- **The product designed itself through discovery.** Each real artifact (transcript,
+  workbook, DxD, SharePoint map) reshaped the IA. Front-loading discovery paid off.
+- **User corrections were the highest-leverage inputs.** Three ("LSW out," "no manual
+  entry," "make it Mark") each redirected significant scope — cheaper to absorb early.
+- **The hosted bundle is the only durable demo.** Anything served locally dies at the
+  end of a turn; always rebuild + redeploy after a change you want the client to see.
+- **Keep two records:** the **memory file** (state to resume) and **this journal**
+  (how we got here). They serve different future questions.
+- **Next frontier = Mark reading meetings.** The comment threads are wired; the real
+  agent step is ingesting T2/T3/huddle transcripts so Mark reports context and tracks
+  the actions against KPIs. That's the path from framing → working agent.
+
+---
+
+## 7. Resume checklist (new terminal)
+
+```bash
+cd "/Users/tauseef/Documents/World-Emblem AI Strategy/fmds-os-prototype"
+python3 serve.py                 # local dev on http://localhost:8770  (hardcodes 8770)
+node --test tests/*.test.mjs     # 75/75 expected
+
+# Rebuild the hosted bundle after any change:
+python3 "<scratchpad>/bundle.py"           # → dist-artifact.html + .bundle-check.js
+node --check .bundle-check.js               # syntax gate
+#   then rebuild wrappers dist-test.html + FMDS-OS-World-Emblem.html (see below),
+#   then re-publish FMDS-OS-World-Emblem.html to the SAME artifact URL.
+```
+
+- `bundle.py` currently lives in the session scratchpad — **consider moving it into
+  the repo** (`scripts/bundle.py`) so it survives across sessions.
+- Wrapper build: `dist-test.html` = full-page wrapper of the fragment (local verify);
+  `FMDS-OS-World-Emblem.html` = `<title>`+`<meta>` prepended (the Artifact publish file).
+- **Checkpoint tags:** `v3-r1-console`, `v3-r4-console`. Latest commit: Mark + comments.
+- **Hosted link:** https://claude.ai/code/artifact/9244eac0-c2ca-4283-8794-0c5bf6c2f84b
+
+### Open threads / next steps
+1. **Feed Mark the meetings** — T2/T3/huddle transcripts across depts → Mark reports
+   context + tracks actions against KPIs + compiles "being actioned" for the roll-up.
+2. **Activity / training-tracking layer** — per-person 8-step volume, targets, SOP
+   updates; L1 clear, L2 by KPI-ownership (Marketing PC/CM model) + IDMP roles;
+   Training Log = RH-FR-6.2-001.
+3. **Replicate Overview + KPI-Boards drill** to the remaining departments (pattern
+   proven on Operations + Service).
+4. **Finalize WPS→KPI mapping** once the WPS schema is available.
+5. **Order form** — `Product Blueprint/FMDS-OS-Order-Form-v3.md` (Sales/Service first).
+
+---
+
+*See also:* `docs/superpowers/specs/` (spec + discovery), `docs/superpowers/plans/`
+(implementation plan), `FMDS_OS_Lean_Product_Playbook.md` (canonical strategy),
+and the memory file `fmds-os-ads-prototype.md` (v1–v7 state to resume).
