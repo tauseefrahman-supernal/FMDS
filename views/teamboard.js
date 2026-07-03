@@ -232,6 +232,34 @@ function renderMainRow(kpi, dept, expanded) {
     </tr>`;
 }
 
+// ─── Marketing two-owner L2 group header ─────────────────────────────────────
+// Renders a full-width sub-board divider row showing the board name + owner badge.
+// Only called when dept.id === 'marketing' and we detect a boardId boundary.
+
+function renderOwnerGroupHeader(boardId, dept) {
+  if (!dept.l2Boards) return '';
+  const board = dept.l2Boards.find(b => b.boardId === boardId);
+  if (!board) return '';
+
+  const ownerColor = board.ownerCode === 'PC'
+    ? 'background:#ede9fe;color:#4c1d95;border:1px solid #c4b5fd'
+    : 'background:#dbeafe;color:#1e40af;border:1px solid #93c5fd';
+
+  return `
+    <tr class="owner-group-header">
+      <td colspan="6" style="padding:10px 16px 6px;border-top:2px solid var(--slate-200)">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <span style="font-weight:700;font-size:0.85rem;color:var(--slate-900)">${board.domain || boardId}</span>
+          <span style="font-size:0.72rem;padding:2px 8px;border-radius:999px;font-weight:700;${ownerColor}">
+            Owner: ${board.ownerName || board.ownerCode}
+          </span>
+          <span style="font-size:0.68rem;color:var(--slate-500)">${board.file || ''}</span>
+          <span style="font-size:0.68rem;color:var(--slate-400);margin-left:auto">${board.actualsStatus || ''}</span>
+        </div>
+      </td>
+    </tr>`;
+}
+
 // ─── Full table render ────────────────────────────────────────────────────────
 function buildTableHTML(dept, filterText, expandedIds) {
   const mainKpis = mains(dept).filter(k =>
@@ -241,6 +269,43 @@ function buildTableHTML(dept, filterText, expandedIds) {
   if (!mainKpis.length) {
     return `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--slate-500)">
       No KPIs match "${filterText}"</td></tr>`;
+  }
+
+  // For Marketing: group mains by boardId to surface the two-owner structure
+  const isMarketing = dept.id === 'marketing' && Array.isArray(dept.l2Boards);
+
+  if (isMarketing) {
+    // Build ordered list of boardIds from l2Boards definition order
+    const boardOrder = dept.l2Boards.map(b => b.boardId);
+    // Group mains by boardId; preserve KPIs with no boardId in a fallback group
+    const groups = new Map();
+    boardOrder.forEach(bid => groups.set(bid, []));
+    mainKpis.forEach(kpi => {
+      const bid = kpi.boardId || '_ungrouped';
+      if (!groups.has(bid)) groups.set(bid, []);
+      groups.get(bid).push(kpi);
+    });
+
+    let html = '';
+    for (const [boardId, kpis] of groups) {
+      if (!kpis.length) continue;
+      html += renderOwnerGroupHeader(boardId, dept);
+      html += kpis.map(kpi => {
+        const isExpanded = expandedIds.has(kpi.id);
+        const mainHtml   = renderMainRow(kpi, dept, isExpanded);
+        let contribHtml = '';
+        let whyHtml     = '';
+        if (isExpanded && kpi.contributors && kpi.contributors.length) {
+          const contribs = contributorsOf(dept, kpi.id);
+          contribHtml = contribs.map(c => renderContributorRow(c, dept)).join('');
+          const act = displayActual(kpi);
+          const rag = ragStatus(act, kpi.target, kpi.direction || 'higher_better');
+          whyHtml = renderWhyPanel(kpi, dept, contribs, rag);
+        }
+        return mainHtml + contribHtml + whyHtml;
+      }).join('');
+    }
+    return html;
   }
 
   return mainKpis.map(kpi => {
@@ -308,11 +373,23 @@ export function renderTeamBoard(dept, mount) {
        </div>`
     : '';
 
-  // Marketing Hermes agent note
+  // Marketing Hermes agent note + two-owner callout
   const hermesNote = dept.id === 'marketing'
-    ? `<div class="agent-note" style="margin-bottom:12px">
+    ? `<div class="agent-note" style="margin-bottom:8px">
          <span class="badge" style="background:var(--accent-light);color:var(--accent);margin-right:6px">Agent Layer</span>
          Carlos's <strong>Hermes agent</strong> can wrap this board — the agent integration layer is intentionally left open for Hermes to connect as the Marketing automation layer.
+       </div>
+       <div style="margin-bottom:14px;padding:10px 14px;border-radius:var(--radius);
+            background:#f0fdf4;border:1px solid #86efac;font-size:0.8rem;line-height:1.6">
+         <strong style="color:#166534">Two-owner L2 model:</strong>
+         Marketing is the only FMDS department with two distinct L2 owners operating in separate boards.
+         <span style="display:inline-flex;align-items:center;gap:4px;margin:0 4px;padding:1px 7px;border-radius:999px;
+              background:#ede9fe;color:#4c1d95;font-weight:700;font-size:0.72rem">PC</span>
+         owns <em>Branding &amp; Creative</em> (search visibility, social, PR, agency accountability).
+         <span style="display:inline-flex;align-items:center;gap:4px;margin:0 4px;padding:1px 7px;border-radius:999px;
+              background:#dbeafe;color:#1e40af;font-weight:700;font-size:0.72rem">Carlos Mitchell</span>
+         owns <em>Ecomm &amp; Performance Marketing</em> (ecomm revenue, paid channels, demand gen / leads pipeline).
+         KPIs below are grouped by board with the owner identified.
        </div>`
     : '';
 
