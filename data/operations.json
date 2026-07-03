@@ -27,6 +27,7 @@
       "actual": 0.863,
       "unit": "ratio",
       "direction": "higher_better",
+      "targetSource": "WPS",
       "source": "COO Board / hand-keyed weekly literals",
       "rollupMethod": "independent",
       "contributors": [
@@ -152,7 +153,7 @@
       "series": [
         0.948,
         0.943,
-        0.970,
+        0.97,
         0.985,
         0.995,
         0.987,
@@ -173,9 +174,10 @@
       "parentId": "otp",
       "location": "mexico",
       "target": 0.985,
-      "actual": 0.750,
+      "actual": 0.75,
       "unit": "ratio",
       "direction": "higher_better",
+      "targetSource": "WPS",
       "source": "COO Board / hand-keyed",
       "rollupMethod": null,
       "contributors": [],
@@ -203,6 +205,7 @@
       "actual": 0.957,
       "unit": "ratio",
       "direction": "higher_better",
+      "targetSource": "WPS",
       "source": "COO Board / hand-keyed",
       "rollupMethod": null,
       "contributors": [],
@@ -230,6 +233,7 @@
       "actual": 0.996,
       "unit": "ratio",
       "direction": "higher_better",
+      "targetSource": "WPS",
       "source": "COO Board / hand-keyed",
       "rollupMethod": null,
       "contributors": [],
@@ -257,6 +261,7 @@
       "actual": 0.933,
       "unit": "ratio",
       "direction": "higher_better",
+      "targetSource": "WPS",
       "source": "COO Board / hand-keyed",
       "rollupMethod": null,
       "contributors": [],
@@ -286,6 +291,7 @@
       "nodataNote": "DR placeholder columns exist but are entirely empty — no data.",
       "unit": "ratio",
       "direction": "higher_better",
+      "targetSource": "WPS",
       "source": "COO Board",
       "rollupMethod": null,
       "contributors": [],
@@ -302,6 +308,7 @@
       "actual": 73.41,
       "unit": "pcs/hr",
       "direction": "higher_better",
+      "targetSource": "WPS",
       "source": "COO Board / hand-keyed",
       "rollupMethod": "independent",
       "contributors": [
@@ -346,6 +353,7 @@
       "actual": 56.23,
       "unit": "pcs/hr",
       "direction": "higher_better",
+      "targetSource": "WPS",
       "source": "COO Board / hand-keyed",
       "rollupMethod": null,
       "contributors": [],
@@ -374,6 +382,7 @@
       "actual": 99.5,
       "unit": "pcs/hr",
       "direction": "higher_better",
+      "targetSource": "WPS",
       "source": "COO Board / hand-keyed",
       "rollupMethod": null,
       "contributors": [],
@@ -402,6 +411,7 @@
       "actual": 63.65,
       "unit": "pcs/hr",
       "direction": "higher_better",
+      "targetSource": "WPS",
       "source": "COO Board / hand-keyed",
       "rollupMethod": null,
       "contributors": [],
@@ -430,6 +440,7 @@
       "actual": 109.47,
       "unit": "pcs/hr",
       "direction": "higher_better",
+      "targetSource": "WPS",
       "source": "COO Board / hand-keyed",
       "rollupMethod": null,
       "contributors": [],
@@ -460,6 +471,7 @@
       "nodataNote": "DR placeholder — no data.",
       "unit": "pcs/hr",
       "direction": "higher_better",
+      "targetSource": "WPS",
       "source": "COO Board",
       "rollupMethod": null,
       "contributors": [],
@@ -479,6 +491,7 @@
       "nodataNote": "No PPLH column for HPI on the COO board. HPI appears only in Purchasing/Logistic sub-KPIs.",
       "unit": "pcs/hr",
       "direction": "higher_better",
+      "targetSource": "WPS",
       "source": null,
       "rollupMethod": null,
       "contributors": [],
@@ -495,6 +508,7 @@
       "actual": 0.126,
       "unit": "ratio",
       "direction": "lower_better",
+      "targetSource": "Business Central",
       "source": "COO Board / cached from Mfg Gross Margin [4]",
       "rollupMethod": "independent",
       "contributors": [
@@ -532,6 +546,7 @@
       "actual": 0.114,
       "unit": "ratio",
       "direction": "lower_better",
+      "targetSource": "Business Central",
       "source": "COO Board / literal",
       "rollupMethod": null,
       "contributors": [],
@@ -551,6 +566,7 @@
       "actual": 0.093,
       "unit": "ratio",
       "direction": "lower_better",
+      "targetSource": "Business Central",
       "source": "COO Board / literal",
       "rollupMethod": null,
       "contributors": [],
@@ -570,6 +586,7 @@
       "actual": 0.052,
       "unit": "ratio",
       "direction": "lower_better",
+      "targetSource": "Business Central",
       "source": "COO Board / literal",
       "rollupMethod": null,
       "contributors": [],
@@ -589,6 +606,7 @@
       "actual": 0.073,
       "unit": "ratio",
       "direction": "lower_better",
+      "targetSource": "Business Central",
       "source": "COO Board / literal",
       "rollupMethod": null,
       "contributors": [],
@@ -610,6 +628,7 @@
       "nodataNote": "DR placeholder — no data.",
       "unit": "ratio",
       "direction": "lower_better",
+      "targetSource": "Business Central",
       "source": "COO Board",
       "rollupMethod": null,
       "contributors": [],
@@ -626,16 +645,31 @@
     "WE-main roll-up rule: Mechanism B — main is entered, not computed from location subs. Simple vs. weighted average unknown; confirm with Jim Kozel.",
     "R/A/G thresholds: status is manual in the sheet; prototype derives from explicit rule vs target."
   ],
-
   "locationBoards": {
     "_note": "Per-location FMDS boards from source Excel files. Units and target types differ per location — do NOT compare PPLH or External Remakes across locations without normalizing. Actuals from Data Base sheet, data_only=True, zero invented numbers.",
     "_currentMonth": 7,
-
     "mexico": {
       "label": "Mexico",
       "kpiCount": 103,
       "buildings": 4,
-      "productionLines": ["Embroidery Emblems", "Perfect Print", "Print Stitch", "Embroidery ASI", "Chenille", "Woven", "Flexstyle", "Leather", "PV+", "Supply Chain Blanks", "Supply Chain Clean Cut", "Warehouse", "Art", "Digitizing", "Samples", "Maintenance"],
+      "productionLines": [
+        "Embroidery Emblems",
+        "Perfect Print",
+        "Print Stitch",
+        "Embroidery ASI",
+        "Chenille",
+        "Woven",
+        "Flexstyle",
+        "Leather",
+        "PV+",
+        "Supply Chain Blanks",
+        "Supply Chain Clean Cut",
+        "Warehouse",
+        "Art",
+        "Digitizing",
+        "Samples",
+        "Maintenance"
+      ],
       "actualsNote": "OTP + PPLH Jan–Sep populated. External Remakes: target set (count), actuals not entered in Data Base. Safety: all zeros (no incidents). Confirm April OTP context before surfacing (see flag).",
       "operatorLayerNote": "Data Base sheet rows 11–22 (monthly) + rows 25–52+ (weekly). OTP main at col 104 (manual); 18 OTP sub-line actual cols (C110–C144 even) all blank. PPLH main at col 154 (manual); 15 PPLH sub-line actual cols blank. Main values are hand-keyed re-keys — no in-sheet formula aggregates sub-lines to main.",
       "kpis": [
@@ -649,7 +683,19 @@
           "unit": "count",
           "targetType": "count",
           "direction": "lower_better",
-          "monthlyActuals": { "JAN": 0, "FEB": 0, "MAR": 0, "APR": 0, "MAY": 0, "JUN": 0, "JUL": 0, "AUG": 0, "SEP": 0 },
+          "targetSource": "Manual — reported",
+          "manualOnly": true,
+          "monthlyActuals": {
+            "JAN": 0,
+            "FEB": 0,
+            "MAR": 0,
+            "APR": 0,
+            "MAY": 0,
+            "JUN": 0,
+            "JUL": 0,
+            "AUG": 0,
+            "SEP": 0
+          },
           "flag": null
         },
         {
@@ -662,7 +708,19 @@
           "unit": "count",
           "targetType": "count",
           "direction": "lower_better",
-          "monthlyActuals": { "JAN": 0, "FEB": 0, "MAR": 0, "APR": 0, "MAY": 0, "JUN": 0, "JUL": 0, "AUG": 0, "SEP": 0 },
+          "targetSource": "Manual — reported",
+          "manualOnly": true,
+          "monthlyActuals": {
+            "JAN": 0,
+            "FEB": 0,
+            "MAR": 0,
+            "APR": 0,
+            "MAY": 0,
+            "JUN": 0,
+            "JUL": 0,
+            "AUG": 0,
+            "SEP": 0
+          },
           "flag": null
         },
         {
@@ -675,6 +733,7 @@
           "unit": "count",
           "targetType": "count",
           "direction": "lower_better",
+          "targetSource": "WPS",
           "nodata": true,
           "nodataNote": "Target = 13,800 count. Actuals not entered in Data Base — likely tracked only in DASHBOARD sheet or separate system.",
           "flag": "actuals_missing"
@@ -689,23 +748,80 @@
           "unit": "count",
           "targetType": "count",
           "direction": "lower_better",
+          "targetSource": "WPS",
           "nodata": true,
           "nodataNote": "Per-line targets and actuals not entered in Data Base at main level.",
           "subLines": [
-            { "line": "Embroidery Emblems", "target": null, "actual": null },
-            { "line": "Perfect Print", "target": null, "actual": null },
-            { "line": "Print Stitch", "target": null, "actual": null },
-            { "line": "Embroidery ASI", "target": null, "actual": null },
-            { "line": "Chenille", "target": null, "actual": null },
-            { "line": "Woven", "target": null, "actual": null },
-            { "line": "Flexstyle", "target": null, "actual": null },
-            { "line": "Leather", "target": null, "actual": null },
-            { "line": "PV+", "target": null, "actual": null },
-            { "line": "Supply Chain", "target": null, "actual": null },
-            { "line": "Warehouse", "target": null, "actual": null },
-            { "line": "Art", "target": null, "actual": null },
-            { "line": "Digitizing", "target": null, "actual": null },
-            { "line": "Samples", "target": null, "actual": null }
+            {
+              "line": "Embroidery Emblems",
+              "target": null,
+              "actual": null
+            },
+            {
+              "line": "Perfect Print",
+              "target": null,
+              "actual": null
+            },
+            {
+              "line": "Print Stitch",
+              "target": null,
+              "actual": null
+            },
+            {
+              "line": "Embroidery ASI",
+              "target": null,
+              "actual": null
+            },
+            {
+              "line": "Chenille",
+              "target": null,
+              "actual": null
+            },
+            {
+              "line": "Woven",
+              "target": null,
+              "actual": null
+            },
+            {
+              "line": "Flexstyle",
+              "target": null,
+              "actual": null
+            },
+            {
+              "line": "Leather",
+              "target": null,
+              "actual": null
+            },
+            {
+              "line": "PV+",
+              "target": null,
+              "actual": null
+            },
+            {
+              "line": "Supply Chain",
+              "target": null,
+              "actual": null
+            },
+            {
+              "line": "Warehouse",
+              "target": null,
+              "actual": null
+            },
+            {
+              "line": "Art",
+              "target": null,
+              "actual": null
+            },
+            {
+              "line": "Digitizing",
+              "target": null,
+              "actual": null
+            },
+            {
+              "line": "Samples",
+              "target": null,
+              "actual": null
+            }
           ]
         },
         {
@@ -718,12 +834,29 @@
           "unit": "PM tasks/month",
           "targetType": "count",
           "direction": "higher_better",
+          "targetSource": "WPS",
           "mexicoOnly": true,
           "byBuilding": [
-            { "building": 1, "target": 140, "actual": null },
-            { "building": 2, "target": 280, "actual": null },
-            { "building": 3, "target": 860, "actual": null },
-            { "building": 4, "target": 900, "actual": null }
+            {
+              "building": 1,
+              "target": 140,
+              "actual": null
+            },
+            {
+              "building": 2,
+              "target": 280,
+              "actual": null
+            },
+            {
+              "building": 3,
+              "target": 860,
+              "actual": null
+            },
+            {
+              "building": 4,
+              "target": 900,
+              "actual": null
+            }
           ],
           "nodataNote": "Targets set by building. Actuals not entered in Data Base."
         },
@@ -737,11 +870,18 @@
           "unit": "ratio",
           "targetType": "rate",
           "direction": "higher_better",
+          "targetSource": "WPS",
           "latestMonth": "JUL",
           "monthlyActuals": {
-            "JAN": 0.9552, "FEB": 0.9701, "MAR": 0.9229,
-            "APR": 0.7894, "MAY": 0.9308, "JUN": 0.9680,
-            "JUL": 0.9562, "AUG": 0.9554, "SEP": 0.9234
+            "JAN": 0.9552,
+            "FEB": 0.9701,
+            "MAR": 0.9229,
+            "APR": 0.7894,
+            "MAY": 0.9308,
+            "JUN": 0.968,
+            "JUL": 0.9562,
+            "AUG": 0.9554,
+            "SEP": 0.9234
           },
           "flag": "confirm_context",
           "flagDetail": "April OTP = 78.9% vs 98.5% target — severe miss. Confirm context before surfacing in exec readout (equipment failure, staffing, or supply chain event unknown at time of export).",
@@ -752,44 +892,350 @@
             "note": "Main OTP (Data Base col C104) is a hand-keyed monthly literal. Sub-line actual columns (C110–C144 even) exist but are all blank — sub-lines do NOT feed the main via any in-sheet formula."
           },
           "contributions": [
-            { "label": "Embroidery Emblems", "value": null, "unit": "ratio", "entryType": "manual", "formula": null, "owner": null, "rollsUpTo": "mx_delivery_otp", "dataBaseCol": "C110", "targetCol": "C109", "target": 0.985, "nodata": true },
-            { "label": "Perfect Print", "value": null, "unit": "ratio", "entryType": "manual", "formula": null, "owner": null, "rollsUpTo": "mx_delivery_otp", "dataBaseCol": "C112", "targetCol": "C111", "target": 0.985, "nodata": true },
-            { "label": "Print Stitch", "value": null, "unit": "ratio", "entryType": "manual", "formula": null, "owner": null, "rollsUpTo": "mx_delivery_otp", "dataBaseCol": "C114", "targetCol": "C113", "target": 0.985, "nodata": true },
-            { "label": "Embroidery ASI", "value": null, "unit": "ratio", "entryType": "manual", "formula": null, "owner": null, "rollsUpTo": "mx_delivery_otp", "dataBaseCol": "C116", "targetCol": "C115", "target": 0.985, "nodata": true },
-            { "label": "Chenille", "value": null, "unit": "ratio", "entryType": "manual", "formula": null, "owner": null, "rollsUpTo": "mx_delivery_otp", "dataBaseCol": "C118", "targetCol": "C117", "target": 0.985, "nodata": true },
-            { "label": "Woven", "value": null, "unit": "ratio", "entryType": "manual", "formula": null, "owner": null, "rollsUpTo": "mx_delivery_otp", "dataBaseCol": "C120", "targetCol": "C119", "target": 0.985, "nodata": true },
-            { "label": "Flexstyle", "value": null, "unit": "ratio", "entryType": "manual", "formula": null, "owner": null, "rollsUpTo": "mx_delivery_otp", "dataBaseCol": "C122", "targetCol": "C121", "target": 0.985, "nodata": true },
-            { "label": "Leather", "value": null, "unit": "ratio", "entryType": "manual", "formula": null, "owner": null, "rollsUpTo": "mx_delivery_otp", "dataBaseCol": "C124", "targetCol": "C123", "target": 0.985, "nodata": true },
-            { "label": "PV+", "value": null, "unit": "ratio", "entryType": "manual", "formula": null, "owner": null, "rollsUpTo": "mx_delivery_otp", "dataBaseCol": "C126", "targetCol": "C125", "target": 0.985, "nodata": true },
-            { "label": "Supply Chain Blanks", "value": null, "unit": "ratio", "entryType": "manual", "formula": null, "owner": null, "rollsUpTo": "mx_delivery_otp", "dataBaseCol": "C128", "targetCol": "C127", "target": 0.985, "nodata": true },
-            { "label": "Supply Chain Clean Cut", "value": null, "unit": "ratio", "entryType": "manual", "formula": null, "owner": null, "rollsUpTo": "mx_delivery_otp", "dataBaseCol": "C130", "targetCol": "C129", "target": 0.985, "nodata": true },
-            { "label": "Blanks", "value": null, "unit": "ratio", "entryType": "manual", "formula": null, "owner": null, "rollsUpTo": "mx_delivery_otp", "dataBaseCol": "C132", "targetCol": "C131", "target": 0.985, "nodata": true },
-            { "label": "Raw", "value": null, "unit": "ratio", "entryType": "manual", "formula": null, "owner": null, "rollsUpTo": "mx_delivery_otp", "dataBaseCol": "C134", "targetCol": "C133", "target": 0.985, "nodata": true },
-            { "label": "Resale", "value": null, "unit": "ratio", "entryType": "manual", "formula": null, "owner": null, "rollsUpTo": "mx_delivery_otp", "dataBaseCol": "C136", "targetCol": "C135", "target": 0.985, "nodata": true },
-            { "label": "RSL Goods", "value": null, "unit": "ratio", "entryType": "manual", "formula": null, "owner": null, "rollsUpTo": "mx_delivery_otp", "dataBaseCol": "C138", "targetCol": "C137", "target": 0.985, "nodata": true },
-            { "label": "Art", "value": null, "unit": "ratio", "entryType": "manual", "formula": null, "owner": null, "rollsUpTo": "mx_delivery_otp", "dataBaseCol": "C140", "targetCol": "C139", "target": 0.985, "nodata": true },
-            { "label": "Digitizing", "value": null, "unit": "ratio", "entryType": "manual", "formula": null, "owner": null, "rollsUpTo": "mx_delivery_otp", "dataBaseCol": "C142", "targetCol": "C141", "target": 0.985, "nodata": true },
-            { "label": "Samples", "value": null, "unit": "ratio", "entryType": "manual", "formula": null, "owner": null, "rollsUpTo": "mx_delivery_otp", "dataBaseCol": "C144", "targetCol": "C143", "target": 0.985, "nodata": true }
+            {
+              "label": "Embroidery Emblems",
+              "value": null,
+              "unit": "ratio",
+              "entryType": "manual",
+              "targetSource": "WPS",
+              "formula": null,
+              "owner": null,
+              "rollsUpTo": "mx_delivery_otp",
+              "dataBaseCol": "C110",
+              "targetCol": "C109",
+              "target": 0.985,
+              "nodata": true
+            },
+            {
+              "label": "Perfect Print",
+              "value": null,
+              "unit": "ratio",
+              "entryType": "manual",
+              "targetSource": "WPS",
+              "formula": null,
+              "owner": null,
+              "rollsUpTo": "mx_delivery_otp",
+              "dataBaseCol": "C112",
+              "targetCol": "C111",
+              "target": 0.985,
+              "nodata": true
+            },
+            {
+              "label": "Print Stitch",
+              "value": null,
+              "unit": "ratio",
+              "entryType": "manual",
+              "targetSource": "WPS",
+              "formula": null,
+              "owner": null,
+              "rollsUpTo": "mx_delivery_otp",
+              "dataBaseCol": "C114",
+              "targetCol": "C113",
+              "target": 0.985,
+              "nodata": true
+            },
+            {
+              "label": "Embroidery ASI",
+              "value": null,
+              "unit": "ratio",
+              "entryType": "manual",
+              "targetSource": "WPS",
+              "formula": null,
+              "owner": null,
+              "rollsUpTo": "mx_delivery_otp",
+              "dataBaseCol": "C116",
+              "targetCol": "C115",
+              "target": 0.985,
+              "nodata": true
+            },
+            {
+              "label": "Chenille",
+              "value": null,
+              "unit": "ratio",
+              "entryType": "manual",
+              "targetSource": "WPS",
+              "formula": null,
+              "owner": null,
+              "rollsUpTo": "mx_delivery_otp",
+              "dataBaseCol": "C118",
+              "targetCol": "C117",
+              "target": 0.985,
+              "nodata": true
+            },
+            {
+              "label": "Woven",
+              "value": null,
+              "unit": "ratio",
+              "entryType": "manual",
+              "targetSource": "WPS",
+              "formula": null,
+              "owner": null,
+              "rollsUpTo": "mx_delivery_otp",
+              "dataBaseCol": "C120",
+              "targetCol": "C119",
+              "target": 0.985,
+              "nodata": true
+            },
+            {
+              "label": "Flexstyle",
+              "value": null,
+              "unit": "ratio",
+              "entryType": "manual",
+              "targetSource": "WPS",
+              "formula": null,
+              "owner": null,
+              "rollsUpTo": "mx_delivery_otp",
+              "dataBaseCol": "C122",
+              "targetCol": "C121",
+              "target": 0.985,
+              "nodata": true
+            },
+            {
+              "label": "Leather",
+              "value": null,
+              "unit": "ratio",
+              "entryType": "manual",
+              "targetSource": "WPS",
+              "formula": null,
+              "owner": null,
+              "rollsUpTo": "mx_delivery_otp",
+              "dataBaseCol": "C124",
+              "targetCol": "C123",
+              "target": 0.985,
+              "nodata": true
+            },
+            {
+              "label": "PV+",
+              "value": null,
+              "unit": "ratio",
+              "entryType": "manual",
+              "targetSource": "WPS",
+              "formula": null,
+              "owner": null,
+              "rollsUpTo": "mx_delivery_otp",
+              "dataBaseCol": "C126",
+              "targetCol": "C125",
+              "target": 0.985,
+              "nodata": true
+            },
+            {
+              "label": "Supply Chain Blanks",
+              "value": null,
+              "unit": "ratio",
+              "entryType": "manual",
+              "targetSource": "WPS",
+              "formula": null,
+              "owner": null,
+              "rollsUpTo": "mx_delivery_otp",
+              "dataBaseCol": "C128",
+              "targetCol": "C127",
+              "target": 0.985,
+              "nodata": true
+            },
+            {
+              "label": "Supply Chain Clean Cut",
+              "value": null,
+              "unit": "ratio",
+              "entryType": "manual",
+              "targetSource": "WPS",
+              "formula": null,
+              "owner": null,
+              "rollsUpTo": "mx_delivery_otp",
+              "dataBaseCol": "C130",
+              "targetCol": "C129",
+              "target": 0.985,
+              "nodata": true
+            },
+            {
+              "label": "Blanks",
+              "value": null,
+              "unit": "ratio",
+              "entryType": "manual",
+              "targetSource": "WPS",
+              "formula": null,
+              "owner": null,
+              "rollsUpTo": "mx_delivery_otp",
+              "dataBaseCol": "C132",
+              "targetCol": "C131",
+              "target": 0.985,
+              "nodata": true
+            },
+            {
+              "label": "Raw",
+              "value": null,
+              "unit": "ratio",
+              "entryType": "manual",
+              "targetSource": "WPS",
+              "formula": null,
+              "owner": null,
+              "rollsUpTo": "mx_delivery_otp",
+              "dataBaseCol": "C134",
+              "targetCol": "C133",
+              "target": 0.985,
+              "nodata": true
+            },
+            {
+              "label": "Resale",
+              "value": null,
+              "unit": "ratio",
+              "entryType": "manual",
+              "targetSource": "WPS",
+              "formula": null,
+              "owner": null,
+              "rollsUpTo": "mx_delivery_otp",
+              "dataBaseCol": "C136",
+              "targetCol": "C135",
+              "target": 0.985,
+              "nodata": true
+            },
+            {
+              "label": "RSL Goods",
+              "value": null,
+              "unit": "ratio",
+              "entryType": "manual",
+              "targetSource": "WPS",
+              "formula": null,
+              "owner": null,
+              "rollsUpTo": "mx_delivery_otp",
+              "dataBaseCol": "C138",
+              "targetCol": "C137",
+              "target": 0.985,
+              "nodata": true
+            },
+            {
+              "label": "Art",
+              "value": null,
+              "unit": "ratio",
+              "entryType": "manual",
+              "targetSource": "WPS",
+              "formula": null,
+              "owner": null,
+              "rollsUpTo": "mx_delivery_otp",
+              "dataBaseCol": "C140",
+              "targetCol": "C139",
+              "target": 0.985,
+              "nodata": true
+            },
+            {
+              "label": "Digitizing",
+              "value": null,
+              "unit": "ratio",
+              "entryType": "manual",
+              "targetSource": "WPS",
+              "formula": null,
+              "owner": null,
+              "rollsUpTo": "mx_delivery_otp",
+              "dataBaseCol": "C142",
+              "targetCol": "C141",
+              "target": 0.985,
+              "nodata": true
+            },
+            {
+              "label": "Samples",
+              "value": null,
+              "unit": "ratio",
+              "entryType": "manual",
+              "targetSource": "WPS",
+              "formula": null,
+              "owner": null,
+              "rollsUpTo": "mx_delivery_otp",
+              "dataBaseCol": "C144",
+              "targetCol": "C143",
+              "target": 0.985,
+              "nodata": true
+            }
           ],
           "subLines": [
-            { "line": "Embroidery Emblems", "target": 0.985, "actual": null },
-            { "line": "Perfect Print", "target": 0.985, "actual": null },
-            { "line": "Print Stitch", "target": 0.985, "actual": null },
-            { "line": "Embroidery ASI", "target": 0.985, "actual": null },
-            { "line": "Chenille", "target": 0.985, "actual": null },
-            { "line": "Woven", "target": 0.985, "actual": null },
-            { "line": "Flexstyle", "target": 0.985, "actual": null },
-            { "line": "Leather", "target": 0.985, "actual": null },
-            { "line": "PV+", "target": 0.985, "actual": null },
-            { "line": "Supply Chain Blanks", "target": 0.985, "actual": null },
-            { "line": "Supply Chain Clean Cut", "target": 0.985, "actual": null },
-            { "line": "Blanks", "target": 0.985, "actual": null },
-            { "line": "Raw", "target": 0.985, "actual": null },
-            { "line": "Resale", "target": 0.985, "actual": null },
-            { "line": "RSL Goods", "target": 0.985, "actual": null },
-            { "line": "Art", "target": 0.985, "actual": null },
-            { "line": "Digitizing", "target": 0.985, "actual": null },
-            { "line": "Samples", "target": 0.985, "actual": null }
+            {
+              "line": "Embroidery Emblems",
+              "target": 0.985,
+              "actual": null
+            },
+            {
+              "line": "Perfect Print",
+              "target": 0.985,
+              "actual": null
+            },
+            {
+              "line": "Print Stitch",
+              "target": 0.985,
+              "actual": null
+            },
+            {
+              "line": "Embroidery ASI",
+              "target": 0.985,
+              "actual": null
+            },
+            {
+              "line": "Chenille",
+              "target": 0.985,
+              "actual": null
+            },
+            {
+              "line": "Woven",
+              "target": 0.985,
+              "actual": null
+            },
+            {
+              "line": "Flexstyle",
+              "target": 0.985,
+              "actual": null
+            },
+            {
+              "line": "Leather",
+              "target": 0.985,
+              "actual": null
+            },
+            {
+              "line": "PV+",
+              "target": 0.985,
+              "actual": null
+            },
+            {
+              "line": "Supply Chain Blanks",
+              "target": 0.985,
+              "actual": null
+            },
+            {
+              "line": "Supply Chain Clean Cut",
+              "target": 0.985,
+              "actual": null
+            },
+            {
+              "line": "Blanks",
+              "target": 0.985,
+              "actual": null
+            },
+            {
+              "line": "Raw",
+              "target": 0.985,
+              "actual": null
+            },
+            {
+              "line": "Resale",
+              "target": 0.985,
+              "actual": null
+            },
+            {
+              "line": "RSL Goods",
+              "target": 0.985,
+              "actual": null
+            },
+            {
+              "line": "Art",
+              "target": 0.985,
+              "actual": null
+            },
+            {
+              "line": "Digitizing",
+              "target": 0.985,
+              "actual": null
+            },
+            {
+              "line": "Samples",
+              "target": 0.985,
+              "actual": null
+            }
           ]
         },
         {
@@ -802,13 +1248,30 @@
           "unit": "ratio",
           "targetType": "rate",
           "direction": "higher_better",
+          "targetSource": "WPS",
           "mexicoOnly": true,
           "nodataNote": "Equipment/line availability by Building. Targets set; actuals not entered in Data Base.",
           "byBuilding": [
-            { "building": 1, "target": 0.97, "actual": null },
-            { "building": 2, "target": 0.97, "actual": null },
-            { "building": 3, "target": 0.97, "actual": null },
-            { "building": 4, "target": 0.97, "actual": null }
+            {
+              "building": 1,
+              "target": 0.97,
+              "actual": null
+            },
+            {
+              "building": 2,
+              "target": 0.97,
+              "actual": null
+            },
+            {
+              "building": 3,
+              "target": 0.97,
+              "actual": null
+            },
+            {
+              "building": 4,
+              "target": 0.97,
+              "actual": null
+            }
           ]
         },
         {
@@ -816,18 +1279,25 @@
           "name": "PPLH",
           "category": "COST",
           "level": "main",
-          "target": 1.0,
+          "target": 1,
           "actual": 1.089,
           "unit": "pcs_per_labor_hour",
           "unitLabel": "pcs/labor-hr",
           "targetType": "rate",
           "direction": "higher_better",
+          "targetSource": "WPS",
           "unitNote": "Mexico PPLH = pieces per labor hour (~1.0 main; 0.014–2.5 by line). NOT comparable to Houston aggregate hours.",
           "latestMonth": "JUL",
           "monthlyActuals": {
-            "JAN": 1.246, "FEB": 1.066, "MAR": 1.085,
-            "APR": 1.155, "MAY": 1.073, "JUN": 1.090,
-            "JUL": 1.089, "AUG": 1.086, "SEP": 1.077
+            "JAN": 1.246,
+            "FEB": 1.066,
+            "MAR": 1.085,
+            "APR": 1.155,
+            "MAY": 1.073,
+            "JUN": 1.09,
+            "JUL": 1.089,
+            "AUG": 1.086,
+            "SEP": 1.077
           },
           "rollup": {
             "method": "manual_rekey",
@@ -836,38 +1306,308 @@
             "note": "Main PPLH (Data Base col C154) is a hand-keyed monthly literal. Sub-line actual columns (C156, C158, …, C184 even) exist but are all blank — sub-lines do NOT feed the main via any in-sheet formula. Main entered as composite pcs/labor-hr ratio."
           },
           "contributions": [
-            { "label": "Embroidery Emblems", "value": null, "unit": "pcs_per_labor_hour", "entryType": "manual", "formula": null, "owner": null, "rollsUpTo": "mx_cost_pplh", "dataBaseCol": "C156", "targetCol": "C155", "target": 0.096, "nodata": true },
-            { "label": "Perfect Print", "value": null, "unit": "pcs_per_labor_hour", "entryType": "manual", "formula": null, "owner": null, "rollsUpTo": "mx_cost_pplh", "dataBaseCol": "C158", "targetCol": "C157", "target": 0.021, "nodata": true },
-            { "label": "Print Stitch", "value": null, "unit": "pcs_per_labor_hour", "entryType": "manual", "formula": null, "owner": null, "rollsUpTo": "mx_cost_pplh", "dataBaseCol": "C160", "targetCol": "C159", "target": 0.194, "nodata": true },
-            { "label": "Embroidery ASI", "value": null, "unit": "pcs_per_labor_hour", "entryType": "manual", "formula": null, "owner": null, "rollsUpTo": "mx_cost_pplh", "dataBaseCol": "C162", "targetCol": "C161", "target": 0.166, "nodata": true },
-            { "label": "Chenille", "value": null, "unit": "pcs_per_labor_hour", "entryType": "manual", "formula": null, "owner": null, "rollsUpTo": "mx_cost_pplh", "dataBaseCol": "C164", "targetCol": "C163", "target": 0.267, "nodata": true },
-            { "label": "Woven", "value": null, "unit": "pcs_per_labor_hour", "entryType": "manual", "formula": null, "owner": null, "rollsUpTo": "mx_cost_pplh", "dataBaseCol": "C166", "targetCol": "C165", "target": 0.210, "nodata": true },
-            { "label": "Flexstyle", "value": null, "unit": "pcs_per_labor_hour", "entryType": "manual", "formula": null, "owner": null, "rollsUpTo": "mx_cost_pplh", "dataBaseCol": "C168", "targetCol": "C167", "target": 0.133, "nodata": true },
-            { "label": "Leather", "value": null, "unit": "pcs_per_labor_hour", "entryType": "manual", "formula": null, "owner": null, "rollsUpTo": "mx_cost_pplh", "dataBaseCol": "C170", "targetCol": "C169", "target": 0.077, "nodata": true },
-            { "label": "PV+", "value": null, "unit": "pcs_per_labor_hour", "entryType": "manual", "formula": null, "owner": null, "rollsUpTo": "mx_cost_pplh", "dataBaseCol": "C172", "targetCol": "C171", "target": 0.323, "nodata": true },
-            { "label": "Supply Chain Blanks", "value": null, "unit": "pcs_per_labor_hour", "entryType": "manual", "formula": null, "owner": null, "rollsUpTo": "mx_cost_pplh", "dataBaseCol": "C174", "targetCol": "C173", "target": 0.014, "nodata": true },
-            { "label": "Supply Chain Clean Cut", "value": null, "unit": "pcs_per_labor_hour", "entryType": "manual", "formula": null, "owner": null, "rollsUpTo": "mx_cost_pplh", "dataBaseCol": "C176", "targetCol": "C175", "target": 0.040, "nodata": true },
-            { "label": "Warehouse", "value": null, "unit": "pcs_per_labor_hour", "entryType": "manual", "formula": null, "owner": null, "rollsUpTo": "mx_cost_pplh", "dataBaseCol": "C178", "targetCol": "C177", "target": 2.500, "nodata": true },
-            { "label": "Art", "value": null, "unit": "pcs_per_labor_hour", "entryType": "manual", "formula": null, "owner": null, "rollsUpTo": "mx_cost_pplh", "dataBaseCol": "C180", "targetCol": "C179", "target": 2.488, "nodata": true },
-            { "label": "Digitizing", "value": null, "unit": "pcs_per_labor_hour", "entryType": "manual", "formula": null, "owner": null, "rollsUpTo": "mx_cost_pplh", "dataBaseCol": "C182", "targetCol": "C181", "target": 2.017, "nodata": true },
-            { "label": "Samples", "value": null, "unit": "pcs_per_labor_hour", "entryType": "manual", "formula": null, "owner": null, "rollsUpTo": "mx_cost_pplh", "dataBaseCol": "C184", "targetCol": "C183", "target": 1.194, "nodata": true }
+            {
+              "label": "Embroidery Emblems",
+              "value": null,
+              "unit": "pcs_per_labor_hour",
+              "entryType": "manual",
+              "targetSource": "WPS",
+              "formula": null,
+              "owner": null,
+              "rollsUpTo": "mx_cost_pplh",
+              "dataBaseCol": "C156",
+              "targetCol": "C155",
+              "target": 0.096,
+              "nodata": true
+            },
+            {
+              "label": "Perfect Print",
+              "value": null,
+              "unit": "pcs_per_labor_hour",
+              "entryType": "manual",
+              "targetSource": "WPS",
+              "formula": null,
+              "owner": null,
+              "rollsUpTo": "mx_cost_pplh",
+              "dataBaseCol": "C158",
+              "targetCol": "C157",
+              "target": 0.021,
+              "nodata": true
+            },
+            {
+              "label": "Print Stitch",
+              "value": null,
+              "unit": "pcs_per_labor_hour",
+              "entryType": "manual",
+              "targetSource": "WPS",
+              "formula": null,
+              "owner": null,
+              "rollsUpTo": "mx_cost_pplh",
+              "dataBaseCol": "C160",
+              "targetCol": "C159",
+              "target": 0.194,
+              "nodata": true
+            },
+            {
+              "label": "Embroidery ASI",
+              "value": null,
+              "unit": "pcs_per_labor_hour",
+              "entryType": "manual",
+              "targetSource": "WPS",
+              "formula": null,
+              "owner": null,
+              "rollsUpTo": "mx_cost_pplh",
+              "dataBaseCol": "C162",
+              "targetCol": "C161",
+              "target": 0.166,
+              "nodata": true
+            },
+            {
+              "label": "Chenille",
+              "value": null,
+              "unit": "pcs_per_labor_hour",
+              "entryType": "manual",
+              "targetSource": "WPS",
+              "formula": null,
+              "owner": null,
+              "rollsUpTo": "mx_cost_pplh",
+              "dataBaseCol": "C164",
+              "targetCol": "C163",
+              "target": 0.267,
+              "nodata": true
+            },
+            {
+              "label": "Woven",
+              "value": null,
+              "unit": "pcs_per_labor_hour",
+              "entryType": "manual",
+              "targetSource": "WPS",
+              "formula": null,
+              "owner": null,
+              "rollsUpTo": "mx_cost_pplh",
+              "dataBaseCol": "C166",
+              "targetCol": "C165",
+              "target": 0.21,
+              "nodata": true
+            },
+            {
+              "label": "Flexstyle",
+              "value": null,
+              "unit": "pcs_per_labor_hour",
+              "entryType": "manual",
+              "targetSource": "WPS",
+              "formula": null,
+              "owner": null,
+              "rollsUpTo": "mx_cost_pplh",
+              "dataBaseCol": "C168",
+              "targetCol": "C167",
+              "target": 0.133,
+              "nodata": true
+            },
+            {
+              "label": "Leather",
+              "value": null,
+              "unit": "pcs_per_labor_hour",
+              "entryType": "manual",
+              "targetSource": "WPS",
+              "formula": null,
+              "owner": null,
+              "rollsUpTo": "mx_cost_pplh",
+              "dataBaseCol": "C170",
+              "targetCol": "C169",
+              "target": 0.077,
+              "nodata": true
+            },
+            {
+              "label": "PV+",
+              "value": null,
+              "unit": "pcs_per_labor_hour",
+              "entryType": "manual",
+              "targetSource": "WPS",
+              "formula": null,
+              "owner": null,
+              "rollsUpTo": "mx_cost_pplh",
+              "dataBaseCol": "C172",
+              "targetCol": "C171",
+              "target": 0.323,
+              "nodata": true
+            },
+            {
+              "label": "Supply Chain Blanks",
+              "value": null,
+              "unit": "pcs_per_labor_hour",
+              "entryType": "manual",
+              "targetSource": "WPS",
+              "formula": null,
+              "owner": null,
+              "rollsUpTo": "mx_cost_pplh",
+              "dataBaseCol": "C174",
+              "targetCol": "C173",
+              "target": 0.014,
+              "nodata": true
+            },
+            {
+              "label": "Supply Chain Clean Cut",
+              "value": null,
+              "unit": "pcs_per_labor_hour",
+              "entryType": "manual",
+              "targetSource": "WPS",
+              "formula": null,
+              "owner": null,
+              "rollsUpTo": "mx_cost_pplh",
+              "dataBaseCol": "C176",
+              "targetCol": "C175",
+              "target": 0.04,
+              "nodata": true
+            },
+            {
+              "label": "Warehouse",
+              "value": null,
+              "unit": "pcs_per_labor_hour",
+              "entryType": "manual",
+              "targetSource": "WPS",
+              "formula": null,
+              "owner": null,
+              "rollsUpTo": "mx_cost_pplh",
+              "dataBaseCol": "C178",
+              "targetCol": "C177",
+              "target": 2.5,
+              "nodata": true
+            },
+            {
+              "label": "Art",
+              "value": null,
+              "unit": "pcs_per_labor_hour",
+              "entryType": "manual",
+              "targetSource": "WPS",
+              "formula": null,
+              "owner": null,
+              "rollsUpTo": "mx_cost_pplh",
+              "dataBaseCol": "C180",
+              "targetCol": "C179",
+              "target": 2.488,
+              "nodata": true
+            },
+            {
+              "label": "Digitizing",
+              "value": null,
+              "unit": "pcs_per_labor_hour",
+              "entryType": "manual",
+              "targetSource": "WPS",
+              "formula": null,
+              "owner": null,
+              "rollsUpTo": "mx_cost_pplh",
+              "dataBaseCol": "C182",
+              "targetCol": "C181",
+              "target": 2.017,
+              "nodata": true
+            },
+            {
+              "label": "Samples",
+              "value": null,
+              "unit": "pcs_per_labor_hour",
+              "entryType": "manual",
+              "targetSource": "WPS",
+              "formula": null,
+              "owner": null,
+              "rollsUpTo": "mx_cost_pplh",
+              "dataBaseCol": "C184",
+              "targetCol": "C183",
+              "target": 1.194,
+              "nodata": true
+            }
           ],
           "subLines": [
-            { "line": "Embroidery Emblems", "target": 0.096, "actual": null, "unit": "pcs_per_labor_hour" },
-            { "line": "Perfect Print", "target": 0.021, "actual": null, "unit": "pcs_per_labor_hour" },
-            { "line": "Print Stitch", "target": 0.194, "actual": null, "unit": "pcs_per_labor_hour" },
-            { "line": "Embroidery ASI", "target": 0.166, "actual": null, "unit": "pcs_per_labor_hour" },
-            { "line": "Chenille", "target": 0.267, "actual": null, "unit": "pcs_per_labor_hour" },
-            { "line": "Woven", "target": 0.210, "actual": null, "unit": "pcs_per_labor_hour" },
-            { "line": "Flexstyle", "target": 0.133, "actual": null, "unit": "pcs_per_labor_hour" },
-            { "line": "Leather", "target": 0.077, "actual": null, "unit": "pcs_per_labor_hour" },
-            { "line": "PV+", "target": 0.323, "actual": null, "unit": "pcs_per_labor_hour" },
-            { "line": "Supply Chain Blanks", "target": 0.014, "actual": null, "unit": "pcs_per_labor_hour" },
-            { "line": "Supply Chain Clean Cut", "target": 0.040, "actual": null, "unit": "pcs_per_labor_hour" },
-            { "line": "Warehouse", "target": 2.500, "actual": null, "unit": "pcs_per_labor_hour" },
-            { "line": "Art", "target": 2.488, "actual": null, "unit": "pcs_per_labor_hour" },
-            { "line": "Digitizing", "target": 2.017, "actual": null, "unit": "pcs_per_labor_hour" },
-            { "line": "Samples", "target": 1.194, "actual": null, "unit": "pcs_per_labor_hour" }
+            {
+              "line": "Embroidery Emblems",
+              "target": 0.096,
+              "actual": null,
+              "unit": "pcs_per_labor_hour"
+            },
+            {
+              "line": "Perfect Print",
+              "target": 0.021,
+              "actual": null,
+              "unit": "pcs_per_labor_hour"
+            },
+            {
+              "line": "Print Stitch",
+              "target": 0.194,
+              "actual": null,
+              "unit": "pcs_per_labor_hour"
+            },
+            {
+              "line": "Embroidery ASI",
+              "target": 0.166,
+              "actual": null,
+              "unit": "pcs_per_labor_hour"
+            },
+            {
+              "line": "Chenille",
+              "target": 0.267,
+              "actual": null,
+              "unit": "pcs_per_labor_hour"
+            },
+            {
+              "line": "Woven",
+              "target": 0.21,
+              "actual": null,
+              "unit": "pcs_per_labor_hour"
+            },
+            {
+              "line": "Flexstyle",
+              "target": 0.133,
+              "actual": null,
+              "unit": "pcs_per_labor_hour"
+            },
+            {
+              "line": "Leather",
+              "target": 0.077,
+              "actual": null,
+              "unit": "pcs_per_labor_hour"
+            },
+            {
+              "line": "PV+",
+              "target": 0.323,
+              "actual": null,
+              "unit": "pcs_per_labor_hour"
+            },
+            {
+              "line": "Supply Chain Blanks",
+              "target": 0.014,
+              "actual": null,
+              "unit": "pcs_per_labor_hour"
+            },
+            {
+              "line": "Supply Chain Clean Cut",
+              "target": 0.04,
+              "actual": null,
+              "unit": "pcs_per_labor_hour"
+            },
+            {
+              "line": "Warehouse",
+              "target": 2.5,
+              "actual": null,
+              "unit": "pcs_per_labor_hour"
+            },
+            {
+              "line": "Art",
+              "target": 2.488,
+              "actual": null,
+              "unit": "pcs_per_labor_hour"
+            },
+            {
+              "line": "Digitizing",
+              "target": 2.017,
+              "actual": null,
+              "unit": "pcs_per_labor_hour"
+            },
+            {
+              "line": "Samples",
+              "target": 1.194,
+              "actual": null,
+              "unit": "pcs_per_labor_hour"
+            }
           ]
         },
         {
@@ -880,13 +1620,30 @@
           "unit": "count",
           "targetType": "count",
           "direction": "lower_better",
+          "targetSource": "WPS",
           "mexicoOnly": true,
           "nodataNote": "Targets set by building; actuals not entered in Data Base.",
           "byBuilding": [
-            { "building": 1, "target": 25, "actual": null },
-            { "building": 2, "target": 25, "actual": null },
-            { "building": 3, "target": 70, "actual": null },
-            { "building": 4, "target": 40, "actual": null }
+            {
+              "building": 1,
+              "target": 25,
+              "actual": null
+            },
+            {
+              "building": 2,
+              "target": 25,
+              "actual": null
+            },
+            {
+              "building": 3,
+              "target": 70,
+              "actual": null
+            },
+            {
+              "building": 4,
+              "target": 40,
+              "actual": null
+            }
           ]
         },
         {
@@ -899,13 +1656,39 @@
           "unit": "ratio",
           "targetType": "rate",
           "direction": "higher_better",
+          "targetSource": "ODG",
           "latestMonth": "SEP",
           "supervisors": [
-            { "name": "J. Morán", "role": "Supervisor", "target": 0.8, "actual": 0.57 },
-            { "name": "G. Navarro", "role": "Supervisor", "target": 0.8, "actual": 0.72 },
-            { "name": "A. Guardado", "role": "Supervisor", "target": 0.8, "actual": 0.52 },
-            { "name": "G. Velasco", "role": "Supervisor", "target": 0.8, "actual": 0.55 },
-            { "name": "A. Cortés", "role": "Supervisor", "target": 0.8, "actual": 0.51 }
+            {
+              "name": "J. Morán",
+              "role": "Supervisor",
+              "target": 0.8,
+              "actual": 0.57
+            },
+            {
+              "name": "G. Navarro",
+              "role": "Supervisor",
+              "target": 0.8,
+              "actual": 0.72
+            },
+            {
+              "name": "A. Guardado",
+              "role": "Supervisor",
+              "target": 0.8,
+              "actual": 0.52
+            },
+            {
+              "name": "G. Velasco",
+              "role": "Supervisor",
+              "target": 0.8,
+              "actual": 0.55
+            },
+            {
+              "name": "A. Cortés",
+              "role": "Supervisor",
+              "target": 0.8,
+              "actual": 0.51
+            }
           ],
           "note": "Supervisor actuals Jul–Sep entered. Average ~0.574 across 5 supervisors."
         },
@@ -919,20 +1702,34 @@
           "unit": "ratio",
           "targetType": "rate",
           "direction": "higher_better",
+          "targetSource": "ODG",
           "latestMonth": "SEP",
           "monthlyActuals": {
-            "JAN": 0.8, "FEB": 0.8, "MAR": 0.8, "APR": 0.8,
-            "MAY": 0.8, "JUN": 0.8, "JUL": 0.8, "AUG": 0.8, "SEP": 0.8
+            "JAN": 0.8,
+            "FEB": 0.8,
+            "MAR": 0.8,
+            "APR": 0.8,
+            "MAY": 0.8,
+            "JUN": 0.8,
+            "JUL": 0.8,
+            "AUG": 0.8,
+            "SEP": 0.8
           }
         }
       ]
     },
-
     "houston": {
       "label": "Houston",
       "kpiCount": 43,
       "buildings": 1,
-      "productionLines": ["Direct Embroidery", "Perfect Print", "Richardson Application", "Richardson Direct Embroidery", "Richardson Leather", "Single Head"],
+      "productionLines": [
+        "Direct Embroidery",
+        "Perfect Print",
+        "Richardson Application",
+        "Richardson Direct Embroidery",
+        "Richardson Leather",
+        "Single Head"
+      ],
       "actualsNote": "OTP + PPLH Jan–Jun populated. Remakes Jan–Jun populated. Safety: MAR had 1 Recordable + 1 DART (Richardson Direct Emb). Quality unit = rate (External Remakes target 0.0036); actuals entered as count — dual display needed.",
       "operatorLayerNote": "Most complete board. OTP main (C48) + all 6 sub-line actuals (C52,C54,C56,C58,C60,C62) populated JAN–JUN — all manual. PPLH main (C64) is a SUM formula of 6 sub-line actuals (=BN+BP+BR+BT+BV+BX); sub-line actuals (C66,C68,C70,C72,C74,C76) manual. Houston is the ONLY location where PPLH main is computed rather than re-keyed.",
       "kpis": [
@@ -946,15 +1743,90 @@
           "unit": "count",
           "targetType": "count",
           "direction": "lower_better",
-          "monthlyActuals": { "JAN": 0, "FEB": 0, "MAR": 1, "APR": 0, "MAY": 0, "JUN": 0 },
+          "targetSource": "Manual — reported",
+          "manualOnly": true,
+          "monthlyActuals": {
+            "JAN": 0,
+            "FEB": 0,
+            "MAR": 1,
+            "APR": 0,
+            "MAY": 0,
+            "JUN": 0
+          },
           "flag": "MAR: 1 Recordable incident — Richardson Direct Embroidery line",
           "subLines": [
-            { "line": "Direct Embroidery", "target": 0, "monthlyActuals": { "JAN": 0, "FEB": 0, "MAR": 0, "APR": 0, "MAY": 0, "JUN": 0 } },
-            { "line": "Perfect Print", "target": 0, "monthlyActuals": { "JAN": 0, "FEB": 0, "MAR": 0, "APR": 0, "MAY": 0, "JUN": 0 } },
-            { "line": "Richardson Application", "target": 0, "monthlyActuals": { "JAN": 0, "FEB": 0, "MAR": 0, "APR": 0, "MAY": 0, "JUN": 0 } },
-            { "line": "Richardson Direct Embroidery", "target": 0, "monthlyActuals": { "JAN": 0, "FEB": 0, "MAR": 1, "APR": 0, "MAY": 0, "JUN": 0 } },
-            { "line": "Richardson Leather", "target": 0, "monthlyActuals": { "JAN": 0, "FEB": 0, "MAR": 0, "APR": 0, "MAY": 0, "JUN": 0 } },
-            { "line": "Single Head", "target": 0, "monthlyActuals": { "JAN": 0, "FEB": 0, "MAR": 0, "APR": 0, "MAY": 0, "JUN": 0 } }
+            {
+              "line": "Direct Embroidery",
+              "target": 0,
+              "monthlyActuals": {
+                "JAN": 0,
+                "FEB": 0,
+                "MAR": 0,
+                "APR": 0,
+                "MAY": 0,
+                "JUN": 0
+              }
+            },
+            {
+              "line": "Perfect Print",
+              "target": 0,
+              "monthlyActuals": {
+                "JAN": 0,
+                "FEB": 0,
+                "MAR": 0,
+                "APR": 0,
+                "MAY": 0,
+                "JUN": 0
+              }
+            },
+            {
+              "line": "Richardson Application",
+              "target": 0,
+              "monthlyActuals": {
+                "JAN": 0,
+                "FEB": 0,
+                "MAR": 0,
+                "APR": 0,
+                "MAY": 0,
+                "JUN": 0
+              }
+            },
+            {
+              "line": "Richardson Direct Embroidery",
+              "target": 0,
+              "monthlyActuals": {
+                "JAN": 0,
+                "FEB": 0,
+                "MAR": 1,
+                "APR": 0,
+                "MAY": 0,
+                "JUN": 0
+              }
+            },
+            {
+              "line": "Richardson Leather",
+              "target": 0,
+              "monthlyActuals": {
+                "JAN": 0,
+                "FEB": 0,
+                "MAR": 0,
+                "APR": 0,
+                "MAY": 0,
+                "JUN": 0
+              }
+            },
+            {
+              "line": "Single Head",
+              "target": 0,
+              "monthlyActuals": {
+                "JAN": 0,
+                "FEB": 0,
+                "MAR": 0,
+                "APR": 0,
+                "MAY": 0,
+                "JUN": 0
+              }
+            }
           ]
         },
         {
@@ -967,10 +1839,30 @@
           "unit": "count",
           "targetType": "count",
           "direction": "lower_better",
-          "monthlyActuals": { "JAN": 0, "FEB": 0, "MAR": 1, "APR": 0, "MAY": 0, "JUN": 0 },
+          "targetSource": "Manual — reported",
+          "manualOnly": true,
+          "monthlyActuals": {
+            "JAN": 0,
+            "FEB": 0,
+            "MAR": 1,
+            "APR": 0,
+            "MAY": 0,
+            "JUN": 0
+          },
           "flag": "MAR: 1 DART incident — Richardson Direct Embroidery line",
           "subLines": [
-            { "line": "Richardson Direct Embroidery", "target": 0, "monthlyActuals": { "JAN": 0, "FEB": 0, "MAR": 1, "APR": 0, "MAY": 0, "JUN": 0 } }
+            {
+              "line": "Richardson Direct Embroidery",
+              "target": 0,
+              "monthlyActuals": {
+                "JAN": 0,
+                "FEB": 0,
+                "MAR": 1,
+                "APR": 0,
+                "MAY": 0,
+                "JUN": 0
+              }
+            }
           ]
         },
         {
@@ -984,10 +1876,15 @@
           "targetType": "rate",
           "actualUnit": "count",
           "direction": "lower_better",
+          "targetSource": "WPS",
           "unitNote": "Houston External Remakes target = defect rate (0.0036). Actuals entered as raw count in Data Base — dual display: target as rate, actuals as count.",
           "monthlyActuals": {
-            "JAN": 4358, "FEB": 5415, "MAR": 772,
-            "APR": 2955, "MAY": 2241, "JUN": 2602
+            "JAN": 4358,
+            "FEB": 5415,
+            "MAR": 772,
+            "APR": 2955,
+            "MAY": 2241,
+            "JUN": 2602
           },
           "flag": "unit_mismatch — target is rate (0.0036), actuals are count. Do NOT compute ratio directly."
         },
@@ -1001,13 +1898,80 @@
           "unit": "count",
           "targetType": "count",
           "direction": "lower_better",
+          "targetSource": "WPS",
           "subLines": [
-            { "line": "Direct Embroidery", "target": 0, "monthlyActuals": { "JAN": 0, "FEB": null, "MAR": null, "APR": null, "MAY": null, "JUN": 82 } },
-            { "line": "Perfect Print", "target": 0, "monthlyActuals": { "JAN": 93, "FEB": null, "MAR": null, "APR": null, "MAY": null, "JUN": 0 } },
-            { "line": "Richardson Application", "target": 0, "monthlyActuals": { "JAN": 10, "FEB": null, "MAR": null, "APR": null, "MAY": null, "JUN": 0 } },
-            { "line": "Richardson Direct Embroidery", "target": 0, "monthlyActuals": { "JAN": 31, "FEB": null, "MAR": null, "APR": null, "MAY": null, "JUN": 75 } },
-            { "line": "Richardson Leather", "target": 0, "monthlyActuals": { "JAN": 0, "FEB": null, "MAR": null, "APR": null, "MAY": null, "JUN": 0 } },
-            { "line": "Single Head", "target": 0, "monthlyActuals": { "JAN": 502, "FEB": null, "MAR": null, "APR": null, "MAY": null, "JUN": 2445 } }
+            {
+              "line": "Direct Embroidery",
+              "target": 0,
+              "monthlyActuals": {
+                "JAN": 0,
+                "FEB": null,
+                "MAR": null,
+                "APR": null,
+                "MAY": null,
+                "JUN": 82
+              }
+            },
+            {
+              "line": "Perfect Print",
+              "target": 0,
+              "monthlyActuals": {
+                "JAN": 93,
+                "FEB": null,
+                "MAR": null,
+                "APR": null,
+                "MAY": null,
+                "JUN": 0
+              }
+            },
+            {
+              "line": "Richardson Application",
+              "target": 0,
+              "monthlyActuals": {
+                "JAN": 10,
+                "FEB": null,
+                "MAR": null,
+                "APR": null,
+                "MAY": null,
+                "JUN": 0
+              }
+            },
+            {
+              "line": "Richardson Direct Embroidery",
+              "target": 0,
+              "monthlyActuals": {
+                "JAN": 31,
+                "FEB": null,
+                "MAR": null,
+                "APR": null,
+                "MAY": null,
+                "JUN": 75
+              }
+            },
+            {
+              "line": "Richardson Leather",
+              "target": 0,
+              "monthlyActuals": {
+                "JAN": 0,
+                "FEB": null,
+                "MAR": null,
+                "APR": null,
+                "MAY": null,
+                "JUN": 0
+              }
+            },
+            {
+              "line": "Single Head",
+              "target": 0,
+              "monthlyActuals": {
+                "JAN": 502,
+                "FEB": null,
+                "MAR": null,
+                "APR": null,
+                "MAY": null,
+                "JUN": 2445
+              }
+            }
           ]
         },
         {
@@ -1020,10 +1984,15 @@
           "unit": "ratio",
           "targetType": "rate",
           "direction": "higher_better",
+          "targetSource": "WPS",
           "latestMonth": "JUN",
           "monthlyActuals": {
-            "JAN": 0.994, "FEB": 0.990, "MAR": 0.9618,
-            "APR": 0.952, "MAY": 0.983, "JUN": 0.974
+            "JAN": 0.994,
+            "FEB": 0.99,
+            "MAR": 0.9618,
+            "APR": 0.952,
+            "MAY": 0.983,
+            "JUN": 0.974
           },
           "rollup": {
             "method": "manual_rekey",
@@ -1032,20 +2001,206 @@
             "note": "Houston OTP main (C48) is a hand-keyed monthly literal. Sub-line actuals (C52,C54,C56,C58,C60,C62) are also manual — populated JAN–JUN. Sub-lines do NOT feed the main via any in-sheet formula; the main is an independent entry."
           },
           "contributions": [
-            { "label": "Direct Embroidery", "value": 0.9818, "unit": "ratio", "entryType": "manual", "formula": null, "owner": null, "rollsUpTo": "hou_delivery_otp", "dataBaseCol": "C52", "targetCol": "C51", "target": 0.985, "monthlyActuals": { "JAN": 0.985, "FEB": 0.994, "MAR": 0.956, "APR": 0.938, "MAY": 0.9849, "JUN": 0.9818 } },
-            { "label": "Perfect Print", "value": 0.9561, "unit": "ratio", "entryType": "manual", "formula": null, "owner": null, "rollsUpTo": "hou_delivery_otp", "dataBaseCol": "C54", "targetCol": "C53", "target": 0.985, "monthlyActuals": { "JAN": 0.9992, "FEB": 0.983, "MAR": 0.980, "APR": 0.977, "MAY": 0.9759, "JUN": 0.9561 } },
-            { "label": "Richardson Application", "value": 0.9818, "unit": "ratio", "entryType": "manual", "formula": null, "owner": null, "rollsUpTo": "hou_delivery_otp", "dataBaseCol": "C56", "targetCol": "C55", "target": 0.985, "monthlyActuals": { "JAN": 0.985, "FEB": 0.994, "MAR": 0.956, "APR": 0.938, "MAY": 0.9849, "JUN": 0.9818 } },
-            { "label": "Richardson Direct Embroidery", "value": 0.9818, "unit": "ratio", "entryType": "manual", "formula": null, "owner": null, "rollsUpTo": "hou_delivery_otp", "dataBaseCol": "C58", "targetCol": "C57", "target": 0.985, "monthlyActuals": { "JAN": 0.985, "FEB": 0.994, "MAR": 0.956, "APR": 0.938, "MAY": 0.9849, "JUN": 0.9818 } },
-            { "label": "Richardson Leather", "value": 0.9818, "unit": "ratio", "entryType": "manual", "formula": null, "owner": null, "rollsUpTo": "hou_delivery_otp", "dataBaseCol": "C60", "targetCol": "C59", "target": 0.985, "monthlyActuals": { "JAN": 0.985, "FEB": 0.994, "MAR": 0.956, "APR": 0.938, "MAY": 0.9849, "JUN": 0.9818 } },
-            { "label": "Single Head", "value": 0.9581, "unit": "ratio", "entryType": "manual", "formula": null, "owner": null, "rollsUpTo": "hou_delivery_otp", "dataBaseCol": "C62", "targetCol": "C61", "target": 0.985, "monthlyActuals": { "JAN": 0.9992, "FEB": 0.970, "MAR": 0.967, "APR": 0.983, "MAY": 0.983, "JUN": 0.9581 } }
+            {
+              "label": "Direct Embroidery",
+              "value": 0.9818,
+              "unit": "ratio",
+              "entryType": "manual",
+              "targetSource": "WPS",
+              "formula": null,
+              "owner": null,
+              "rollsUpTo": "hou_delivery_otp",
+              "dataBaseCol": "C52",
+              "targetCol": "C51",
+              "target": 0.985,
+              "monthlyActuals": {
+                "JAN": 0.985,
+                "FEB": 0.994,
+                "MAR": 0.956,
+                "APR": 0.938,
+                "MAY": 0.9849,
+                "JUN": 0.9818
+              }
+            },
+            {
+              "label": "Perfect Print",
+              "value": 0.9561,
+              "unit": "ratio",
+              "entryType": "manual",
+              "targetSource": "WPS",
+              "formula": null,
+              "owner": null,
+              "rollsUpTo": "hou_delivery_otp",
+              "dataBaseCol": "C54",
+              "targetCol": "C53",
+              "target": 0.985,
+              "monthlyActuals": {
+                "JAN": 0.9992,
+                "FEB": 0.983,
+                "MAR": 0.98,
+                "APR": 0.977,
+                "MAY": 0.9759,
+                "JUN": 0.9561
+              }
+            },
+            {
+              "label": "Richardson Application",
+              "value": 0.9818,
+              "unit": "ratio",
+              "entryType": "manual",
+              "targetSource": "WPS",
+              "formula": null,
+              "owner": null,
+              "rollsUpTo": "hou_delivery_otp",
+              "dataBaseCol": "C56",
+              "targetCol": "C55",
+              "target": 0.985,
+              "monthlyActuals": {
+                "JAN": 0.985,
+                "FEB": 0.994,
+                "MAR": 0.956,
+                "APR": 0.938,
+                "MAY": 0.9849,
+                "JUN": 0.9818
+              }
+            },
+            {
+              "label": "Richardson Direct Embroidery",
+              "value": 0.9818,
+              "unit": "ratio",
+              "entryType": "manual",
+              "targetSource": "WPS",
+              "formula": null,
+              "owner": null,
+              "rollsUpTo": "hou_delivery_otp",
+              "dataBaseCol": "C58",
+              "targetCol": "C57",
+              "target": 0.985,
+              "monthlyActuals": {
+                "JAN": 0.985,
+                "FEB": 0.994,
+                "MAR": 0.956,
+                "APR": 0.938,
+                "MAY": 0.9849,
+                "JUN": 0.9818
+              }
+            },
+            {
+              "label": "Richardson Leather",
+              "value": 0.9818,
+              "unit": "ratio",
+              "entryType": "manual",
+              "targetSource": "WPS",
+              "formula": null,
+              "owner": null,
+              "rollsUpTo": "hou_delivery_otp",
+              "dataBaseCol": "C60",
+              "targetCol": "C59",
+              "target": 0.985,
+              "monthlyActuals": {
+                "JAN": 0.985,
+                "FEB": 0.994,
+                "MAR": 0.956,
+                "APR": 0.938,
+                "MAY": 0.9849,
+                "JUN": 0.9818
+              }
+            },
+            {
+              "label": "Single Head",
+              "value": 0.9581,
+              "unit": "ratio",
+              "entryType": "manual",
+              "targetSource": "WPS",
+              "formula": null,
+              "owner": null,
+              "rollsUpTo": "hou_delivery_otp",
+              "dataBaseCol": "C62",
+              "targetCol": "C61",
+              "target": 0.985,
+              "monthlyActuals": {
+                "JAN": 0.9992,
+                "FEB": 0.97,
+                "MAR": 0.967,
+                "APR": 0.983,
+                "MAY": 0.983,
+                "JUN": 0.9581
+              }
+            }
           ],
           "subLines": [
-            { "line": "Direct Embroidery", "target": 0.985, "monthlyActuals": { "JAN": 0.985, "FEB": 0.994, "MAR": 0.956, "APR": 0.938, "MAY": 0.9849, "JUN": 0.9818 } },
-            { "line": "Perfect Print", "target": 0.985, "monthlyActuals": { "JAN": 0.9992, "FEB": 0.983, "MAR": 0.980, "APR": 0.977, "MAY": 0.9759, "JUN": 0.9561 } },
-            { "line": "Richardson Application", "target": 0.985, "monthlyActuals": { "JAN": 0.985, "FEB": 0.994, "MAR": 0.956, "APR": 0.938, "MAY": 0.9849, "JUN": 0.9818 } },
-            { "line": "Richardson Direct Embroidery", "target": 0.985, "monthlyActuals": { "JAN": 0.985, "FEB": 0.994, "MAR": 0.956, "APR": 0.938, "MAY": 0.9849, "JUN": 0.9818 } },
-            { "line": "Richardson Leather", "target": 0.985, "monthlyActuals": { "JAN": 0.985, "FEB": 0.994, "MAR": 0.956, "APR": 0.938, "MAY": 0.9849, "JUN": 0.9818 } },
-            { "line": "Single Head", "target": 0.985, "monthlyActuals": { "JAN": 0.9992, "FEB": 0.970, "MAR": 0.967, "APR": 0.983, "MAY": 0.983, "JUN": 0.9581 } }
+            {
+              "line": "Direct Embroidery",
+              "target": 0.985,
+              "monthlyActuals": {
+                "JAN": 0.985,
+                "FEB": 0.994,
+                "MAR": 0.956,
+                "APR": 0.938,
+                "MAY": 0.9849,
+                "JUN": 0.9818
+              }
+            },
+            {
+              "line": "Perfect Print",
+              "target": 0.985,
+              "monthlyActuals": {
+                "JAN": 0.9992,
+                "FEB": 0.983,
+                "MAR": 0.98,
+                "APR": 0.977,
+                "MAY": 0.9759,
+                "JUN": 0.9561
+              }
+            },
+            {
+              "line": "Richardson Application",
+              "target": 0.985,
+              "monthlyActuals": {
+                "JAN": 0.985,
+                "FEB": 0.994,
+                "MAR": 0.956,
+                "APR": 0.938,
+                "MAY": 0.9849,
+                "JUN": 0.9818
+              }
+            },
+            {
+              "line": "Richardson Direct Embroidery",
+              "target": 0.985,
+              "monthlyActuals": {
+                "JAN": 0.985,
+                "FEB": 0.994,
+                "MAR": 0.956,
+                "APR": 0.938,
+                "MAY": 0.9849,
+                "JUN": 0.9818
+              }
+            },
+            {
+              "line": "Richardson Leather",
+              "target": 0.985,
+              "monthlyActuals": {
+                "JAN": 0.985,
+                "FEB": 0.994,
+                "MAR": 0.956,
+                "APR": 0.938,
+                "MAY": 0.9849,
+                "JUN": 0.9818
+              }
+            },
+            {
+              "line": "Single Head",
+              "target": 0.985,
+              "monthlyActuals": {
+                "JAN": 0.9992,
+                "FEB": 0.97,
+                "MAR": 0.967,
+                "APR": 0.983,
+                "MAY": 0.983,
+                "JUN": 0.9581
+              }
+            }
           ]
         },
         {
@@ -1059,11 +2214,16 @@
           "unitLabel": "agg. labor-hrs",
           "targetType": "aggregate",
           "direction": "lower_better",
+          "targetSource": "WPS",
           "unitNote": "Houston PPLH = aggregate labor hours (target 409.3). NOT pieces-per-hour — this is total headcount-hours tracked. Lower = more efficient. NOT comparable to Mexico pcs/labor-hr.",
           "latestMonth": "JUN",
           "monthlyActuals": {
-            "JAN": 444.34, "FEB": 408.08, "MAR": 407.90,
-            "APR": 416.85, "MAY": 328.47, "JUN": 374.55
+            "JAN": 444.34,
+            "FEB": 408.08,
+            "MAR": 407.9,
+            "APR": 416.85,
+            "MAY": 328.47,
+            "JUN": 374.55
           },
           "rollup": {
             "method": "sum",
@@ -1073,21 +2233,211 @@
             "note": "CONFIRMED FORMULA ROLL-UP. Only location in all four Operations boards where PPLH main is computed rather than re-keyed. Sub-line actuals at cols C66/C68/C70/C72/C74/C76 are all manual literals; the SUM formula at C64 aggregates them."
           },
           "contributions": [
-            { "label": "Direct Embroidery", "value": 18.84, "unit": "aggregate_labor_hours", "entryType": "manual", "formula": null, "owner": null, "rollsUpTo": "hou_cost_pplh", "dataBaseCol": "C66", "targetCol": "C65", "target": 15, "monthlyActuals": { "JAN": 16.42, "FEB": 12.71, "MAR": 12.70, "APR": 14.13, "MAY": 11.84, "JUN": 18.84 } },
-            { "label": "Perfect Print", "value": 167.87, "unit": "aggregate_labor_hours", "entryType": "manual", "formula": null, "owner": null, "rollsUpTo": "hou_cost_pplh", "dataBaseCol": "C68", "targetCol": "C67", "target": 158, "monthlyActuals": { "JAN": 187.34, "FEB": 185.17, "MAR": 185.10, "APR": 176.36, "MAY": 147.36, "JUN": 167.87 } },
-            { "label": "Richardson Application", "value": 26.56, "unit": "aggregate_labor_hours", "entryType": "manual", "formula": null, "owner": null, "rollsUpTo": "hou_cost_pplh", "dataBaseCol": "C70", "targetCol": "C69", "target": 35.5, "monthlyActuals": { "JAN": 40.84, "FEB": 28.48, "MAR": 25.10, "APR": 36.37, "MAY": 25.88, "JUN": 26.56 } },
-            { "label": "Richardson Direct Embroidery", "value": 14.77, "unit": "aggregate_labor_hours", "entryType": "manual", "formula": null, "owner": null, "rollsUpTo": "hou_cost_pplh", "dataBaseCol": "C72", "targetCol": "C71", "target": 14.9, "monthlyActuals": { "JAN": 14.22, "FEB": 13.96, "MAR": 13.90, "APR": 16.35, "MAY": 11.94, "JUN": 14.77 } },
-            { "label": "Richardson Leather", "value": 28.40, "unit": "aggregate_labor_hours", "entryType": "manual", "formula": null, "owner": null, "rollsUpTo": "hou_cost_pplh", "dataBaseCol": "C74", "targetCol": "C73", "target": 33, "monthlyActuals": { "JAN": 17.21, "FEB": 25.13, "MAR": 28.50, "APR": 34.30, "MAY": 22.55, "JUN": 28.40 } },
-            { "label": "Single Head", "value": 118.11, "unit": "aggregate_labor_hours", "entryType": "manual", "formula": null, "owner": null, "rollsUpTo": "hou_cost_pplh", "dataBaseCol": "C76", "targetCol": "C75", "target": 125.5, "monthlyActuals": { "JAN": 138.58, "FEB": 142.63, "MAR": 142.60, "APR": 139.34, "MAY": 108.90, "JUN": 118.11 } }
+            {
+              "label": "Direct Embroidery",
+              "value": 18.84,
+              "unit": "aggregate_labor_hours",
+              "entryType": "manual",
+              "targetSource": "WPS",
+              "formula": null,
+              "owner": null,
+              "rollsUpTo": "hou_cost_pplh",
+              "dataBaseCol": "C66",
+              "targetCol": "C65",
+              "target": 15,
+              "monthlyActuals": {
+                "JAN": 16.42,
+                "FEB": 12.71,
+                "MAR": 12.7,
+                "APR": 14.13,
+                "MAY": 11.84,
+                "JUN": 18.84
+              }
+            },
+            {
+              "label": "Perfect Print",
+              "value": 167.87,
+              "unit": "aggregate_labor_hours",
+              "entryType": "manual",
+              "targetSource": "WPS",
+              "formula": null,
+              "owner": null,
+              "rollsUpTo": "hou_cost_pplh",
+              "dataBaseCol": "C68",
+              "targetCol": "C67",
+              "target": 158,
+              "monthlyActuals": {
+                "JAN": 187.34,
+                "FEB": 185.17,
+                "MAR": 185.1,
+                "APR": 176.36,
+                "MAY": 147.36,
+                "JUN": 167.87
+              }
+            },
+            {
+              "label": "Richardson Application",
+              "value": 26.56,
+              "unit": "aggregate_labor_hours",
+              "entryType": "manual",
+              "targetSource": "WPS",
+              "formula": null,
+              "owner": null,
+              "rollsUpTo": "hou_cost_pplh",
+              "dataBaseCol": "C70",
+              "targetCol": "C69",
+              "target": 35.5,
+              "monthlyActuals": {
+                "JAN": 40.84,
+                "FEB": 28.48,
+                "MAR": 25.1,
+                "APR": 36.37,
+                "MAY": 25.88,
+                "JUN": 26.56
+              }
+            },
+            {
+              "label": "Richardson Direct Embroidery",
+              "value": 14.77,
+              "unit": "aggregate_labor_hours",
+              "entryType": "manual",
+              "formula": null,
+              "owner": null,
+              "rollsUpTo": "hou_cost_pplh",
+              "dataBaseCol": "C72",
+              "targetCol": "C71",
+              "target": 14.9,
+              "monthlyActuals": {
+                "JAN": 14.22,
+                "FEB": 13.96,
+                "MAR": 13.9,
+                "APR": 16.35,
+                "MAY": 11.94,
+                "JUN": 14.77
+              }
+            },
+            {
+              "label": "Richardson Leather",
+              "value": 28.4,
+              "unit": "aggregate_labor_hours",
+              "entryType": "manual",
+              "formula": null,
+              "owner": null,
+              "rollsUpTo": "hou_cost_pplh",
+              "dataBaseCol": "C74",
+              "targetCol": "C73",
+              "target": 33,
+              "monthlyActuals": {
+                "JAN": 17.21,
+                "FEB": 25.13,
+                "MAR": 28.5,
+                "APR": 34.3,
+                "MAY": 22.55,
+                "JUN": 28.4
+              }
+            },
+            {
+              "label": "Single Head",
+              "value": 118.11,
+              "unit": "aggregate_labor_hours",
+              "entryType": "manual",
+              "formula": null,
+              "owner": null,
+              "rollsUpTo": "hou_cost_pplh",
+              "dataBaseCol": "C76",
+              "targetCol": "C75",
+              "target": 125.5,
+              "monthlyActuals": {
+                "JAN": 138.58,
+                "FEB": 142.63,
+                "MAR": 142.6,
+                "APR": 139.34,
+                "MAY": 108.9,
+                "JUN": 118.11
+              }
+            }
           ],
           "subLines": [
-            { "line": "Direct Embroidery", "target": 15, "monthlyActuals": { "JAN": 16.42, "FEB": 12.71, "MAR": 12.70, "APR": 14.13, "MAY": 11.84, "JUN": 18.84 }, "unit": "aggregate_labor_hours" },
-            { "line": "Perfect Print", "target": 158, "monthlyActuals": { "JAN": 187.34, "FEB": 185.17, "MAR": 185.10, "APR": 176.36, "MAY": 147.36, "JUN": 167.87 }, "unit": "aggregate_labor_hours" },
-            { "line": "Richardson Application", "target": 35.5, "monthlyActuals": { "JAN": 40.84, "FEB": 28.48, "MAR": 25.10, "APR": 36.37, "MAY": 25.88, "JUN": 26.56 }, "unit": "aggregate_labor_hours" },
-            { "line": "Richardson Direct Embroidery", "target": 14.9, "monthlyActuals": { "JAN": 14.22, "FEB": 13.96, "MAR": 13.90, "APR": 16.35, "MAY": 11.94, "JUN": 14.77 }, "unit": "aggregate_labor_hours" },
-            { "line": "Richardson Leather", "target": 33, "monthlyActuals": { "JAN": 17.21, "FEB": 25.13, "MAR": 28.50, "APR": 34.30, "MAY": 22.55, "JUN": 28.40 }, "unit": "aggregate_labor_hours" },
-            { "line": "Single Head", "target": 125.5, "monthlyActuals": { "JAN": 138.58, "FEB": 142.63, "MAR": 142.60, "APR": 139.34, "MAY": 108.90, "JUN": 118.11 }, "unit": "aggregate_labor_hours" }
-          ]
+            {
+              "line": "Direct Embroidery",
+              "target": 15,
+              "monthlyActuals": {
+                "JAN": 16.42,
+                "FEB": 12.71,
+                "MAR": 12.7,
+                "APR": 14.13,
+                "MAY": 11.84,
+                "JUN": 18.84
+              },
+              "unit": "aggregate_labor_hours"
+            },
+            {
+              "line": "Perfect Print",
+              "target": 158,
+              "monthlyActuals": {
+                "JAN": 187.34,
+                "FEB": 185.17,
+                "MAR": 185.1,
+                "APR": 176.36,
+                "MAY": 147.36,
+                "JUN": 167.87
+              },
+              "unit": "aggregate_labor_hours"
+            },
+            {
+              "line": "Richardson Application",
+              "target": 35.5,
+              "monthlyActuals": {
+                "JAN": 40.84,
+                "FEB": 28.48,
+                "MAR": 25.1,
+                "APR": 36.37,
+                "MAY": 25.88,
+                "JUN": 26.56
+              },
+              "unit": "aggregate_labor_hours"
+            },
+            {
+              "line": "Richardson Direct Embroidery",
+              "target": 14.9,
+              "monthlyActuals": {
+                "JAN": 14.22,
+                "FEB": 13.96,
+                "MAR": 13.9,
+                "APR": 16.35,
+                "MAY": 11.94,
+                "JUN": 14.77
+              },
+              "unit": "aggregate_labor_hours"
+            },
+            {
+              "line": "Richardson Leather",
+              "target": 33,
+              "monthlyActuals": {
+                "JAN": 17.21,
+                "FEB": 25.13,
+                "MAR": 28.5,
+                "APR": 34.3,
+                "MAY": 22.55,
+                "JUN": 28.4
+              },
+              "unit": "aggregate_labor_hours"
+            },
+            {
+              "line": "Single Head",
+              "target": 125.5,
+              "monthlyActuals": {
+                "JAN": 138.58,
+                "FEB": 142.63,
+                "MAR": 142.6,
+                "APR": 139.34,
+                "MAY": 108.9,
+                "JUN": 118.11
+              },
+              "unit": "aggregate_labor_hours"
+            }
+          ],
+          "targetSource": "WPS"
         },
         {
           "id": "hou_hrd_srr_supervisor",
@@ -1100,10 +2450,28 @@
           "targetType": "rate",
           "direction": "higher_better",
           "supervisors": [
-            { "name": "M. Stone", "role": "Team Leader", "target": 0.8, "actual": 0.8, "note": "Consistent 0.8 all months" },
-            { "name": "N. Costa / N. Acosta", "role": "Supervisor", "target": 0.8, "actual": null },
-            { "name": "M. Perez", "role": "Supervisor", "target": 0.62, "actual": null, "note": "New supervisor mid-year — lower initial target starting APR (0.62 vs standard 0.8)" }
-          ]
+            {
+              "name": "M. Stone",
+              "role": "Team Leader",
+              "target": 0.8,
+              "actual": 0.8,
+              "note": "Consistent 0.8 all months"
+            },
+            {
+              "name": "N. Costa / N. Acosta",
+              "role": "Supervisor",
+              "target": 0.8,
+              "actual": null
+            },
+            {
+              "name": "M. Perez",
+              "role": "Supervisor",
+              "target": 0.62,
+              "actual": null,
+              "note": "New supervisor mid-year — lower initial target starting APR (0.62 vs standard 0.8)"
+            }
+          ],
+          "targetSource": "ODG"
         },
         {
           "id": "hou_hrd_srr_tl",
@@ -1115,16 +2483,21 @@
           "unit": "ratio",
           "targetType": "rate",
           "direction": "higher_better",
-          "note": "M. Stone Team Leader actual = 0.8 all months."
+          "note": "M. Stone Team Leader actual = 0.8 all months.",
+          "targetSource": "ODG"
         }
       ]
     },
-
     "norcross": {
       "label": "Norcross",
       "kpiCount": 33,
       "buildings": 1,
-      "productionLines": ["Direct Embroidery", "Single Head", "Perfect Print", "NBI (CG)"],
+      "productionLines": [
+        "Direct Embroidery",
+        "Single Head",
+        "Perfect Print",
+        "NBI (CG)"
+      ],
       "weeklyLabel": "DAYS",
       "actualsNote": "Least populated board. OTP has targets only (no actuals entered). PPLH: NBI (CG) target=30, others unset. Remakes: Jan only (2 Direct Emb, 2 Single Head). Safety: Jan–Feb NBI (CG) DART incidents. SRR: TL actuals populated.",
       "operatorLayerNote": "Data Base cols C33–C42 (OTP: main + 4 sub-lines) and C43–C52 (PPLH: main + 4 sub-lines). All actual columns (C34,C36,C38,C40,C42,C44,C46,C48,C50,C52) are blank for all 12 months. Only target constants entered. Board is configured but not actively maintained for actuals.",
@@ -1139,13 +2512,34 @@
           "unit": "count",
           "targetType": "count",
           "direction": "lower_better",
-          "monthlyActuals": { "JAN": 0, "FEB": 0 },
+          "monthlyActuals": {
+            "JAN": 0,
+            "FEB": 0
+          },
           "subLines": [
-            { "line": "Direct Embroidery", "target": 0, "actual": 0 },
-            { "line": "Single Head", "target": 0, "actual": 0 },
-            { "line": "Perfect Print", "target": 0, "actual": 0 },
-            { "line": "NBI (CG)", "target": 0, "actual": 0 }
-          ]
+            {
+              "line": "Direct Embroidery",
+              "target": 0,
+              "actual": 0
+            },
+            {
+              "line": "Single Head",
+              "target": 0,
+              "actual": 0
+            },
+            {
+              "line": "Perfect Print",
+              "target": 0,
+              "actual": 0
+            },
+            {
+              "line": "NBI (CG)",
+              "target": 0,
+              "actual": 0
+            }
+          ],
+          "targetSource": "Manual — reported",
+          "manualOnly": true
         },
         {
           "id": "nor_safety_dart",
@@ -1157,11 +2551,23 @@
           "unit": "count",
           "targetType": "count",
           "direction": "lower_better",
-          "monthlyActuals": { "JAN": 1, "FEB": 2 },
+          "monthlyActuals": {
+            "JAN": 1,
+            "FEB": 2
+          },
           "flag": "JAN: 1 DART (NBI/CG line); FEB: 2 DART (NBI/CG line)",
           "subLines": [
-            { "line": "NBI (CG)", "target": 0, "monthlyActuals": { "JAN": 1, "FEB": 2 } }
-          ]
+            {
+              "line": "NBI (CG)",
+              "target": 0,
+              "monthlyActuals": {
+                "JAN": 1,
+                "FEB": 2
+              }
+            }
+          ],
+          "targetSource": "Manual — reported",
+          "manualOnly": true
         },
         {
           "id": "nor_quality_external_remakes",
@@ -1174,7 +2580,8 @@
           "targetType": "count",
           "direction": "lower_better",
           "nodata": true,
-          "nodataNote": "Target = 0 (count). No actuals entered."
+          "nodataNote": "Target = 0 (count). No actuals entered.",
+          "targetSource": "WPS"
         },
         {
           "id": "nor_quality_internal_remakes",
@@ -1187,12 +2594,41 @@
           "targetType": "count",
           "direction": "lower_better",
           "subLines": [
-            { "line": "Direct Embroidery", "target": 0, "monthlyActuals": { "JAN": 2, "FEB": null } },
-            { "line": "Single Head", "target": 0, "monthlyActuals": { "JAN": 2, "FEB": null } },
-            { "line": "Perfect Print", "target": 0, "monthlyActuals": { "JAN": null, "FEB": null } },
-            { "line": "NBI (CG)", "target": 0, "monthlyActuals": { "JAN": null, "FEB": null } }
+            {
+              "line": "Direct Embroidery",
+              "target": 0,
+              "monthlyActuals": {
+                "JAN": 2,
+                "FEB": null
+              }
+            },
+            {
+              "line": "Single Head",
+              "target": 0,
+              "monthlyActuals": {
+                "JAN": 2,
+                "FEB": null
+              }
+            },
+            {
+              "line": "Perfect Print",
+              "target": 0,
+              "monthlyActuals": {
+                "JAN": null,
+                "FEB": null
+              }
+            },
+            {
+              "line": "NBI (CG)",
+              "target": 0,
+              "monthlyActuals": {
+                "JAN": null,
+                "FEB": null
+              }
+            }
           ],
-          "note": "JAN only: Direct Emb 2, Single Head 2. All other months empty."
+          "note": "JAN only: Direct Emb 2, Single Head 2. All other months empty.",
+          "targetSource": "WPS"
         },
         {
           "id": "nor_delivery_otp",
@@ -1213,17 +2649,82 @@
             "note": "Norcross OTP main (C34) and all 4 sub-line actuals (C36,C38,C40,C42) are blank — no actuals entered. Targets only. Roll-up type is manual_rekey by design (same as other locations), confirmed by blank actual columns."
           },
           "contributions": [
-            { "label": "Direct Embroidery", "value": null, "unit": "ratio", "entryType": "manual", "formula": null, "owner": "Z. Rivas (TL)", "rollsUpTo": "nor_delivery_otp", "dataBaseCol": "C36", "targetCol": "C35", "target": 0.985, "nodata": true },
-            { "label": "Single Head", "value": null, "unit": "ratio", "entryType": "manual", "formula": null, "owner": "R. Trotter (TL)", "rollsUpTo": "nor_delivery_otp", "dataBaseCol": "C38", "targetCol": "C37", "target": 0.985, "nodata": true },
-            { "label": "Perfect Print", "value": null, "unit": "ratio", "entryType": "manual", "formula": null, "owner": "L. Morrison (Supervisor)", "rollsUpTo": "nor_delivery_otp", "dataBaseCol": "C40", "targetCol": "C39", "target": 0.985, "nodata": true },
-            { "label": "NBI (CG)", "value": null, "unit": "ratio", "entryType": "manual", "formula": null, "owner": null, "rollsUpTo": "nor_delivery_otp", "dataBaseCol": "C42", "targetCol": "C41", "target": 0.985, "nodata": true }
+            {
+              "label": "Direct Embroidery",
+              "value": null,
+              "unit": "ratio",
+              "entryType": "manual",
+              "formula": null,
+              "owner": "Z. Rivas (TL)",
+              "rollsUpTo": "nor_delivery_otp",
+              "dataBaseCol": "C36",
+              "targetCol": "C35",
+              "target": 0.985,
+              "nodata": true
+            },
+            {
+              "label": "Single Head",
+              "value": null,
+              "unit": "ratio",
+              "entryType": "manual",
+              "formula": null,
+              "owner": "R. Trotter (TL)",
+              "rollsUpTo": "nor_delivery_otp",
+              "dataBaseCol": "C38",
+              "targetCol": "C37",
+              "target": 0.985,
+              "nodata": true
+            },
+            {
+              "label": "Perfect Print",
+              "value": null,
+              "unit": "ratio",
+              "entryType": "manual",
+              "formula": null,
+              "owner": "L. Morrison (Supervisor)",
+              "rollsUpTo": "nor_delivery_otp",
+              "dataBaseCol": "C40",
+              "targetCol": "C39",
+              "target": 0.985,
+              "nodata": true
+            },
+            {
+              "label": "NBI (CG)",
+              "value": null,
+              "unit": "ratio",
+              "entryType": "manual",
+              "formula": null,
+              "owner": null,
+              "rollsUpTo": "nor_delivery_otp",
+              "dataBaseCol": "C42",
+              "targetCol": "C41",
+              "target": 0.985,
+              "nodata": true
+            }
           ],
           "subLines": [
-            { "line": "Direct Embroidery", "target": 0.985, "actual": null },
-            { "line": "Single Head", "target": 0.985, "actual": null },
-            { "line": "Perfect Print", "target": 0.985, "actual": null },
-            { "line": "NBI (CG)", "target": 0.985, "actual": null }
-          ]
+            {
+              "line": "Direct Embroidery",
+              "target": 0.985,
+              "actual": null
+            },
+            {
+              "line": "Single Head",
+              "target": 0.985,
+              "actual": null
+            },
+            {
+              "line": "Perfect Print",
+              "target": 0.985,
+              "actual": null
+            },
+            {
+              "line": "NBI (CG)",
+              "target": 0.985,
+              "actual": null
+            }
+          ],
+          "targetSource": "WPS"
         },
         {
           "id": "nor_cost_pplh",
@@ -1244,17 +2745,85 @@
             "note": "Norcross PPLH main (C44) and all sub-line actuals (C46,C48,C50,C52) blank. NBI (CG) target = 30 (C51) — only populated target in PPLH section. No roll-up formula present."
           },
           "contributions": [
-            { "label": "Direct Embroidery", "value": null, "unit": "not_set", "entryType": "manual", "formula": null, "owner": "Z. Rivas (TL)", "rollsUpTo": "nor_cost_pplh", "dataBaseCol": "C46", "targetCol": "C45", "target": null, "nodata": true },
-            { "label": "Single Head", "value": null, "unit": "not_set", "entryType": "manual", "formula": null, "owner": "R. Trotter (TL)", "rollsUpTo": "nor_cost_pplh", "dataBaseCol": "C48", "targetCol": "C47", "target": null, "nodata": true },
-            { "label": "Perfect Print", "value": null, "unit": "not_set", "entryType": "manual", "formula": null, "owner": "L. Morrison (Supervisor)", "rollsUpTo": "nor_cost_pplh", "dataBaseCol": "C50", "targetCol": "C49", "target": null, "nodata": true },
-            { "label": "NBI (CG)", "value": null, "unit": "not_set", "entryType": "manual", "formula": null, "owner": null, "rollsUpTo": "nor_cost_pplh", "dataBaseCol": "C52", "targetCol": "C51", "target": 30, "nodata": true, "note": "Only PPLH sub-KPI with target set (=30). Unit not confirmed." }
+            {
+              "label": "Direct Embroidery",
+              "value": null,
+              "unit": "not_set",
+              "entryType": "manual",
+              "formula": null,
+              "owner": "Z. Rivas (TL)",
+              "rollsUpTo": "nor_cost_pplh",
+              "dataBaseCol": "C46",
+              "targetCol": "C45",
+              "target": null,
+              "nodata": true
+            },
+            {
+              "label": "Single Head",
+              "value": null,
+              "unit": "not_set",
+              "entryType": "manual",
+              "formula": null,
+              "owner": "R. Trotter (TL)",
+              "rollsUpTo": "nor_cost_pplh",
+              "dataBaseCol": "C48",
+              "targetCol": "C47",
+              "target": null,
+              "nodata": true
+            },
+            {
+              "label": "Perfect Print",
+              "value": null,
+              "unit": "not_set",
+              "entryType": "manual",
+              "formula": null,
+              "owner": "L. Morrison (Supervisor)",
+              "rollsUpTo": "nor_cost_pplh",
+              "dataBaseCol": "C50",
+              "targetCol": "C49",
+              "target": null,
+              "nodata": true
+            },
+            {
+              "label": "NBI (CG)",
+              "value": null,
+              "unit": "not_set",
+              "entryType": "manual",
+              "formula": null,
+              "owner": null,
+              "rollsUpTo": "nor_cost_pplh",
+              "dataBaseCol": "C52",
+              "targetCol": "C51",
+              "target": 30,
+              "nodata": true,
+              "note": "Only PPLH sub-KPI with target set (=30). Unit not confirmed."
+            }
           ],
           "subLines": [
-            { "line": "Direct Embroidery", "target": null, "actual": null },
-            { "line": "Single Head", "target": null, "actual": null },
-            { "line": "Perfect Print", "target": null, "actual": null },
-            { "line": "NBI (CG)", "target": 30, "actual": null, "unit": "not_set", "note": "NBI (CG) target = 30. Unit not confirmed." }
-          ]
+            {
+              "line": "Direct Embroidery",
+              "target": null,
+              "actual": null
+            },
+            {
+              "line": "Single Head",
+              "target": null,
+              "actual": null
+            },
+            {
+              "line": "Perfect Print",
+              "target": null,
+              "actual": null
+            },
+            {
+              "line": "NBI (CG)",
+              "target": 30,
+              "actual": null,
+              "unit": "not_set",
+              "note": "NBI (CG) target = 30. Unit not confirmed."
+            }
+          ],
+          "targetSource": "WPS"
         },
         {
           "id": "nor_hrd_srr_supervisor",
@@ -1267,10 +2836,28 @@
           "targetType": "rate",
           "direction": "higher_better",
           "supervisors": [
-            { "name": "R. Trotter", "role": "Team Leader", "target": 0.8, "actual": 0.8, "note": "0.8 all months" },
-            { "name": "L. Morrison", "role": "Supervisor", "target": 0.8, "actual": null },
-            { "name": "Z. Rivas", "role": "Team Leader", "target": 0.8, "actual": 0.8, "note": "0.8 all months" }
-          ]
+            {
+              "name": "R. Trotter",
+              "role": "Team Leader",
+              "target": 0.8,
+              "actual": 0.8,
+              "note": "0.8 all months"
+            },
+            {
+              "name": "L. Morrison",
+              "role": "Supervisor",
+              "target": 0.8,
+              "actual": null
+            },
+            {
+              "name": "Z. Rivas",
+              "role": "Team Leader",
+              "target": 0.8,
+              "actual": 0.8,
+              "note": "0.8 all months"
+            }
+          ],
+          "targetSource": "ODG"
         },
         {
           "id": "nor_hrd_srr_tl",
@@ -1282,16 +2869,20 @@
           "unit": "ratio",
           "targetType": "rate",
           "direction": "higher_better",
-          "note": "R. Trotter and Z. Rivas both at 0.8 all months."
+          "note": "R. Trotter and Z. Rivas both at 0.8 all months.",
+          "targetSource": "ODG"
         }
       ]
     },
-
     "canada": {
       "label": "Canada",
       "kpiCount": 24,
       "buildings": 1,
-      "productionLines": ["Embroidery", "Perfect Print", "Single Head"],
+      "productionLines": [
+        "Embroidery",
+        "Perfect Print",
+        "Single Head"
+      ],
       "actualsNote": "Sparsest board — only SRR Team Leader actuals exist. OTP, PPLH, External/Internal Remakes: targets only (no actuals). Safety: all zero. Board appears newly initialized.",
       "operatorLayerNote": "Data Base cols C27–C34 (OTP: main + 3 sub-lines) and C35–C42 (PPLH: main + 3 sub-lines). All actual columns blank for all 12 months. Named line operators: Embroidery=Ana, Perfect Print=Gagandeep, Single Head=Gina (identified in row 106). Supervisor: E. Guayabo.",
       "kpis": [
@@ -1305,12 +2896,30 @@
           "unit": "count",
           "targetType": "count",
           "direction": "lower_better",
-          "monthlyActuals": { "JAN": 0, "FEB": 0, "MAR": 0 },
+          "monthlyActuals": {
+            "JAN": 0,
+            "FEB": 0,
+            "MAR": 0
+          },
           "subLines": [
-            { "line": "Embroidery", "target": 0, "actual": 0 },
-            { "line": "Perfect Print", "target": 0, "actual": 0 },
-            { "line": "Single Head", "target": 0, "actual": 0 }
-          ]
+            {
+              "line": "Embroidery",
+              "target": 0,
+              "actual": 0
+            },
+            {
+              "line": "Perfect Print",
+              "target": 0,
+              "actual": 0
+            },
+            {
+              "line": "Single Head",
+              "target": 0,
+              "actual": 0
+            }
+          ],
+          "targetSource": "Manual — reported",
+          "manualOnly": true
         },
         {
           "id": "can_safety_dart",
@@ -1322,7 +2931,13 @@
           "unit": "count",
           "targetType": "count",
           "direction": "lower_better",
-          "monthlyActuals": { "JAN": 0, "FEB": 0, "MAR": 0 }
+          "monthlyActuals": {
+            "JAN": 0,
+            "FEB": 0,
+            "MAR": 0
+          },
+          "targetSource": "Manual — reported",
+          "manualOnly": true
         },
         {
           "id": "can_quality_external_remakes",
@@ -1335,7 +2950,8 @@
           "targetType": "count",
           "direction": "lower_better",
           "nodata": true,
-          "nodataNote": "Target = 0 (count). No actuals entered."
+          "nodataNote": "Target = 0 (count). No actuals entered.",
+          "targetSource": "WPS"
         },
         {
           "id": "can_quality_internal_remakes",
@@ -1350,10 +2966,23 @@
           "nodata": true,
           "nodataNote": "All actuals = None. Board not actively populated.",
           "subLines": [
-            { "line": "Embroidery", "target": 0, "actual": null },
-            { "line": "Perfect Print", "target": 0, "actual": null },
-            { "line": "Single Head", "target": 0, "actual": null }
-          ]
+            {
+              "line": "Embroidery",
+              "target": 0,
+              "actual": null
+            },
+            {
+              "line": "Perfect Print",
+              "target": 0,
+              "actual": null
+            },
+            {
+              "line": "Single Head",
+              "target": 0,
+              "actual": null
+            }
+          ],
+          "targetSource": "WPS"
         },
         {
           "id": "can_delivery_otp",
@@ -1374,15 +3003,64 @@
             "note": "Canada OTP main (C28) and all 3 sub-line actuals (C30,C32,C34) blank. Targets entered (0.985 manual). No formula roll-up. Board not actively maintained."
           },
           "contributions": [
-            { "label": "Embroidery", "value": null, "unit": "ratio", "entryType": "manual", "formula": null, "owner": "Ana", "rollsUpTo": "can_delivery_otp", "dataBaseCol": "C30", "targetCol": "C29", "target": 0.985, "nodata": true },
-            { "label": "Perfect Print", "value": null, "unit": "ratio", "entryType": "manual", "formula": null, "owner": "Gagandeep", "rollsUpTo": "can_delivery_otp", "dataBaseCol": "C32", "targetCol": "C31", "target": 0.985, "nodata": true },
-            { "label": "Single Head", "value": null, "unit": "ratio", "entryType": "manual", "formula": null, "owner": "Gina", "rollsUpTo": "can_delivery_otp", "dataBaseCol": "C34", "targetCol": "C33", "target": 0.985, "nodata": true }
+            {
+              "label": "Embroidery",
+              "value": null,
+              "unit": "ratio",
+              "entryType": "manual",
+              "formula": null,
+              "owner": "Ana",
+              "rollsUpTo": "can_delivery_otp",
+              "dataBaseCol": "C30",
+              "targetCol": "C29",
+              "target": 0.985,
+              "nodata": true
+            },
+            {
+              "label": "Perfect Print",
+              "value": null,
+              "unit": "ratio",
+              "entryType": "manual",
+              "formula": null,
+              "owner": "Gagandeep",
+              "rollsUpTo": "can_delivery_otp",
+              "dataBaseCol": "C32",
+              "targetCol": "C31",
+              "target": 0.985,
+              "nodata": true
+            },
+            {
+              "label": "Single Head",
+              "value": null,
+              "unit": "ratio",
+              "entryType": "manual",
+              "formula": null,
+              "owner": "Gina",
+              "rollsUpTo": "can_delivery_otp",
+              "dataBaseCol": "C34",
+              "targetCol": "C33",
+              "target": 0.985,
+              "nodata": true
+            }
           ],
           "subLines": [
-            { "line": "Embroidery", "target": 0.985, "actual": null },
-            { "line": "Perfect Print", "target": 0.985, "actual": null },
-            { "line": "Single Head", "target": 0.985, "actual": null }
-          ]
+            {
+              "line": "Embroidery",
+              "target": 0.985,
+              "actual": null
+            },
+            {
+              "line": "Perfect Print",
+              "target": 0.985,
+              "actual": null
+            },
+            {
+              "line": "Single Head",
+              "target": 0.985,
+              "actual": null
+            }
+          ],
+          "targetSource": "WPS"
         },
         {
           "id": "can_cost_pplh",
@@ -1403,15 +3081,64 @@
             "note": "Canada PPLH main (C36) and all 3 sub-line actuals (C38,C40,C42) blank. No targets set. No formula roll-up. Sparsest board."
           },
           "contributions": [
-            { "label": "Embroidery", "value": null, "unit": "not_set", "entryType": "manual", "formula": null, "owner": "Ana", "rollsUpTo": "can_cost_pplh", "dataBaseCol": "C38", "targetCol": "C37", "target": null, "nodata": true },
-            { "label": "Perfect Print", "value": null, "unit": "not_set", "entryType": "manual", "formula": null, "owner": "Gagandeep", "rollsUpTo": "can_cost_pplh", "dataBaseCol": "C40", "targetCol": "C39", "target": null, "nodata": true },
-            { "label": "Single Head", "value": null, "unit": "not_set", "entryType": "manual", "formula": null, "owner": "Gina", "rollsUpTo": "can_cost_pplh", "dataBaseCol": "C42", "targetCol": "C41", "target": null, "nodata": true }
+            {
+              "label": "Embroidery",
+              "value": null,
+              "unit": "not_set",
+              "entryType": "manual",
+              "formula": null,
+              "owner": "Ana",
+              "rollsUpTo": "can_cost_pplh",
+              "dataBaseCol": "C38",
+              "targetCol": "C37",
+              "target": null,
+              "nodata": true
+            },
+            {
+              "label": "Perfect Print",
+              "value": null,
+              "unit": "not_set",
+              "entryType": "manual",
+              "formula": null,
+              "owner": "Gagandeep",
+              "rollsUpTo": "can_cost_pplh",
+              "dataBaseCol": "C40",
+              "targetCol": "C39",
+              "target": null,
+              "nodata": true
+            },
+            {
+              "label": "Single Head",
+              "value": null,
+              "unit": "not_set",
+              "entryType": "manual",
+              "formula": null,
+              "owner": "Gina",
+              "rollsUpTo": "can_cost_pplh",
+              "dataBaseCol": "C42",
+              "targetCol": "C41",
+              "target": null,
+              "nodata": true
+            }
           ],
           "subLines": [
-            { "line": "Embroidery", "target": null, "actual": null },
-            { "line": "Perfect Print", "target": null, "actual": null },
-            { "line": "Single Head", "target": null, "actual": null }
-          ]
+            {
+              "line": "Embroidery",
+              "target": null,
+              "actual": null
+            },
+            {
+              "line": "Perfect Print",
+              "target": null,
+              "actual": null
+            },
+            {
+              "line": "Single Head",
+              "target": null,
+              "actual": null
+            }
+          ],
+          "targetSource": "WPS"
         },
         {
           "id": "can_hrd_srr_supervisor",
@@ -1426,8 +3153,14 @@
           "nodata": true,
           "nodataNote": "E. Guayabo: target = 0.8; no actual entered for supervisor role.",
           "supervisors": [
-            { "name": "E. Guayabo", "role": "Supervisor", "target": 0.8, "actual": null }
-          ]
+            {
+              "name": "E. Guayabo",
+              "role": "Supervisor",
+              "target": 0.8,
+              "actual": null
+            }
+          ],
+          "targetSource": "ODG"
         },
         {
           "id": "can_hrd_srr_tl",
@@ -1440,11 +3173,21 @@
           "targetType": "rate",
           "direction": "higher_better",
           "monthlyActuals": {
-            "JAN": 0.8, "FEB": 0.8, "MAR": 0.8, "APR": 0.8,
-            "MAY": 0.8, "JUN": 0.8, "JUL": 0.8, "AUG": 0.8,
-            "SEP": 0.8, "OCT": 0.8, "NOV": 0.8, "DEC": 0.8
+            "JAN": 0.8,
+            "FEB": 0.8,
+            "MAR": 0.8,
+            "APR": 0.8,
+            "MAY": 0.8,
+            "JUN": 0.8,
+            "JUL": 0.8,
+            "AUG": 0.8,
+            "SEP": 0.8,
+            "OCT": 0.8,
+            "NOV": 0.8,
+            "DEC": 0.8
           },
-          "note": "E. Guayabo Team Leader actual = 0.8 all 12 months — only consistently populated KPI for Canada."
+          "note": "E. Guayabo Team Leader actual = 0.8 all 12 months — only consistently populated KPI for Canada.",
+          "targetSource": "ODG"
         }
       ]
     }
