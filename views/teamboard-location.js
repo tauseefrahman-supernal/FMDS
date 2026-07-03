@@ -19,6 +19,28 @@
 import { mains, byId } from '../lib/registry.js';
 import { ragStatus }    from '../lib/rag.js';
 import { svgLine }      from '../lib/charts.js';
+import { explainKpi }   from '../lib/explain.js';
+
+// ─── Per-KPI explanation block (top of any expansion) ────────────────────────
+// Every KPI, when clicked open, leads with a short grounded explanation:
+// what it measures · what feeds it · why it's at this RAG right now.
+function renderExplainBlock(kpi, dept, opts = {}) {
+  const colspan = opts.colspan || 6;
+  const e = explainKpi(kpi, dept, opts);
+  return `
+    <tr class="kpi-explain-row">
+      <td colspan="${colspan}" style="padding:0">
+        <div class="kpi-explain">
+          <div class="kpi-explain__label">What this KPI means</div>
+          <div class="kpi-explain__grid">
+            <div><span class="kpi-explain__k">Measures</span> ${e.definition}</div>
+            <div><span class="kpi-explain__k">Source</span> ${e.source}</div>
+            <div><span class="kpi-explain__k">Why now</span> ${e.why}</div>
+          </div>
+        </div>
+      </td>
+    </tr>`;
+}
 
 // ─── Location config ─────────────────────────────────────────────────────────
 
@@ -145,6 +167,9 @@ function renderMainRow(dept, mainKpi, locationId, expandedIds) {
     : '';
 
   const hasContribs = mainKpi.contributors && mainKpi.contributors.length > 0;
+  // Every KPI is click-in — even those with no location subs expand to show
+  // the explanation block.
+  const isExpandable = true;
 
   // Mechanism B note for WE main
   const mechNote = locationId === 'we' && mainKpi.rollupMethod === 'independent'
@@ -160,15 +185,13 @@ function renderMainRow(dept, mainKpi, locationId, expandedIds) {
               title="Show T3 OTP context story">ⓘ story</button>`
     : '';
 
-  const toggleBtn = hasContribs
-    ? `<button class="btn btn--ghost expand-btn" data-kpi-id="${mainKpi.id}"
+  const toggleBtn = `<button class="btn btn--ghost expand-btn" data-kpi-id="${mainKpi.id}"
                style="padding:2px 6px;font-size:0.7rem;border-radius:3px">
          ${isExpanded ? '▼' : '▶'}
-       </button>`
-    : '<span style="display:inline-block;width:22px"></span>';
+       </button>`;
 
   let rows = `
-    <tr class="main-row ${hasContribs ? 'main-row--expandable' : ''}"
+    <tr class="main-row ${isExpandable ? 'main-row--expandable' : ''}"
         data-kpi-id="${mainKpi.id}" data-has-contribs="${hasContribs}">
       <td>
         <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">
@@ -191,7 +214,10 @@ function renderMainRow(dept, mainKpi, locationId, expandedIds) {
       <td>${chart}</td>
     </tr>`;
 
-  // Expanded sub-rows for the current location's sibling sub-KPIs
+  // Expanded: lead with the explanation block, then the location sub-rows.
+  if (isExpanded) {
+    rows += renderExplainBlock(mainKpi, dept, { rag, actualOverride: displayActualVal });
+  }
   if (isExpanded && hasContribs) {
     const subs = mainKpi.contributors
       .map(cid => byId(dept, cid))
@@ -446,7 +472,9 @@ function renderLocKpiRow(kpi, expandedLocKpis) {
   const hasSubLines  = !hasContribs && Array.isArray(kpi.subLines) && kpi.subLines.length > 0;
   const hasByBldg    = !hasContribs && !hasSubLines && Array.isArray(kpi.byBuilding) && kpi.byBuilding.length > 0;
   const hasSups      = !hasContribs && !hasSubLines && !hasByBldg && Array.isArray(kpi.supervisors) && kpi.supervisors.length > 0;
-  const hasExpandable = hasContribs || hasSubLines || hasByBldg || hasSups;
+  const hasSubRows   = hasContribs || hasSubLines || hasByBldg || hasSups;
+  // Every KPI is click-in — those with no sub-rows still expand for the explanation.
+  const hasExpandable = true;
 
   const spark = kpi.monthlyActuals
     ? monthSparkline(kpi.monthlyActuals, kpi.target)
@@ -499,8 +527,13 @@ function renderLocKpiRow(kpi, expandedLocKpis) {
       <td>${spark}</td>
     </tr>`;
 
-  // Expanded rows: operator contributions (for OTP/PPLH) or sub-lines/buildings/supervisors
-  if (isExpanded && hasExpandable) {
+  // Expanded: lead with the explanation block, then operator contributions
+  // (OTP/PPLH) or sub-lines/buildings/supervisors where they exist.
+  if (isExpanded) {
+    rows += renderExplainBlock(kpi, { id: 'operations' }, { rag });
+    if (kpi.rollup && !hasContribs) rows += `<tr class="kpi-explain-tail"><td colspan="6" style="padding:0">${rollupNote(kpi)}</td></tr>`;
+  }
+  if (isExpanded && hasSubRows) {
     if (hasContribs) {
       rows += renderContribRows(kpi);
     } else {
@@ -714,6 +747,38 @@ function injectStyles() {
       background: #eff6ff;
       color: #1e40af;
       border: 1px solid #bfdbfe;
+    }
+    /* Per-KPI explanation block (top of any expansion) */
+    .kpi-explain {
+      background: var(--accent-light, #eef3ff);
+      border-left: 3px solid var(--accent, #2f6bff);
+      padding: 10px 16px 10px 22px;
+      margin: 2px 0;
+    }
+    .kpi-explain__label {
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--accent, #2f6bff);
+      margin-bottom: 6px;
+    }
+    .kpi-explain__grid {
+      display: grid;
+      gap: 4px;
+      font-size: 0.8rem;
+      line-height: 1.55;
+      color: var(--slate-700, #334155);
+    }
+    .kpi-explain__k {
+      display: inline-block;
+      min-width: 66px;
+      font-weight: 700;
+      color: var(--slate-500, #64748b);
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      margin-right: 6px;
     }
   `;
   document.head.appendChild(style);
