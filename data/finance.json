@@ -26,7 +26,8 @@
       "rollupMethod": "manual",
       "contributors": [],
       "flag": null,
-      "series": []
+      "series": [],
+      "targetSource": "Business Central"
     },
     {
       "id": "budget_variance_ytd",
@@ -43,7 +44,10 @@
       "contributors": [],
       "flag": "Budget Variance target not encoded in board — registry notes $8,364,000 YTD as the current figure. Lower variance = better.",
       "note": "YTD $8.36M variance figure from registry. Target formally defined in Hoshin, not in board cell.",
-      "series": [8360000]
+      "series": [
+        8360000
+      ],
+      "targetSource": "Business Central"
     },
     {
       "id": "budget_variance_mtd",
@@ -59,7 +63,10 @@
       "rollupMethod": "manual",
       "contributors": [],
       "flag": "Target not encoded in board cell — registry notes $890,000 MTD as the current figure.",
-      "series": [890000]
+      "series": [
+        890000
+      ],
+      "targetSource": "Business Central"
     },
     {
       "id": "nwc",
@@ -76,7 +83,10 @@
       "contributors": [],
       "flag": "NWC target not formally set in board. Formula: (AR + Inv − AP) / Sales. Sales WE $74M / HPI $14.8M.",
       "note": "NWC 0.18 is the current actual. Target direction: higher is better (more liquidity buffer).",
-      "series": [0.18]
+      "series": [
+        0.18
+      ],
+      "targetSource": "Business Central"
     },
     {
       "id": "inventory_turns",
@@ -92,7 +102,10 @@
       "rollupMethod": "manual",
       "contributors": [],
       "flag": "Target not formally set in board cell. Formula: COGS / Avg Inventory.",
-      "series": [8]
+      "series": [
+        8
+      ],
+      "targetSource": "Business Central"
     },
     {
       "id": "ar_aging",
@@ -106,10 +119,16 @@
       "direction": "lower_better",
       "source": "Finance Board KPIs",
       "rollupMethod": "manual",
-      "contributors": ["ar_aging_we", "ar_aging_hpi"],
+      "contributors": [
+        "ar_aging_we",
+        "ar_aging_hpi"
+      ],
       "flag": null,
       "note": "Consolidated 0.05; WE 0.02 / HPI 0.08.",
-      "series": [0.05]
+      "series": [
+        0.05
+      ],
+      "targetSource": "Business Central"
     },
     {
       "id": "ar_aging_we",
@@ -125,7 +144,10 @@
       "rollupMethod": null,
       "contributors": [],
       "flag": null,
-      "series": [0.02]
+      "series": [
+        0.02
+      ],
+      "targetSource": "Business Central"
     },
     {
       "id": "ar_aging_hpi",
@@ -141,7 +163,10 @@
       "rollupMethod": null,
       "contributors": [],
       "flag": null,
-      "series": [0.08]
+      "series": [
+        0.08
+      ],
+      "targetSource": "Business Central"
     },
     {
       "id": "ap_aging",
@@ -157,7 +182,10 @@
       "rollupMethod": "manual",
       "contributors": [],
       "flag": null,
-      "series": [0.05]
+      "series": [
+        0.05
+      ],
+      "targetSource": "Business Central"
     }
   ],
   "gaps": [

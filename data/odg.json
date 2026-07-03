@@ -35,8 +35,18 @@
       ],
       "flag": null,
       "note": "Target 0.1 is the monthly ramp target per program; cumulative adherence (latest weekly wk24) is the meaningful figure.",
-      "monthlyActuals": { "jan": 0.138, "feb": 0.145, "mar": 0.219 },
-      "series": [0.138, 0.145, 0.219, 0.447]
+      "monthlyActuals": {
+        "jan": 0.138,
+        "feb": 0.145,
+        "mar": 0.219
+      },
+      "series": [
+        0.138,
+        0.145,
+        0.219,
+        0.447
+      ],
+      "targetSource": "ODG FMDS Board"
     },
     {
       "id": "training_sw_bwi",
@@ -52,8 +62,18 @@
       "rollupMethod": null,
       "contributors": [],
       "flag": null,
-      "monthlyActuals": { "jan": 0.116, "feb": 0.116, "mar": 0.116 },
-      "series": [0.116, 0.116, 0.116, 0.227]
+      "monthlyActuals": {
+        "jan": 0.116,
+        "feb": 0.116,
+        "mar": 0.116
+      },
+      "series": [
+        0.116,
+        0.116,
+        0.116,
+        0.227
+      ],
+      "targetSource": "ODG FMDS Board"
     },
     {
       "id": "training_biq",
@@ -69,8 +89,18 @@
       "rollupMethod": null,
       "contributors": [],
       "flag": null,
-      "monthlyActuals": { "jan": 0.150, "feb": 0.150, "mar": 0.151 },
-      "series": [0.150, 0.150, 0.151, 0.154]
+      "monthlyActuals": {
+        "jan": 0.15,
+        "feb": 0.15,
+        "mar": 0.151
+      },
+      "series": [
+        0.15,
+        0.15,
+        0.151,
+        0.154
+      ],
+      "targetSource": "ODG FMDS Board"
     },
     {
       "id": "training_fmds",
@@ -87,8 +117,18 @@
       "contributors": [],
       "flag": null,
       "note": "93.2% adoption — the high-water mark. The adoption gap vs 8-Step (18.9%) is the product thesis.",
-      "monthlyActuals": { "jan": 0.133, "feb": 0.133, "mar": 0.614 },
-      "series": [0.133, 0.133, 0.614, 0.932]
+      "monthlyActuals": {
+        "jan": 0.133,
+        "feb": 0.133,
+        "mar": 0.614
+      },
+      "series": [
+        0.133,
+        0.133,
+        0.614,
+        0.932
+      ],
+      "targetSource": "ODG FMDS Board"
     },
     {
       "id": "training_leadership",
@@ -104,8 +144,18 @@
       "rollupMethod": null,
       "contributors": [],
       "flag": null,
-      "monthlyActuals": { "jan": 0.147, "feb": 0.147, "mar": 0.171 },
-      "series": [0.147, 0.147, 0.171, 0.177]
+      "monthlyActuals": {
+        "jan": 0.147,
+        "feb": 0.147,
+        "mar": 0.171
+      },
+      "series": [
+        0.147,
+        0.147,
+        0.171,
+        0.177
+      ],
+      "targetSource": "ODG FMDS Board"
     },
     {
       "id": "training_jit",
@@ -114,15 +164,25 @@
       "isMain": false,
       "parentId": "training_overall",
       "target": 0.1,
-      "actual": 0.110,
+      "actual": 0.11,
       "unit": "ratio",
       "direction": "higher_better",
       "source": "ODG FMDS Board",
       "rollupMethod": null,
       "contributors": [],
       "flag": null,
-      "monthlyActuals": { "jan": 0.080, "feb": 0.080, "mar": 0.097 },
-      "series": [0.080, 0.080, 0.097, 0.110]
+      "monthlyActuals": {
+        "jan": 0.08,
+        "feb": 0.08,
+        "mar": 0.097
+      },
+      "series": [
+        0.08,
+        0.08,
+        0.097,
+        0.11
+      ],
+      "targetSource": "ODG FMDS Board"
     },
     {
       "id": "training_8step",
@@ -139,8 +199,18 @@
       "contributors": [],
       "flag": null,
       "note": "18.9% — the low-adoption KPI vs FMDS 93.2%. This gap is the product thesis.",
-      "monthlyActuals": { "jan": 0.178, "feb": 0.178, "mar": 0.179 },
-      "series": [0.178, 0.178, 0.179, 0.189]
+      "monthlyActuals": {
+        "jan": 0.178,
+        "feb": 0.178,
+        "mar": 0.179
+      },
+      "series": [
+        0.178,
+        0.178,
+        0.179,
+        0.189
+      ],
+      "targetSource": "ODG FMDS Board"
     },
     {
       "id": "training_srr_prog",
@@ -156,8 +226,18 @@
       "rollupMethod": null,
       "contributors": [],
       "flag": null,
-      "monthlyActuals": { "jan": 0.220, "feb": 0.220, "mar": 0.237 },
-      "series": [0.220, 0.220, 0.237, 0.865]
+      "monthlyActuals": {
+        "jan": 0.22,
+        "feb": 0.22,
+        "mar": 0.237
+      },
+      "series": [
+        0.22,
+        0.22,
+        0.237,
+        0.865
+      ],
+      "targetSource": "ODG FMDS Board"
     },
     {
       "id": "training_idmp",
@@ -166,15 +246,25 @@
       "isMain": false,
       "parentId": "training_overall",
       "target": 0.1,
-      "actual": 0.110,
+      "actual": 0.11,
       "unit": "ratio",
       "direction": "higher_better",
       "source": "ODG FMDS Board",
       "rollupMethod": null,
       "contributors": [],
       "flag": null,
-      "monthlyActuals": { "jan": 0.080, "feb": 0.080, "mar": 0.097 },
-      "series": [0.080, 0.080, 0.097, 0.110]
+      "monthlyActuals": {
+        "jan": 0.08,
+        "feb": 0.08,
+        "mar": 0.097
+      },
+      "series": [
+        0.08,
+        0.08,
+        0.097,
+        0.11
+      ],
+      "targetSource": "ODG FMDS Board"
     },
     {
       "id": "srr_overall",
@@ -182,7 +272,7 @@
       "level": 1,
       "isMain": true,
       "parentId": null,
-      "target": 1.0,
+      "target": 1,
       "actual": 0.083,
       "unit": "ratio",
       "direction": "higher_better",
@@ -198,8 +288,18 @@
       ],
       "flag": null,
       "note": "SRR overall ~8.3% because only Operations (~50%) is running its Strategic Review Rhythm. All other departments read 0. Confirm whether 0s represent true non-adoption vs not-yet-scored.",
-      "monthlyActuals": { "jan": 0.080, "feb": 0.080, "mar": 0.081 },
-      "series": [0.080, 0.080, 0.081, 0.083]
+      "monthlyActuals": {
+        "jan": 0.08,
+        "feb": 0.08,
+        "mar": 0.081
+      },
+      "series": [
+        0.08,
+        0.08,
+        0.081,
+        0.083
+      ],
+      "targetSource": "ODG FMDS Board"
     },
     {
       "id": "srr_operations",
@@ -207,8 +307,8 @@
       "level": 2,
       "isMain": false,
       "parentId": "srr_overall",
-      "target": 1.0,
-      "actual": 0.500,
+      "target": 1,
+      "actual": 0.5,
       "unit": "ratio",
       "direction": "higher_better",
       "source": "ODG FMDS Board",
@@ -216,8 +316,18 @@
       "contributors": [],
       "flag": null,
       "note": "Operations is the only department running SRR (~50%).",
-      "monthlyActuals": { "jan": 0.480, "feb": 0.480, "mar": 0.484 },
-      "series": [0.480, 0.480, 0.484, 0.500]
+      "monthlyActuals": {
+        "jan": 0.48,
+        "feb": 0.48,
+        "mar": 0.484
+      },
+      "series": [
+        0.48,
+        0.48,
+        0.484,
+        0.5
+      ],
+      "targetSource": "ODG FMDS Board"
     },
     {
       "id": "srr_finance",
@@ -225,7 +335,7 @@
       "level": 2,
       "isMain": false,
       "parentId": "srr_overall",
-      "target": 1.0,
+      "target": 1,
       "actual": 0,
       "unit": "ratio",
       "direction": "higher_better",
@@ -233,8 +343,18 @@
       "rollupMethod": null,
       "contributors": [],
       "flag": null,
-      "monthlyActuals": { "jan": 0, "feb": 0, "mar": 0 },
-      "series": [0, 0, 0, 0]
+      "monthlyActuals": {
+        "jan": 0,
+        "feb": 0,
+        "mar": 0
+      },
+      "series": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "targetSource": "ODG FMDS Board"
     },
     {
       "id": "srr_it",
@@ -242,7 +362,7 @@
       "level": 2,
       "isMain": false,
       "parentId": "srr_overall",
-      "target": 1.0,
+      "target": 1,
       "actual": 0,
       "unit": "ratio",
       "direction": "higher_better",
@@ -250,8 +370,18 @@
       "rollupMethod": null,
       "contributors": [],
       "flag": null,
-      "monthlyActuals": { "jan": 0, "feb": 0, "mar": 0 },
-      "series": [0, 0, 0, 0]
+      "monthlyActuals": {
+        "jan": 0,
+        "feb": 0,
+        "mar": 0
+      },
+      "series": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "targetSource": "ODG FMDS Board"
     },
     {
       "id": "srr_sales_service",
@@ -259,7 +389,7 @@
       "level": 2,
       "isMain": false,
       "parentId": "srr_overall",
-      "target": 1.0,
+      "target": 1,
       "actual": 0,
       "unit": "ratio",
       "direction": "higher_better",
@@ -267,8 +397,18 @@
       "rollupMethod": null,
       "contributors": [],
       "flag": null,
-      "monthlyActuals": { "jan": 0, "feb": 0, "mar": 0 },
-      "series": [0, 0, 0, 0]
+      "monthlyActuals": {
+        "jan": 0,
+        "feb": 0,
+        "mar": 0
+      },
+      "series": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "targetSource": "ODG FMDS Board"
     },
     {
       "id": "srr_marketing",
@@ -276,7 +416,7 @@
       "level": 2,
       "isMain": false,
       "parentId": "srr_overall",
-      "target": 1.0,
+      "target": 1,
       "actual": 0,
       "unit": "ratio",
       "direction": "higher_better",
@@ -284,8 +424,18 @@
       "rollupMethod": null,
       "contributors": [],
       "flag": null,
-      "monthlyActuals": { "jan": 0, "feb": 0, "mar": 0 },
-      "series": [0, 0, 0, 0]
+      "monthlyActuals": {
+        "jan": 0,
+        "feb": 0,
+        "mar": 0
+      },
+      "series": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "targetSource": "ODG FMDS Board"
     },
     {
       "id": "srr_hr",
@@ -293,7 +443,7 @@
       "level": 2,
       "isMain": false,
       "parentId": "srr_overall",
-      "target": 1.0,
+      "target": 1,
       "actual": 0,
       "unit": "ratio",
       "direction": "higher_better",
@@ -301,19 +451,61 @@
       "rollupMethod": null,
       "contributors": [],
       "flag": null,
-      "monthlyActuals": { "jan": 0, "feb": 0, "mar": 0 },
-      "series": [0, 0, 0, 0]
+      "monthlyActuals": {
+        "jan": 0,
+        "feb": 0,
+        "mar": 0
+      },
+      "series": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "targetSource": "ODG FMDS Board"
     }
   ],
   "trainingPrograms": [
-    { "id": "sw_bwi", "name": "SW / PM / BWI", "adoption": 0.227 },
-    { "id": "biq", "name": "BIQ", "adoption": 0.154 },
-    { "id": "fmds", "name": "FMDS", "adoption": 0.932 },
-    { "id": "leadership", "name": "Leadership Application", "adoption": 0.177 },
-    { "id": "jit", "name": "JIT", "adoption": 0.110 },
-    { "id": "eight_step", "name": "8-Step Problem Solving", "adoption": 0.189 },
-    { "id": "srr_prog", "name": "SRR (as a program)", "adoption": 0.865 },
-    { "id": "idmp", "name": "IDMP", "adoption": 0.110 }
+    {
+      "id": "sw_bwi",
+      "name": "SW / PM / BWI",
+      "adoption": 0.227
+    },
+    {
+      "id": "biq",
+      "name": "BIQ",
+      "adoption": 0.154
+    },
+    {
+      "id": "fmds",
+      "name": "FMDS",
+      "adoption": 0.932
+    },
+    {
+      "id": "leadership",
+      "name": "Leadership Application",
+      "adoption": 0.177
+    },
+    {
+      "id": "jit",
+      "name": "JIT",
+      "adoption": 0.11
+    },
+    {
+      "id": "eight_step",
+      "name": "8-Step Problem Solving",
+      "adoption": 0.189
+    },
+    {
+      "id": "srr_prog",
+      "name": "SRR (as a program)",
+      "adoption": 0.865
+    },
+    {
+      "id": "idmp",
+      "name": "IDMP",
+      "adoption": 0.11
+    }
   ],
   "gaps": [
     "SRR 0s: confirm whether true non-adoption or not-yet-scored.",

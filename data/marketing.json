@@ -15,9 +15,20 @@
       "ownerName": "PC (full name unconfirmed)",
       "domain": "Branding, organic visibility, social media, PR, agency accountability",
       "cadence": "weekly",
-      "divisions": ["WEI", "CG", "HPI"],
+      "divisions": [
+        "WEI",
+        "CG",
+        "HPI"
+      ],
       "actualsStatus": "active — weekly actuals populated through Wk 26 (Jun 27 2026)",
-      "sheets": ["WEI Database PC", "CG Database PC", "HPI Database PC", "Data Base PC", "DASHBOARD PC", "Agency's Path"]
+      "sheets": [
+        "WEI Database PC",
+        "CG Database PC",
+        "HPI Database PC",
+        "Data Base PC",
+        "DASHBOARD PC",
+        "Agency's Path"
+      ]
     },
     {
       "boardId": "ecomm_perf_mktg_cm",
@@ -26,9 +37,20 @@
       "ownerName": "Carlos Mitchell",
       "domain": "Ecommerce revenue by channel, paid performance (META/LinkedIn/Google), demand generation / leads pipeline",
       "cadence": "weekly",
-      "divisions": ["WEI", "CG", "HPI"],
+      "divisions": [
+        "WEI",
+        "CG",
+        "HPI"
+      ],
       "actualsStatus": "sparse — revenue targets set, no revenue actuals entered; one week of MQL lead data (Wk 9 Feb 28). Revenue actuals flow from Rhythm 2025 external workbook, not entered here.",
-      "sheets": ["WEI Database CM", "CG Database CM", "HPI Database CM", "Data Base CM", "DASHBOARD CM", "GRAF"]
+      "sheets": [
+        "WEI Database CM",
+        "CG Database CM",
+        "HPI Database CM",
+        "Data Base CM",
+        "DASHBOARD CM",
+        "GRAF"
+      ]
     }
   ],
   "kpis": [
@@ -49,8 +71,11 @@
       "unit": "$/week",
       "direction": "higher_better",
       "source": "Rhythm 2025",
+      "targetSource": "Rhythm 2025",
       "rollupMethod": "external",
-      "contributors": ["mkt_sourced_revenue_wei"],
+      "contributors": [
+        "mkt_sourced_revenue_wei"
+      ],
       "flag": null,
       "series": [],
       "illustrative": false
@@ -72,8 +97,12 @@
       "unit": "$/mo",
       "direction": "higher_better",
       "source": "Custom Genie / HPI",
+      "targetSource": "Ecomm platform",
       "rollupMethod": "external",
-      "contributors": ["we_rev_custom_genie", "we_rev_hpi"],
+      "contributors": [
+        "we_rev_custom_genie",
+        "we_rev_hpi"
+      ],
       "flag": null,
       "series": [],
       "illustrative": false
@@ -95,6 +124,7 @@
       "unit": "$/mo",
       "direction": "higher_better",
       "source": "Ecomm-CM",
+      "targetSource": "Ecomm platform",
       "rollupMethod": null,
       "contributors": [],
       "flag": null,
@@ -117,6 +147,7 @@
       "unit": "$/mo",
       "direction": "higher_better",
       "source": "DxD HPI",
+      "targetSource": "DxD HPI",
       "rollupMethod": null,
       "contributors": [],
       "flag": null,
@@ -139,8 +170,14 @@
       "unit": "$/week",
       "direction": "higher_better",
       "source": "CM Board (target); Rhythm 2025 (actuals)",
+      "targetSource": "Rhythm 2025 / Ecomm platform",
       "rollupMethod": "external",
-      "contributors": ["revenue_website_b2b", "revenue_website_b2c", "revenue_amazon", "revenue_walmart"],
+      "contributors": [
+        "revenue_website_b2b",
+        "revenue_website_b2c",
+        "revenue_amazon",
+        "revenue_walmart"
+      ],
       "flag": "actuals_missing",
       "series": [],
       "illustrative": false
@@ -162,6 +199,7 @@
       "unit": "$/week",
       "direction": "higher_better",
       "source": "Ecomm platform",
+      "targetSource": "Rhythm 2025 / Ecomm platform",
       "series": []
     },
     {
@@ -181,6 +219,7 @@
       "unit": "$/week",
       "direction": "higher_better",
       "source": "Ecomm platform",
+      "targetSource": "Rhythm 2025 / Ecomm platform",
       "series": []
     },
     {
@@ -199,6 +238,7 @@
       "unit": "$/week",
       "direction": "higher_better",
       "source": "Amazon Seller Central",
+      "targetSource": "Amazon Seller Central",
       "series": []
     },
     {
@@ -217,6 +257,7 @@
       "unit": "$/week",
       "direction": "higher_better",
       "source": "Walmart Marketplace",
+      "targetSource": "Walmart Marketplace",
       "series": []
     },
     {
@@ -236,7 +277,13 @@
       "unit": "%",
       "direction": "higher_better",
       "source": "GA4 / Ecomm platform",
-      "contributors": ["cvr_b2b", "cvr_b2c", "cvr_amazon", "cvr_walmart"],
+      "targetSource": "GA4 / Ecomm platform",
+      "contributors": [
+        "cvr_b2b",
+        "cvr_b2c",
+        "cvr_amazon",
+        "cvr_walmart"
+      ],
       "series": []
     },
     {
@@ -256,7 +303,13 @@
       "unit": "$/order",
       "direction": "higher_better",
       "source": "Ecomm platform / NetSuite",
-      "contributors": ["aov_b2b", "aov_b2c", "aov_amazon", "aov_walmart"],
+      "targetSource": "Ecomm platform / NetSuite",
+      "contributors": [
+        "aov_b2b",
+        "aov_b2c",
+        "aov_amazon",
+        "aov_walmart"
+      ],
       "series": []
     },
     {
@@ -276,7 +329,13 @@
       "unit": "%",
       "direction": "higher_better",
       "source": "Ecomm platform / CRM",
-      "contributors": ["repeat_b2b", "repeat_b2c", "repeat_amazon", "repeat_walmart"],
+      "targetSource": "Ecomm platform / CRM",
+      "contributors": [
+        "repeat_b2b",
+        "repeat_b2c",
+        "repeat_amazon",
+        "repeat_walmart"
+      ],
       "series": []
     },
     {
@@ -296,7 +355,13 @@
       "unit": "%",
       "direction": "lower_better",
       "source": "Ecomm platform / GA4",
-      "contributors": ["cart_abandon_b2b", "cart_abandon_b2c", "cart_abandon_amazon", "cart_abandon_walmart"],
+      "targetSource": "GA4 / Ecomm platform",
+      "contributors": [
+        "cart_abandon_b2b",
+        "cart_abandon_b2c",
+        "cart_abandon_amazon",
+        "cart_abandon_walmart"
+      ],
       "series": []
     },
     {
@@ -316,9 +381,13 @@
       "unit": "$/week",
       "direction": "higher_better",
       "source": "Meta Ads Manager",
-      "contributors": ["meta_cac_wei", "meta_roas_wei"],
+      "contributors": [
+        "meta_cac_wei",
+        "meta_roas_wei"
+      ],
       "flag": "actuals_missing",
-      "series": []
+      "series": [],
+      "targetSource": "Meta Ads Manager"
     },
     {
       "id": "meta_cac_wei",
@@ -337,7 +406,8 @@
       "unit": "$/customer",
       "direction": "lower_better",
       "source": "Meta Ads Manager",
-      "series": []
+      "series": [],
+      "targetSource": "Meta Ads Manager"
     },
     {
       "id": "meta_roas_wei",
@@ -356,7 +426,8 @@
       "unit": "ratio",
       "direction": "higher_better",
       "source": "Meta Ads Manager",
-      "series": []
+      "series": [],
+      "targetSource": "Meta Ads Manager"
     },
     {
       "id": "linkedin_revenue_wei",
@@ -375,9 +446,13 @@
       "unit": "$/week",
       "direction": "higher_better",
       "source": "LinkedIn Campaign Manager",
-      "contributors": ["linkedin_cac_wei", "linkedin_roas_wei"],
+      "contributors": [
+        "linkedin_cac_wei",
+        "linkedin_roas_wei"
+      ],
       "flag": "actuals_missing",
-      "series": []
+      "series": [],
+      "targetSource": "LinkedIn Campaign Manager"
     },
     {
       "id": "linkedin_cac_wei",
@@ -394,7 +469,8 @@
       "unit": "$/customer",
       "direction": "lower_better",
       "source": "LinkedIn Campaign Manager",
-      "series": []
+      "series": [],
+      "targetSource": "LinkedIn Campaign Manager"
     },
     {
       "id": "linkedin_roas_wei",
@@ -411,7 +487,8 @@
       "unit": "ratio",
       "direction": "higher_better",
       "source": "LinkedIn Campaign Manager",
-      "series": []
+      "series": [],
+      "targetSource": "LinkedIn Campaign Manager"
     },
     {
       "id": "google_revenue_wei",
@@ -430,9 +507,13 @@
       "unit": "$/week",
       "direction": "higher_better",
       "source": "Google Ads",
-      "contributors": ["google_cac_wei", "google_roas_wei"],
+      "contributors": [
+        "google_cac_wei",
+        "google_roas_wei"
+      ],
       "flag": "actuals_missing",
-      "series": []
+      "series": [],
+      "targetSource": "Google Ads"
     },
     {
       "id": "google_cac_wei",
@@ -449,7 +530,8 @@
       "unit": "$/customer",
       "direction": "lower_better",
       "source": "Google Ads",
-      "series": []
+      "series": [],
+      "targetSource": "Google Ads"
     },
     {
       "id": "google_roas_wei",
@@ -466,7 +548,8 @@
       "unit": "ratio",
       "direction": "higher_better",
       "source": "Google Ads",
-      "series": []
+      "series": [],
+      "targetSource": "Google Ads"
     },
     {
       "id": "mkt_sourced_revenue",
@@ -486,10 +569,14 @@
       "direction": "higher_better",
       "source": "Power BI",
       "rollupMethod": "external",
-      "contributors": ["leads_count", "mql_count"],
+      "contributors": [
+        "leads_count",
+        "mql_count"
+      ],
       "flag": "MQL/SQL, Cost-per-MQL, AOV, Site-Conversion are net-new (not on this board today — live in Power BI/GA4/Search Console).",
       "series": [],
-      "illustrative": false
+      "illustrative": false,
+      "targetSource": "Power BI"
     },
     {
       "id": "leads_count",
@@ -511,8 +598,16 @@
       "rollupMethod": "external",
       "contributors": [],
       "flag": "single_datapoint",
-      "series": [{"week": 9, "date": "2026-02-28", "target": 500, "actual": 208}],
-      "illustrative": false
+      "series": [
+        {
+          "week": 9,
+          "date": "2026-02-28",
+          "target": 500,
+          "actual": 208
+        }
+      ],
+      "illustrative": false,
+      "targetSource": "HubSpot"
     },
     {
       "id": "mql_count",
@@ -533,8 +628,16 @@
       "source": "HubSpot",
       "contributors": [],
       "flag": "single_datapoint",
-      "series": [{"week": 9, "date": "2026-02-28", "target": 100, "actual": 79}],
-      "illustrative": false
+      "series": [
+        {
+          "week": 9,
+          "date": "2026-02-28",
+          "target": 100,
+          "actual": 79
+        }
+      ],
+      "illustrative": false,
+      "targetSource": "HubSpot"
     },
     {
       "id": "mql_to_sql_rate",
@@ -553,7 +656,8 @@
       "unit": "%",
       "direction": "higher_better",
       "source": "HubSpot",
-      "series": []
+      "series": [],
+      "targetSource": "HubSpot"
     },
     {
       "id": "cpl",
@@ -573,7 +677,8 @@
       "direction": "lower_better",
       "source": "Ad platforms + HubSpot",
       "series": [],
-      "flag": "conflict — PC agency CPL target = $110; CM board has no CM-owned target set"
+      "flag": "conflict — PC agency CPL target = $110; CM board has no CM-owned target set",
+      "targetSource": "HubSpot"
     },
     {
       "id": "branded_search_volume",
@@ -593,20 +698,58 @@
       "direction": "higher_better",
       "source": "Google Search Console (via Agency report)",
       "rollupMethod": "manual",
-      "contributors": ["organic_traffic"],
+      "contributors": [
+        "organic_traffic"
+      ],
       "flag": null,
-      "attainment": 0.70,
+      "attainment": 0.7,
       "attainmentNote": "Wk 26 (Jun 27): 626 vs target 900 = 70%. Trend improving from 165 (Wk 1 Jan) to 638 (Wk 21 May).",
       "series": [
-        {"week": 1, "date": "2026-01-03", "target": 900, "actual": 165},
-        {"week": 5, "date": "2026-01-31", "target": 900, "actual": 393},
-        {"week": 10, "date": "2026-03-07", "target": 900, "actual": 241},
-        {"week": 15, "date": "2026-04-11", "target": 900, "actual": 219},
-        {"week": 19, "date": "2026-05-09", "target": 900, "actual": 483},
-        {"week": 21, "date": "2026-05-23", "target": 900, "actual": 638},
-        {"week": 26, "date": "2026-06-27", "target": 900, "actual": 626}
+        {
+          "week": 1,
+          "date": "2026-01-03",
+          "target": 900,
+          "actual": 165
+        },
+        {
+          "week": 5,
+          "date": "2026-01-31",
+          "target": 900,
+          "actual": 393
+        },
+        {
+          "week": 10,
+          "date": "2026-03-07",
+          "target": 900,
+          "actual": 241
+        },
+        {
+          "week": 15,
+          "date": "2026-04-11",
+          "target": 900,
+          "actual": 219
+        },
+        {
+          "week": 19,
+          "date": "2026-05-09",
+          "target": 900,
+          "actual": 483
+        },
+        {
+          "week": 21,
+          "date": "2026-05-23",
+          "target": 900,
+          "actual": 638
+        },
+        {
+          "week": 26,
+          "date": "2026-06-27",
+          "target": 900,
+          "actual": 626
+        }
       ],
-      "illustrative": false
+      "illustrative": false,
+      "targetSource": "Google Search Console"
     },
     {
       "id": "organic_traffic",
@@ -628,13 +771,39 @@
       "attainment": 0.29,
       "attainmentNote": "Wk 26: 728 vs target 2,500 = 29%. Peak was Wk 17 (Apr 25) at 1,383 (55%). Consistently below target.",
       "series": [
-        {"week": 1, "date": "2026-01-03", "target": 2500, "actual": 723},
-        {"week": 5, "date": "2026-01-31", "target": 2500, "actual": 1074},
-        {"week": 17, "date": "2026-04-25", "target": 2500, "actual": 1383},
-        {"week": 21, "date": "2026-05-23", "target": 2500, "actual": 690},
-        {"week": 26, "date": "2026-06-27", "target": 2500, "actual": 728}
+        {
+          "week": 1,
+          "date": "2026-01-03",
+          "target": 2500,
+          "actual": 723
+        },
+        {
+          "week": 5,
+          "date": "2026-01-31",
+          "target": 2500,
+          "actual": 1074
+        },
+        {
+          "week": 17,
+          "date": "2026-04-25",
+          "target": 2500,
+          "actual": 1383
+        },
+        {
+          "week": 21,
+          "date": "2026-05-23",
+          "target": 2500,
+          "actual": 690
+        },
+        {
+          "week": 26,
+          "date": "2026-06-27",
+          "target": 2500,
+          "actual": 728
+        }
       ],
-      "illustrative": false
+      "illustrative": false,
+      "targetSource": "Google Search Console"
     },
     {
       "id": "social_engagement_rate",
@@ -653,16 +822,40 @@
       "unit": "rate (decimal)",
       "direction": "higher_better",
       "source": "Agency social report",
-      "contributors": ["linkedin_engagement_rate", "meta_engagement_rate"],
+      "contributors": [
+        "linkedin_engagement_rate",
+        "meta_engagement_rate"
+      ],
       "attainment": 0.29,
       "attainmentNote": "WEI target 9%. Wk 26 actual 2.6% blended. LinkedIn frequently exceeds target; Meta drags the blended rate down.",
       "series": [
-        {"week": 1, "date": "2026-01-03", "target": 0.05, "actual": 0.037},
-        {"week": 5, "date": "2026-01-31", "target": 0.05, "actual": 0.061},
-        {"week": 17, "date": "2026-04-25", "target": 0.05, "actual": 0.013},
-        {"week": 26, "date": "2026-06-27", "target": 0.05, "actual": 0.026}
+        {
+          "week": 1,
+          "date": "2026-01-03",
+          "target": 0.05,
+          "actual": 0.037
+        },
+        {
+          "week": 5,
+          "date": "2026-01-31",
+          "target": 0.05,
+          "actual": 0.061
+        },
+        {
+          "week": 17,
+          "date": "2026-04-25",
+          "target": 0.05,
+          "actual": 0.013
+        },
+        {
+          "week": 26,
+          "date": "2026-06-27",
+          "target": 0.05,
+          "actual": 0.026
+        }
       ],
-      "illustrative": false
+      "illustrative": false,
+      "targetSource": "LinkedIn Analytics"
     },
     {
       "id": "linkedin_engagement_rate",
@@ -683,12 +876,33 @@
       "source": "LinkedIn Analytics",
       "attainmentNote": "Frequently exceeds 9% target — Wk 5 peaked at 18%.",
       "series": [
-        {"week": 1, "date": "2026-01-03", "target": 0.09, "actual": 0.1183},
-        {"week": 5, "date": "2026-01-31", "target": 0.09, "actual": 0.18},
-        {"week": 21, "date": "2026-05-23", "target": 0.09, "actual": 0.139},
-        {"week": 26, "date": "2026-06-27", "target": 0.09, "actual": 0.045}
+        {
+          "week": 1,
+          "date": "2026-01-03",
+          "target": 0.09,
+          "actual": 0.1183
+        },
+        {
+          "week": 5,
+          "date": "2026-01-31",
+          "target": 0.09,
+          "actual": 0.18
+        },
+        {
+          "week": 21,
+          "date": "2026-05-23",
+          "target": 0.09,
+          "actual": 0.139
+        },
+        {
+          "week": 26,
+          "date": "2026-06-27",
+          "target": 0.09,
+          "actual": 0.045
+        }
       ],
-      "illustrative": false
+      "illustrative": false,
+      "targetSource": "LinkedIn Analytics"
     },
     {
       "id": "meta_engagement_rate",
@@ -709,12 +923,33 @@
       "source": "Meta Business Suite",
       "attainmentNote": "Highly variable — ranges from 0.1% to 4.7%. Often well below 3% target.",
       "series": [
-        {"week": 1, "date": "2026-01-03", "target": 0.03, "actual": 0.011},
-        {"week": 3, "date": "2026-01-17", "target": 0.03, "actual": 0.047},
-        {"week": 5, "date": "2026-01-31", "target": 0.03, "actual": 0.039},
-        {"week": 26, "date": "2026-06-27", "target": 0.03, "actual": 0.026}
+        {
+          "week": 1,
+          "date": "2026-01-03",
+          "target": 0.03,
+          "actual": 0.011
+        },
+        {
+          "week": 3,
+          "date": "2026-01-17",
+          "target": 0.03,
+          "actual": 0.047
+        },
+        {
+          "week": 5,
+          "date": "2026-01-31",
+          "target": 0.03,
+          "actual": 0.039
+        },
+        {
+          "week": 26,
+          "date": "2026-06-27",
+          "target": 0.03,
+          "actual": 0.026
+        }
       ],
-      "illustrative": false
+      "illustrative": false,
+      "targetSource": "Meta Business Suite"
     },
     {
       "id": "social_media_growth",
@@ -733,16 +968,40 @@
       "unit": "cumulative followers",
       "direction": "higher_better",
       "source": "Agency social report",
-      "contributors": ["linkedin_followers", "meta_followers"],
-      "attainment": 0.60,
+      "contributors": [
+        "linkedin_followers",
+        "meta_followers"
+      ],
+      "attainment": 0.6,
       "attainmentNote": "29,984 actual vs 50,000 target = 60% of cumulative target.",
       "series": [
-        {"week": 1, "date": "2026-01-03", "target": 50000, "actual": 27190},
-        {"week": 10, "date": "2026-03-07", "target": 50000, "actual": 28253},
-        {"week": 21, "date": "2026-05-23", "target": 50000, "actual": 29497},
-        {"week": 26, "date": "2026-06-27", "target": 50000, "actual": 29984}
+        {
+          "week": 1,
+          "date": "2026-01-03",
+          "target": 50000,
+          "actual": 27190
+        },
+        {
+          "week": 10,
+          "date": "2026-03-07",
+          "target": 50000,
+          "actual": 28253
+        },
+        {
+          "week": 21,
+          "date": "2026-05-23",
+          "target": 50000,
+          "actual": 29497
+        },
+        {
+          "week": 26,
+          "date": "2026-06-27",
+          "target": 50000,
+          "actual": 29984
+        }
       ],
-      "illustrative": false
+      "illustrative": false,
+      "targetSource": "LinkedIn Analytics"
     },
     {
       "id": "linkedin_followers",
@@ -763,12 +1022,33 @@
       "source": "LinkedIn Analytics",
       "attainmentNote": "6,488 (Jan 3) → 6,894 (Jun 27). Net +406 in 26 weeks. Target 10,000.",
       "series": [
-        {"week": 1, "date": "2026-01-03", "target": 10000, "actual": 6488},
-        {"week": 10, "date": "2026-03-07", "target": 10000, "actual": 6682},
-        {"week": 21, "date": "2026-05-23", "target": 10000, "actual": 6819},
-        {"week": 26, "date": "2026-06-27", "target": 10000, "actual": 6894}
+        {
+          "week": 1,
+          "date": "2026-01-03",
+          "target": 10000,
+          "actual": 6488
+        },
+        {
+          "week": 10,
+          "date": "2026-03-07",
+          "target": 10000,
+          "actual": 6682
+        },
+        {
+          "week": 21,
+          "date": "2026-05-23",
+          "target": 10000,
+          "actual": 6819
+        },
+        {
+          "week": 26,
+          "date": "2026-06-27",
+          "target": 10000,
+          "actual": 6894
+        }
       ],
-      "illustrative": false
+      "illustrative": false,
+      "targetSource": "LinkedIn Analytics"
     },
     {
       "id": "meta_followers",
@@ -789,12 +1069,33 @@
       "source": "Meta Business Suite",
       "attainmentNote": "20,702 (Jan 3) → 22,861 (Jun 6). Net +2,159 in 23 weeks. Target 40,000.",
       "series": [
-        {"week": 1, "date": "2026-01-03", "target": 40000, "actual": 20702},
-        {"week": 10, "date": "2026-03-07", "target": 40000, "actual": 21571},
-        {"week": 21, "date": "2026-05-23", "target": 40000, "actual": 22678},
-        {"week": 23, "date": "2026-06-06", "target": 40000, "actual": 22861}
+        {
+          "week": 1,
+          "date": "2026-01-03",
+          "target": 40000,
+          "actual": 20702
+        },
+        {
+          "week": 10,
+          "date": "2026-03-07",
+          "target": 40000,
+          "actual": 21571
+        },
+        {
+          "week": 21,
+          "date": "2026-05-23",
+          "target": 40000,
+          "actual": 22678
+        },
+        {
+          "week": 23,
+          "date": "2026-06-06",
+          "target": 40000,
+          "actual": 22861
+        }
       ],
-      "illustrative": false
+      "illustrative": false,
+      "targetSource": "Meta Business Suite"
     },
     {
       "id": "pr_unique_viewers",
@@ -813,13 +1114,26 @@
       "unit": "impressions (cumulative?)",
       "direction": "higher_better",
       "source": "PR agency report",
-      "contributors": ["direct_traffic"],
+      "contributors": [
+        "direct_traffic"
+      ],
       "flag": "data_definition_unclear",
       "series": [
-        {"week": 9, "date": "2026-02-28", "target": null, "actual": 641120755},
-        {"week": 13, "date": "2026-03-28", "target": null, "actual": 430370337}
+        {
+          "week": 9,
+          "date": "2026-02-28",
+          "target": null,
+          "actual": 641120755
+        },
+        {
+          "week": 13,
+          "date": "2026-03-28",
+          "target": null,
+          "actual": 430370337
+        }
       ],
-      "illustrative": false
+      "illustrative": false,
+      "targetSource": "GA4"
     },
     {
       "id": "direct_traffic",
@@ -839,13 +1153,39 @@
       "direction": "higher_better",
       "source": "GA4",
       "series": [
-        {"week": 1, "date": "2026-01-03", "target": null, "actual": 3530},
-        {"week": 2, "date": "2026-01-10", "target": null, "actual": 4713},
-        {"week": 3, "date": "2026-01-17", "target": null, "actual": 5447},
-        {"week": 6, "date": "2026-02-07", "target": null, "actual": 3167},
-        {"week": 7, "date": "2026-02-14", "target": null, "actual": 2756}
+        {
+          "week": 1,
+          "date": "2026-01-03",
+          "target": null,
+          "actual": 3530
+        },
+        {
+          "week": 2,
+          "date": "2026-01-10",
+          "target": null,
+          "actual": 4713
+        },
+        {
+          "week": 3,
+          "date": "2026-01-17",
+          "target": null,
+          "actual": 5447
+        },
+        {
+          "week": 6,
+          "date": "2026-02-07",
+          "target": null,
+          "actual": 3167
+        },
+        {
+          "week": 7,
+          "date": "2026-02-14",
+          "target": null,
+          "actual": 2756
+        }
       ],
-      "illustrative": false
+      "illustrative": false,
+      "targetSource": "GA4"
     },
     {
       "id": "blended_roas_agency",
@@ -865,7 +1205,8 @@
       "direction": "higher_better",
       "source": "Agency report",
       "flag": "scope_conflict — CM board also tracks ROAS per paid channel (META=4, LinkedIn=3.5, Google=4). These are different scopes: PC/agency = blended all-in; CM = per paid channel.",
-      "series": []
+      "series": [],
+      "targetSource": "Agency report"
     },
     {
       "id": "cac_agency",
@@ -883,7 +1224,8 @@
       "unit": "$/customer",
       "direction": "lower_better",
       "source": "Agency report",
-      "series": []
+      "series": [],
+      "targetSource": "Agency report"
     },
     {
       "id": "cpl_agency",
@@ -902,7 +1244,8 @@
       "direction": "lower_better",
       "source": "Agency report",
       "flag": "conflict — CM board CPL has no target set; PC agency CPL = $110. Need to align.",
-      "series": []
+      "series": [],
+      "targetSource": "Agency report"
     },
     {
       "id": "social_growth_agency",
@@ -921,7 +1264,8 @@
       "unit": "new followers/week",
       "direction": "higher_better",
       "source": "Agency report",
-      "series": []
+      "series": [],
+      "targetSource": "Agency report"
     }
   ],
   "ownershipModel": {
