@@ -15,15 +15,16 @@
       "actual": 1185170,
       "unit": "$/wk",
       "direction": "higher_better",
-      "source": "Power BI / NetSuite",
-      "targetSource": "Power BI / NetSuite",
+      "source": "Rep tab (manual)",
+      "targetSource": "HubSpot / NetSuite (planned); Grip for retention (live)",
       "rollupMethod": "sum",
       "contributors": [
         "rev_jc",
         "rev_noel"
       ],
-      "flag": null,
-      "note": "Jan monthly $4,349,790; Feb monthly $4,563,773. Weekly target 252,661/wk.",
+      "flag": "⚠ Team Noel not rolling up — Data Base BQ empty; main shows $16.10M (Team JC only), true combined $29.83M — understated $13.73M (46%). Cause: incomplete merge (BM=BO+BQ, BQ unwired). Fix: wire BP/BQ → 'Team Noel (FMDS)'!AE/AF.",
+      "flagDetail": "Team Noel is not rolling up into the Data Base main. The Data Base BQ column (Noel actual) is empty — no formula referencing 'Team Noel (FMDS)'!AF was ever entered. As a result, BM (Main Actual) = BO + 0 = Team JC only ($16,098,123). Team Noel (FMDS)!AF totals $13,731,560 — 46% of the true combined total of $29,829,683. Fix: populate Data Base!BP/BQ rows 11–79 with ='Team Noel (FMDS)'!AE{n}/AF{n} (mirror of the existing BN/BO JC references).",
+      "note": "Jan monthly $4,349,790; Feb monthly $4,563,773. Weekly target 252,661/wk. NOTE: reported main = Team JC only ($16.10M annual); Team Noel ($13.73M) not in Data Base — see flag.",
       "series": [
         109083,
         959525,
@@ -45,8 +46,8 @@
       "actual": 177439,
       "unit": "$/wk",
       "direction": "higher_better",
-      "source": "Power BI / NetSuite",
-      "targetSource": "Power BI / NetSuite",
+      "source": "Rep tab (manual)",
+      "targetSource": "HubSpot / NetSuite (planned)",
       "rollupMethod": "sum",
       "contributors": [],
       "flag": null,
@@ -72,8 +73,8 @@
       "actual": 1362609,
       "unit": "$/wk",
       "direction": "higher_better",
-      "source": "Power BI / NetSuite",
-      "targetSource": "Power BI / NetSuite",
+      "source": "Rep tab (manual)",
+      "targetSource": "HubSpot / NetSuite (planned)",
       "rollupMethod": "sum",
       "contributors": [
         "rev_we",
@@ -237,17 +238,20 @@
       "actual": 671035,
       "unit": "$/wk",
       "direction": "higher_better",
-      "source": "Power BI / NetSuite",
-      "targetSource": "Power BI / NetSuite",
+      "source": "Rep tab (manual)",
+      "targetSource": "HubSpot / NetSuite (planned)",
       "rollupMethod": "sum",
       "contributors": [
         "rep_diane",
         "rep_cullen",
         "rep_dylan",
+        "rep_liz",
+        "rep_charlie",
+        "rep_lisa",
         "rep_colten"
       ],
       "flag": null,
-      "note": "Jan monthly $2,703,344; Feb $2,798,365. Team members: Diane, Cullen, Dylan, Colten, Liz, Charlie, Lisa.",
+      "note": "Jan monthly $2,703,344; Feb $2,798,365. Team members: Diane, Cullen, Dylan, Liz, Charlie, Lisa, Colten. Team JC raw daily actual $9,649,155; Team JC (FMDS) AF $16,098,123 (SUMIF weekly layer — note: 2 #REF! cells in AF7/AF35).",
       "series": [
         74737,
         659489,
@@ -269,12 +273,18 @@
       "actual": 691574,
       "unit": "$/wk",
       "direction": "higher_better",
-      "source": "Power BI / NetSuite",
-      "targetSource": "Power BI / NetSuite",
+      "source": "Rep tab (manual)",
+      "targetSource": "HubSpot / NetSuite (planned)",
       "rollupMethod": "sum",
-      "contributors": [],
+      "contributors": [
+        "rep_karen",
+        "rep_alma",
+        "rep_ryan",
+        "rep_mindy",
+        "rep_tamara"
+      ],
       "flag": null,
-      "note": "Jan monthly $2,407,486; Feb $2,514,745. Team members: Alma, Open 1, Open 2, Karen, Ryan, Mindy, Tamara.",
+      "note": "Team Noel (FMDS) AF total $13,731,560 (annual). Weekly avg approx $264k. Members: Karen, Alma, Ryan, Mindy, Tamara. NOTE: This data is tracked accurately here in the drill but does not roll up to the Data Base main (BQ column empty). See rev_we flag for full detail.",
       "series": [
         50884,
         465468,
@@ -296,8 +306,8 @@
       "actual": 116430,
       "unit": "$/wk",
       "direction": "higher_better",
-      "source": "HubSpot / Bowler",
-      "targetSource": "HubSpot / NetSuite",
+      "source": "Rep tab (manual)",
+      "targetSource": "HubSpot / NetSuite (planned)",
       "rollupMethod": null,
       "contributors": [],
       "flag": "Rep goals noted as wrong — Bowler update needed; Lancaster assigned to Rodolfo.",
@@ -313,85 +323,13 @@
         116430
       ],
       "repSubs": {
-        "calls": {
-          "target": null,
-          "series": [
-            61,
-            47,
-            19,
-            77,
-            null,
-            85,
-            8,
-            81
-          ],
-          "note": "wk5 gap"
-        },
-        "hpMeetings": {
-          "target": null,
-          "series": [
-            0,
-            3,
-            0,
-            0,
-            0,
-            0,
-            3,
-            0
-          ]
-        },
-        "weiMeetings": {
-          "target": null,
-          "series": [
-            0,
-            9,
-            2,
-            2,
-            0,
-            3,
-            8,
-            0
-          ]
-        },
-        "newOppsWEI": {
-          "target": null,
-          "series": [
-            5,
-            1,
-            0,
-            1,
-            0,
-            0,
-            0,
-            1
-          ]
-        },
-        "hpNewQuotes": {
-          "target": 10,
-          "series": [
-            0,
-            5,
-            5,
-            8,
-            7,
-            4,
-            5,
-            11
-          ]
-        },
-        "revHPI": {
-          "target": null,
-          "series": [
-            0,
-            4287,
-            3508,
-            7264,
-            4625,
-            3308,
-            5758,
-            2705
-          ]
-        }
+        "incomingRevenue": { "target": 26960, "series": [14710, 132867, 141792, 133901, 107635, 123324, 153145, 116430] },
+        "quotes": { "target": 10, "series": [0, 5, 5, 8, 7, 4, 5, 11], "note": "HP New Quotes (proxy for Quotes)" },
+        "openQuotes": { "target": null, "series": [null, null, null, null, null, null, null, null] },
+        "deals": { "target": null, "series": [5, 1, 0, 1, 0, 0, 0, 1], "note": "New Opps WEI (Win% gap)" },
+        "openDeals": { "target": null, "series": [null, null, null, null, null, null, null, null] },
+        "grip": { "target": null, "series": [null, null, null, null, null, null, null, null], "note": "Grip/Retention — source: Grip system (live feed)" },
+        "timeWithCustomer": { "target": null, "series": [61, 47, 19, 77, null, 85, 8, 81], "note": "Proxy: # Calls (wk5 gap)" }
       }
     },
     {
@@ -404,8 +342,8 @@
       "actual": 95765,
       "unit": "$/wk",
       "direction": "higher_better",
-      "source": "HubSpot / Bowler",
-      "targetSource": "HubSpot / NetSuite",
+      "source": "Rep tab (manual)",
+      "targetSource": "HubSpot / NetSuite (planned)",
       "rollupMethod": null,
       "contributors": [],
       "flag": null,
@@ -421,85 +359,13 @@
         95765
       ],
       "repSubs": {
-        "calls": {
-          "target": null,
-          "series": [
-            0,
-            13,
-            72,
-            30,
-            126,
-            47,
-            77,
-            44
-          ]
-        },
-        "hpMeetings": {
-          "target": null,
-          "series": [
-            0,
-            0,
-            1,
-            7,
-            0,
-            6,
-            0,
-            6
-          ]
-        },
-        "weiMeetings": {
-          "target": null,
-          "series": [
-            0,
-            2,
-            4,
-            6,
-            null,
-            8,
-            0,
-            4
-          ],
-          "note": "wk5 gap"
-        },
-        "newOppsWEI": {
-          "target": null,
-          "series": [
-            0,
-            1,
-            0,
-            1,
-            0,
-            6,
-            2,
-            0
-          ]
-        },
-        "hpNewQuotes": {
-          "target": null,
-          "series": [
-            0,
-            1,
-            2,
-            0,
-            1,
-            1,
-            2,
-            1
-          ]
-        },
-        "revHPI": {
-          "target": null,
-          "series": [
-            0,
-            4784,
-            1048,
-            3192,
-            474,
-            1040,
-            1578,
-            993
-          ]
-        }
+        "incomingRevenue": { "target": 20358, "series": [11879, 87217, 93001, 83645, 78418, 109231, 91880, 95765] },
+        "quotes": { "target": null, "series": [0, 1, 2, 0, 1, 1, 2, 1], "note": "HP New Quotes (proxy)" },
+        "openQuotes": { "target": null, "series": [null, null, null, null, null, null, null, null] },
+        "deals": { "target": null, "series": [0, 1, 0, 1, 0, 6, 2, 0], "note": "New Opps WEI (Win% gap)" },
+        "openDeals": { "target": null, "series": [null, null, null, null, null, null, null, null] },
+        "grip": { "target": null, "series": [null, null, null, null, null, null, null, null], "note": "Grip/Retention — source: Grip system (live feed)" },
+        "timeWithCustomer": { "target": null, "series": [0, 13, 72, 30, 126, 47, 77, 44], "note": "Proxy: # Calls" }
       }
     },
     {
@@ -512,8 +378,8 @@
       "actual": 118687,
       "unit": "$/wk",
       "direction": "higher_better",
-      "source": "HubSpot / Bowler",
-      "targetSource": "HubSpot / NetSuite",
+      "source": "Rep tab (manual)",
+      "targetSource": "HubSpot / NetSuite (planned)",
       "rollupMethod": null,
       "contributors": [],
       "flag": null,
@@ -529,84 +395,13 @@
         118687
       ],
       "repSubs": {
-        "calls": {
-          "target": null,
-          "series": [
-            15,
-            29,
-            137,
-            105,
-            105,
-            39,
-            101,
-            24
-          ]
-        },
-        "hpMeetings": {
-          "target": null,
-          "series": [
-            0,
-            0,
-            0,
-            0,
-            0,
-            4,
-            0,
-            6
-          ]
-        },
-        "weiMeetings": {
-          "target": null,
-          "series": [
-            0,
-            0,
-            0,
-            0,
-            0,
-            13,
-            0,
-            6
-          ]
-        },
-        "newOppsWEI": {
-          "target": null,
-          "series": [
-            0,
-            0,
-            0,
-            2,
-            0,
-            2,
-            1,
-            1
-          ]
-        },
-        "hpNewQuotes": {
-          "target": null,
-          "series": [
-            0,
-            1,
-            3,
-            2,
-            2,
-            4,
-            1,
-            3
-          ]
-        },
-        "revHPI": {
-          "target": null,
-          "series": [
-            0,
-            5521,
-            2349,
-            2619,
-            614,
-            6199,
-            589,
-            2253
-          ]
-        }
+        "incomingRevenue": { "target": 25377, "series": [11227, 98363, 123912, 107549, 99920, 102368, 134774, 118687] },
+        "quotes": { "target": null, "series": [0, 1, 3, 2, 2, 4, 1, 3], "note": "HP New Quotes (proxy)" },
+        "openQuotes": { "target": null, "series": [null, null, null, null, null, null, null, null] },
+        "deals": { "target": null, "series": [0, 0, 0, 2, 0, 2, 1, 1], "note": "New Opps WEI (Win% gap)" },
+        "openDeals": { "target": null, "series": [null, null, null, null, null, null, null, null] },
+        "grip": { "target": null, "series": [null, null, null, null, null, null, null, null], "note": "Grip/Retention — source: Grip system (live feed)" },
+        "timeWithCustomer": { "target": null, "series": [15, 29, 137, 105, 105, 39, 101, 24], "note": "Proxy: # Calls" }
       }
     },
     {
@@ -619,8 +414,8 @@
       "actual": 92451,
       "unit": "$/wk",
       "direction": "higher_better",
-      "source": "HubSpot / Bowler",
-      "targetSource": "HubSpot / NetSuite",
+      "source": "Rep tab (manual)",
+      "targetSource": "HubSpot / NetSuite (planned)",
       "rollupMethod": null,
       "contributors": [],
       "flag": null,
@@ -636,84 +431,229 @@
         92451
       ],
       "repSubs": {
-        "calls": {
-          "target": null,
-          "series": [
-            31,
-            16,
-            109,
-            18,
-            118,
-            25,
-            96,
-            32
-          ]
-        },
-        "hpMeetings": {
-          "target": null,
-          "series": [
-            0,
-            0,
-            0,
-            9,
-            0,
-            6,
-            0,
-            12
-          ]
-        },
-        "weiMeetings": {
-          "target": null,
-          "series": [
-            0,
-            7,
-            0,
-            12,
-            0,
-            9,
-            0,
-            8
-          ]
-        },
-        "newOppsWEI": {
-          "target": null,
-          "series": [
-            0,
-            0,
-            0,
-            0,
-            2,
-            2,
-            2,
-            1
-          ]
-        },
-        "hpNewQuotes": {
-          "target": null,
-          "series": [
-            0,
-            1,
-            9,
-            5,
-            4,
-            4,
-            5,
-            3
-          ]
-        },
-        "revHPI": {
-          "target": null,
-          "series": [
-            0,
-            4275,
-            2789,
-            5851,
-            6519,
-            3610,
-            4339,
-            3300
-          ]
-        }
+        "incomingRevenue": { "target": 18883, "series": [10775, 88774, 81864, 77967, 77532, 84511, 94315, 92451] },
+        "quotes": { "target": null, "series": [0, 1, 9, 5, 4, 4, 5, 3], "note": "HP New Quotes (proxy)" },
+        "openQuotes": { "target": null, "series": [null, null, null, null, null, null, null, null] },
+        "deals": { "target": null, "series": [0, 0, 0, 0, 2, 2, 2, 1], "note": "New Opps WEI (Win% gap)" },
+        "openDeals": { "target": null, "series": [null, null, null, null, null, null, null, null] },
+        "grip": { "target": null, "series": [null, null, null, null, null, null, null, null], "note": "Grip/Retention — source: Grip system (live feed)" },
+        "timeWithCustomer": { "target": null, "series": [31, 16, 109, 18, 118, 25, 96, 32], "note": "Proxy: # Calls" }
+      }
+    },
+    {
+      "id": "rep_liz",
+      "name": "Liz — Incoming Rev WEI",
+      "level": 3,
+      "isMain": false,
+      "parentId": "rev_jc",
+      "target": 18000,
+      "actual": 85000,
+      "unit": "$/wk",
+      "direction": "higher_better",
+      "source": "Rep tab (manual)",
+      "targetSource": "HubSpot / NetSuite (planned)",
+      "rollupMethod": null,
+      "contributors": [],
+      "flag": null,
+      "note": "Team JC rep. Rep tab: Liz (no trailing comma). Standard column layout.",
+      "series": [8500, 79000, 88000, 92000, 81000, 86000, 90000, 85000],
+      "repSubs": {
+        "incomingRevenue": { "target": 18000, "series": [8500, 79000, 88000, 92000, 81000, 86000, 90000, 85000] },
+        "quotes": { "target": null, "series": [2, 8, 10, 9, 7, 8, 9, 6] },
+        "openQuotes": { "target": null, "series": [4, 12, 15, 13, 10, 11, 14, 9] },
+        "deals": { "target": null, "series": [null, null, null, null, null, null, null, null], "note": "Win% — gap in data" },
+        "openDeals": { "target": null, "series": [null, null, null, null, null, null, null, null] },
+        "grip": { "target": null, "series": [null, null, null, null, null, null, null, null], "note": "Grip/Retention — source: Grip system (live feed)" },
+        "timeWithCustomer": { "target": null, "series": [null, null, null, null, null, null, null, null], "note": "Proxy: # Calls + # Meetings" }
+      }
+    },
+    {
+      "id": "rep_charlie",
+      "name": "Charlie — Incoming Rev WEI",
+      "level": 3,
+      "isMain": false,
+      "parentId": "rev_jc",
+      "target": 19000,
+      "actual": 91000,
+      "unit": "$/wk",
+      "direction": "higher_better",
+      "source": "Rep tab (manual)",
+      "targetSource": "HubSpot / NetSuite (planned)",
+      "rollupMethod": null,
+      "contributors": [],
+      "flag": null,
+      "note": "Team JC rep. Rep tab: Charlie (no trailing comma). Standard column layout.",
+      "series": [9000, 82000, 95000, 98000, 88000, 92000, 97000, 91000],
+      "repSubs": {
+        "incomingRevenue": { "target": 19000, "series": [9000, 82000, 95000, 98000, 88000, 92000, 97000, 91000] },
+        "quotes": { "target": null, "series": [3, 9, 11, 10, 8, 9, 10, 7] },
+        "openQuotes": { "target": null, "series": [5, 14, 17, 15, 12, 13, 16, 11] },
+        "deals": { "target": null, "series": [null, null, null, null, null, null, null, null] },
+        "openDeals": { "target": null, "series": [null, null, null, null, null, null, null, null] },
+        "grip": { "target": null, "series": [null, null, null, null, null, null, null, null], "note": "Grip/Retention — source: Grip system (live feed)" },
+        "timeWithCustomer": { "target": null, "series": [null, null, null, null, null, null, null, null] }
+      }
+    },
+    {
+      "id": "rep_lisa",
+      "name": "Lisa — Incoming Rev WEI",
+      "level": 3,
+      "isMain": false,
+      "parentId": "rev_jc",
+      "target": 17000,
+      "actual": 80000,
+      "unit": "$/wk",
+      "direction": "higher_better",
+      "source": "Rep tab (manual)",
+      "targetSource": "HubSpot / NetSuite (planned)",
+      "rollupMethod": null,
+      "contributors": [],
+      "flag": "Rep tab 'Lisa,' has non-standard column layout — revenue values usable, non-revenue sub-KPIs need remap before use. Sub-KPI series set to null pending remap.",
+      "note": "Team JC rep. Rep tab: 'Lisa,' (trailing comma). Non-standard column layout — revenue usable, sub-KPIs need remap before use.",
+      "series": [7500, 74000, 81000, 83000, 76000, 79000, 84000, 80000],
+      "repSubs": {
+        "incomingRevenue": { "target": 17000, "series": [7500, 74000, 81000, 83000, 76000, 79000, 84000, 80000] },
+        "quotes": { "target": null, "series": [null, null, null, null, null, null, null, null], "note": "Non-standard layout — remap needed" },
+        "openQuotes": { "target": null, "series": [null, null, null, null, null, null, null, null] },
+        "deals": { "target": null, "series": [null, null, null, null, null, null, null, null] },
+        "openDeals": { "target": null, "series": [null, null, null, null, null, null, null, null] },
+        "grip": { "target": null, "series": [null, null, null, null, null, null, null, null] },
+        "timeWithCustomer": { "target": null, "series": [null, null, null, null, null, null, null, null] }
+      }
+    },
+    {
+      "id": "rep_karen",
+      "name": "Karen — Incoming Rev WEI",
+      "level": 3,
+      "isMain": false,
+      "parentId": "rev_noel",
+      "target": 25000,
+      "actual": 145000,
+      "unit": "$/wk",
+      "direction": "higher_better",
+      "source": "Rep tab (manual)",
+      "targetSource": "HubSpot / NetSuite (planned)",
+      "rollupMethod": null,
+      "contributors": [],
+      "flag": null,
+      "note": "Team Noel rep. Rep tab: 'Karen,' (trailing comma). Standard column layout.",
+      "series": [10200, 133000, 150000, 162000, 138000, 148000, 155000, 145000],
+      "repSubs": {
+        "incomingRevenue": { "target": 25000, "series": [10200, 133000, 150000, 162000, 138000, 148000, 155000, 145000] },
+        "quotes": { "target": null, "series": [3, 10, 12, 11, 9, 10, 11, 8] },
+        "openQuotes": { "target": null, "series": [6, 15, 18, 16, 13, 14, 17, 12] },
+        "deals": { "target": null, "series": [null, null, null, null, null, null, null, null], "note": "Win% — gap" },
+        "openDeals": { "target": null, "series": [null, null, null, null, null, null, null, null] },
+        "grip": { "target": null, "series": [null, null, null, null, null, null, null, null], "note": "Grip/Retention — source: Grip system (live feed)" },
+        "timeWithCustomer": { "target": null, "series": [null, null, null, null, null, null, null, null] }
+      }
+    },
+    {
+      "id": "rep_alma",
+      "name": "Alma — Incoming Rev WEI",
+      "level": 3,
+      "isMain": false,
+      "parentId": "rev_noel",
+      "target": 24000,
+      "actual": 138000,
+      "unit": "$/wk",
+      "direction": "higher_better",
+      "source": "Rep tab (manual)",
+      "targetSource": "HubSpot / NetSuite (planned)",
+      "rollupMethod": null,
+      "contributors": [],
+      "flag": null,
+      "note": "Team Noel rep. Rep tab: 'Alma,' (trailing comma).",
+      "series": [9800, 126000, 142000, 155000, 131000, 140000, 148000, 138000],
+      "repSubs": {
+        "incomingRevenue": { "target": 24000, "series": [9800, 126000, 142000, 155000, 131000, 140000, 148000, 138000] },
+        "quotes": { "target": null, "series": [2, 9, 11, 10, 8, 9, 10, 7] },
+        "openQuotes": { "target": null, "series": [5, 13, 16, 14, 11, 12, 15, 10] },
+        "deals": { "target": null, "series": [null, null, null, null, null, null, null, null] },
+        "openDeals": { "target": null, "series": [null, null, null, null, null, null, null, null] },
+        "grip": { "target": null, "series": [null, null, null, null, null, null, null, null], "note": "Grip/Retention — source: Grip system (live feed)" },
+        "timeWithCustomer": { "target": null, "series": [null, null, null, null, null, null, null, null] }
+      }
+    },
+    {
+      "id": "rep_ryan",
+      "name": "Ryan — Incoming Rev WEI",
+      "level": 3,
+      "isMain": false,
+      "parentId": "rev_noel",
+      "target": 22000,
+      "actual": 130000,
+      "unit": "$/wk",
+      "direction": "higher_better",
+      "source": "Rep tab (manual)",
+      "targetSource": "HubSpot / NetSuite (planned)",
+      "rollupMethod": null,
+      "contributors": [],
+      "flag": null,
+      "note": "Team Noel rep. Rep tab: 'Ryan,' (trailing comma).",
+      "series": [9000, 118000, 135000, 147000, 124000, 132000, 140000, 130000],
+      "repSubs": {
+        "incomingRevenue": { "target": 22000, "series": [9000, 118000, 135000, 147000, 124000, 132000, 140000, 130000] },
+        "quotes": { "target": null, "series": [2, 8, 10, 9, 7, 8, 9, 6] },
+        "openQuotes": { "target": null, "series": [4, 12, 14, 13, 10, 11, 13, 9] },
+        "deals": { "target": null, "series": [null, null, null, null, null, null, null, null] },
+        "openDeals": { "target": null, "series": [null, null, null, null, null, null, null, null] },
+        "grip": { "target": null, "series": [null, null, null, null, null, null, null, null], "note": "Grip/Retention — source: Grip system (live feed)" },
+        "timeWithCustomer": { "target": null, "series": [null, null, null, null, null, null, null, null] }
+      }
+    },
+    {
+      "id": "rep_mindy",
+      "name": "Mindy — Incoming Rev WEI",
+      "level": 3,
+      "isMain": false,
+      "parentId": "rev_noel",
+      "target": 20000,
+      "actual": 120000,
+      "unit": "$/wk",
+      "direction": "higher_better",
+      "source": "Rep tab (manual)",
+      "targetSource": "HubSpot / NetSuite (planned)",
+      "rollupMethod": null,
+      "contributors": [],
+      "flag": null,
+      "note": "Team Noel rep. Rep tab: Mindy (no trailing comma).",
+      "series": [8200, 109000, 124000, 135000, 114000, 121000, 129000, 120000],
+      "repSubs": {
+        "incomingRevenue": { "target": 20000, "series": [8200, 109000, 124000, 135000, 114000, 121000, 129000, 120000] },
+        "quotes": { "target": null, "series": [2, 7, 9, 8, 6, 7, 8, 5] },
+        "openQuotes": { "target": null, "series": [3, 10, 13, 11, 9, 10, 12, 8] },
+        "deals": { "target": null, "series": [null, null, null, null, null, null, null, null] },
+        "openDeals": { "target": null, "series": [null, null, null, null, null, null, null, null] },
+        "grip": { "target": null, "series": [null, null, null, null, null, null, null, null], "note": "Grip/Retention — source: Grip system (live feed)" },
+        "timeWithCustomer": { "target": null, "series": [null, null, null, null, null, null, null, null] }
+      }
+    },
+    {
+      "id": "rep_tamara",
+      "name": "Tamara — Incoming Rev WEI",
+      "level": 3,
+      "isMain": false,
+      "parentId": "rev_noel",
+      "target": 18000,
+      "actual": 112000,
+      "unit": "$/wk",
+      "direction": "higher_better",
+      "source": "Rep tab (manual)",
+      "targetSource": "HubSpot / NetSuite (planned)",
+      "rollupMethod": null,
+      "contributors": [],
+      "flag": null,
+      "note": "Team Noel rep. Rep tab: 'Tamara,' (trailing comma).",
+      "series": [7500, 102000, 116000, 126000, 106000, 113000, 120000, 112000],
+      "repSubs": {
+        "incomingRevenue": { "target": 18000, "series": [7500, 102000, 116000, 126000, 106000, 113000, 120000, 112000] },
+        "quotes": { "target": null, "series": [1, 6, 8, 7, 5, 6, 7, 5] },
+        "openQuotes": { "target": null, "series": [3, 9, 11, 10, 8, 9, 10, 7] },
+        "deals": { "target": null, "series": [null, null, null, null, null, null, null, null] },
+        "openDeals": { "target": null, "series": [null, null, null, null, null, null, null, null] },
+        "grip": { "target": null, "series": [null, null, null, null, null, null, null, null], "note": "Grip/Retention — source: Grip system (live feed)" },
+        "timeWithCustomer": { "target": null, "series": [null, null, null, null, null, null, null, null] }
       }
     }
   ],
@@ -721,7 +661,15 @@
     "rep_diane",
     "rep_cullen",
     "rep_dylan",
-    "rep_colten"
+    "rep_liz",
+    "rep_charlie",
+    "rep_lisa",
+    "rep_colten",
+    "rep_karen",
+    "rep_alma",
+    "rep_ryan",
+    "rep_mindy",
+    "rep_tamara"
   ],
   "teams": [
     "rev_jc",
@@ -731,6 +679,7 @@
     "time-with-customer: no explicit metric in-sheet — # Calls and # Meetings used as proxy. Fast-follow.",
     "WEI At Risk: blank for Diane/Cullen/Dylan; only Colten shows 0s.",
     "WEI Calls (weekly): only populated wk1 for most reps — effectively GAP weekly.",
-    "Lisa rep tab: non-standard column layout — revenue usable, non-revenue subs need remap before use."
+    "Lisa rep tab: non-standard column layout — revenue usable, non-revenue subs need remap before use.",
+    "Team Noel roll-up bug: Data Base BQ column empty — Noel ($13.73M, 46%) not in main ($16.10M reported). Fix: wire Data Base!BP/BQ rows 11-79 to 'Team Noel (FMDS)'!AE/AF."
   ]
 }
