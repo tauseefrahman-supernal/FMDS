@@ -239,9 +239,208 @@ function renderExpansion(kpi, dept) {
     </tr>`;
 }
 
+// ─── Service-only: L1 sub-KPI mini-table for a rep ───────────────────────────
+// kpi = rep KPI object (level 3, has repSubs)
+// Returns HTML string for the 7 L1 sub-KPIs mini-table.
+
+const SUB_KPI_LABELS = {
+  incomingRevenue:  'Incoming Revenue WE+HP',
+  quotes:           'Quotes',
+  openQuotes:       'Open Quotes',
+  deals:            'Deals / Win%',
+  openDeals:        'Open Deals',
+  grip:             'Grip / Retention',
+  timeWithCustomer: 'Time with Customer',
+};
+
+const SUB_KPI_UNITS = {
+  incomingRevenue:  '$/wk',
+  quotes:           'count',
+  openQuotes:       'count',
+  deals:            'count',
+  openDeals:        'count',
+  grip:             '%',
+  timeWithCustomer: 'count',
+};
+
+function renderRepSubKpis(rep) {
+  if (!rep.repSubs) return '<p class="text-muted text-small" style="margin:6px 0">No L1 sub-KPI data for this rep.</p>';
+
+  const rows = Object.keys(SUB_KPI_LABELS).map(key => {
+    const sub = rep.repSubs[key];
+    if (!sub) return '';
+    const series = sub.series || [];
+    const lastVal = series.filter(v => v != null).pop();
+    const unit = SUB_KPI_UNITS[key];
+    const label = SUB_KPI_LABELS[key];
+    const targetStr = formatVal(sub.target, unit);
+    const actualStr = lastVal != null ? formatVal(lastVal, unit) : '—';
+    const isGrip = key === 'grip';
+    const sourceNote = isGrip
+      ? '<span class="badge" style="font-size:0.62rem;background:#d1fae5;color:#065f46">Grip (live)</span>'
+      : '<span class="text-muted" style="font-size:0.62rem">manual</span>';
+    const chart = series.filter(v => v != null).length >= 2
+      ? svgLine(series, { target: sub.target || null, width: 160, height: 44, mini: true })
+      : '<span class="text-muted" style="font-size:0.68rem">no series</span>';
+    const noteHtml = sub.note ? `<span class="text-muted" style="font-size:0.62rem;margin-left:4px" title="${String(sub.note).replace(/"/g, '&quot;')}">ⓘ</span>` : '';
+    return `<tr class="rep-sub-row">
+      <td style="padding-left:20px;font-size:0.78rem">
+        <span class="text-muted" style="font-size:0.68rem">↦</span> ${label} ${noteHtml}
+      </td>
+      <td class="text-right text-mono" style="font-size:0.78rem">${targetStr}</td>
+      <td class="text-right text-mono" style="font-size:0.78rem">${actualStr}</td>
+      <td>${sourceNote}</td>
+      <td>${chart}</td>
+    </tr>`;
+  }).join('');
+
+  return `
+    <table style="width:100%;border-collapse:collapse;margin-top:6px">
+      <thead>
+        <tr style="font-size:0.65rem;color:var(--slate-500)">
+          <th style="text-align:left;padding:2px 8px 4px">L1 Day-by-Day KPI</th>
+          <th class="text-right">Target</th><th class="text-right">Latest</th>
+          <th>Source</th><th style="min-width:170px">Trend</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+// ─── Service-only: Rep row (level 3) with expand toggle ───────────────────────
+
+function renderServiceRepRow(rep, expanded) {
+  const act = displayActual(rep);
+  const rag = (act == null || rep.target == null) ? 'nodata' : ragStatus(act, rep.target, rep.direction || 'higher_better');
+  const chart = rep.series && rep.series.length ? svgLine(rep.series, { target: rep.target, width: 200, height: 56, mini: true }) : '';
+  const toggleBtn = `<button class="btn btn--ghost expand-btn-rep" data-rep-id="${rep.id}"
+    style="padding:1px 5px;font-size:0.65rem;border-radius:3px">${expanded ? '▼' : '▶'}</button>`;
+  return `
+    <tr class="contributor-row service-rep-row" data-rep-id="${rep.id}">
+      <td style="padding-left:52px">
+        <div style="display:flex;align-items:center;gap:5px">
+          ${toggleBtn}
+          <span class="text-muted" style="font-size:0.75rem">↳</span>
+          ${rep.name} ${flagIcon(rep.flag)}
+        </div>
+      </td>
+      <td class="text-right text-mono" style="font-size:0.82rem">${formatVal(rep.target, rep.unit)}</td>
+      <td class="text-right text-mono" style="font-size:0.82rem">${act == null ? '—' : formatVal(act, rep.unit)}</td>
+      <td>${act == null ? '' : ragChip(rag)}</td>
+      <td colspan="2">${chart}</td>
+    </tr>`;
+}
+
+// ─── Service-only: Rep L1 expansion row ──────────────────────────────────────
+
+function renderServiceRepExpansion(rep) {
+  return `
+    <tr class="kpi-expansion-row" data-rep-expansion-for="${rep.id}">
+      <td colspan="6" style="padding:0">
+        <div style="padding:6px 16px 10px 68px;background:var(--slate-50,#f8fafc);border-bottom:1px solid var(--slate-200)">
+          <div class="kpi-explain__label" style="color:var(--slate-500);margin-bottom:4px">L1 Sub-KPIs — Day-by-Day (${rep.name.split('—')[0].trim()})</div>
+          ${renderRepSubKpis(rep)}
+          ${rep.flag ? `<div class="badge badge--warning" style="margin-top:6px;display:inline-flex;white-space:normal;line-height:1.4;max-width:100%">⚠ ${rep.flag}</div>` : ''}
+        </div>
+      </td>
+    </tr>`;
+}
+
+// ─── Service-only: Team row (level 2) with rep expansion ─────────────────────
+
+function renderServiceTeamRow(team, dept, expandedRepIds, expanded) {
+  const act = displayActual(team);
+  const rag = (act == null || team.target == null) ? 'nodata' : ragStatus(act, team.target, team.direction || 'higher_better');
+  const chart = team.series && team.series.length ? svgLine(team.series, { target: team.target, width: 200, height: 56, mini: true }) : '';
+  const hasReps = team.contributors && team.contributors.length > 0;
+  const toggleBtn = hasReps
+    ? `<button class="btn btn--ghost expand-btn-team" data-team-id="${team.id}"
+        style="padding:1px 5px;font-size:0.65rem;border-radius:3px">${expanded ? '▼' : '▶'}</button>`
+    : '';
+
+  const rowHtml = `
+    <tr class="contributor-row service-team-row ${hasReps ? 'service-team-row--expandable' : ''}" data-team-id="${team.id}">
+      <td style="padding-left:36px">
+        <div style="display:flex;align-items:center;gap:5px">
+          ${toggleBtn}
+          <span class="text-muted" style="font-size:0.75rem">↳</span>
+          <strong style="font-size:0.88rem">${team.name}</strong>
+          ${flagIcon(team.flag)}
+        </div>
+      </td>
+      <td class="text-right text-mono">${formatVal(team.target, team.unit)}</td>
+      <td class="text-right text-mono">${act == null ? '—' : formatVal(act, team.unit)}</td>
+      <td>${act == null ? '' : ragChip(rag)}</td>
+      <td>${sourceBadge(team.source, team)}</td>
+      <td>${chart}</td>
+    </tr>`;
+
+  if (!expanded || !hasReps) return rowHtml;
+
+  const reps = contributorsOf(dept, team.id);
+  const repRows = reps.map(rep => {
+    const repExpanded = expandedRepIds.has(rep.id);
+    let html = renderServiceRepRow(rep, repExpanded);
+    if (repExpanded) html += renderServiceRepExpansion(rep);
+    return html;
+  }).join('');
+
+  return rowHtml + repRows;
+}
+
+// ─── Service-only: Main expansion (data-quality banner + teams) ───────────────
+
+function renderServiceExpansion(kpi, dept, expandedTeamIds, expandedRepIds) {
+  const teams = contributorsOf(dept, kpi.id);
+
+  const noelBanner = kpi.flagDetail ? `
+    <div class="noel-rollup-banner" style="
+      margin:10px 0 12px;padding:10px 14px;border-radius:var(--radius,6px);
+      background:#fef9c3;border:2px solid #facc15;font-size:0.8rem;line-height:1.6">
+      <div style="font-weight:700;color:#854d0e;margin-bottom:4px">⚠ Data Quality — Team Noel Roll-Up Missing from Data Base Main</div>
+      <div style="color:#78350f">
+        The number shown (<strong>$16.10M</strong>) reflects <strong>Team JC only</strong>.
+        True combined total is <strong>$29.83M</strong>.
+        <strong>Team Noel ($13.73M — 46%)</strong> is not rolling up:
+        <em>Data Base column BQ is empty — the &lsquo;Team Noel (FMDS)&rsquo;!AF reference was never wired in.</em>
+        Click Team Noel below to see their revenue tracked accurately at the team level.
+        Fix: populate <code>Data Base!BP/BQ</code> rows 11&ndash;79 with <code>=&apos;Team Noel (FMDS)&apos;!AE{n}/AF{n}</code>.
+      </div>
+    </div>` : '';
+
+  const teamRows = teams.map(team => {
+    const teamExpanded = expandedTeamIds.has(team.id);
+    return renderServiceTeamRow(team, dept, expandedRepIds, teamExpanded);
+  }).join('');
+
+  const subSection = teams.length
+    ? `<div style="margin-top:10px">${teamRows}</div>`
+    : `<p class="text-muted text-small" style="margin-top:8px">No teams defined.</p>`;
+
+  const contribs = contributorsOf(dept, kpi.id);
+  return `
+    <tr class="kpi-expansion-row" data-expansion-for="${kpi.id}">
+      <td colspan="6" style="padding:0">
+        <div class="kpi-expansion">
+          ${renderExplainBlock(kpi, dept)}
+          ${noelBanner}
+          <div class="kpi-expansion__subs">
+            <div class="kpi-explain__label" style="color:var(--slate-500);margin:10px 0 2px">Team roll-up → Reps → L1 Day-by-Day KPIs</div>
+            ${subSection}
+          </div>
+          <button class="btn btn--ghost details-toggle" data-details-toggle="${kpi.id}"
+                  style="margin-top:10px;font-size:0.72rem;padding:3px 9px;border-radius:3px">
+            ▸ KPI details (source · RAG rule · owner · cadence)
+          </button>
+          ${renderDetails(kpi, dept, contribs)}
+        </div>
+      </td>
+    </tr>`;
+}
+
 // ─── Full table ──────────────────────────────────────────────────────────────
 
-function buildTableHTML(dept, filterText, expandedIds) {
+function buildTableHTML(dept, filterText, expandedIds, expandedTeamIds = new Set(), expandedRepIds = new Set()) {
   const mainKpis = mains(dept).filter(k =>
     !filterText || k.name.toLowerCase().includes(filterText.toLowerCase())
   );
@@ -249,6 +448,23 @@ function buildTableHTML(dept, filterText, expandedIds) {
     return `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--slate-500)">
       No KPIs match "${filterText}"</td></tr>`;
   }
+  // Service: 3-level drill (main → team → rep → L1 sub-KPIs)
+  if (dept.id === 'service') {
+    return mainKpis.map(kpi => {
+      const isExpanded = expandedIds.has(kpi.id);
+      let html = renderMainRow(kpi, dept, isExpanded);
+      if (isExpanded) {
+        const hasTeams = kpi.contributors && kpi.contributors.length > 0;
+        if (hasTeams) {
+          html += renderServiceExpansion(kpi, dept, expandedTeamIds, expandedRepIds);
+        } else {
+          html += renderExpansion(kpi, dept);
+        }
+      }
+      return html;
+    }).join('');
+  }
+
   return mainKpis.map(kpi => {
     const isExpanded = expandedIds.has(kpi.id);
     let html = renderMainRow(kpi, dept, isExpanded);
@@ -290,13 +506,15 @@ function injectStyles() {
 
 export function renderKpi(dept, mount) {
   injectStyles();
-  let filterText  = '';
-  let expandedIds = new Set();
+  let filterText     = '';
+  let expandedIds    = new Set();
+  let expandedTeamIds = new Set();
+  let expandedRepIds  = new Set();
 
   function render() {
     const tbody = document.getElementById('kpi-tbody');
     if (tbody) {
-      tbody.innerHTML = buildTableHTML(dept, filterText, expandedIds);
+      tbody.innerHTML = buildTableHTML(dept, filterText, expandedIds, expandedTeamIds, expandedRepIds);
       bindRowEvents();
     }
   }
@@ -329,6 +547,46 @@ export function renderKpi(dept, mount) {
         btn.textContent = hidden
           ? '▾ Hide KPI details'
           : '▸ KPI details (source · RAG rule · owner · cadence)';
+      });
+    });
+
+    // Team-level expand (Service only)
+    mount.querySelectorAll('.expand-btn-team').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const id = btn.dataset.teamId;
+        if (expandedTeamIds.has(id)) expandedTeamIds.delete(id);
+        else expandedTeamIds.add(id);
+        render();
+      });
+    });
+    mount.querySelectorAll('.service-team-row--expandable').forEach(row => {
+      row.addEventListener('click', (e) => {
+        if (e.target.closest('.expand-btn-team, .expand-btn-rep')) return;
+        const id = row.dataset.teamId;
+        if (expandedTeamIds.has(id)) expandedTeamIds.delete(id);
+        else expandedTeamIds.add(id);
+        render();
+      });
+    });
+
+    // Rep-level expand (Service only)
+    mount.querySelectorAll('.expand-btn-rep').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const id = btn.dataset.repId;
+        if (expandedRepIds.has(id)) expandedRepIds.delete(id);
+        else expandedRepIds.add(id);
+        render();
+      });
+    });
+    mount.querySelectorAll('.service-rep-row').forEach(row => {
+      row.addEventListener('click', (e) => {
+        if (e.target.closest('.expand-btn-rep')) return;
+        const id = row.dataset.repId;
+        if (expandedRepIds.has(id)) expandedRepIds.delete(id);
+        else expandedRepIds.add(id);
+        render();
       });
     });
   }
