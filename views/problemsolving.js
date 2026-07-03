@@ -1,37 +1,49 @@
 /**
- * views/problemsolving.js — 8-Step Problem-Solving View
+ * views/problemsolving.js — 8-Step Problem-Solving View (the centerpiece)
  *
  * renderProblemSolving(dept, mount)
  *
- * Two surfaces (kept distinct — per spec):
- *   1. Tracker table — all KZ records for this dept (byDept filter)
- *   2. 8-Step wizard — paginated A3, one page per step, with:
- *        - golden-thread header (L3→L2→L1 chain via contributorsOf)
- *        - agent first-pass draft (bakedReply 'draft-step')
- *        - tick-to-confirm advances step dot
- *        - Step 4: 5-Whys + 6M fishbone
- *        - Step 6: action register table (Plan/Start/Due/Responsible/Status R-Y-G-C)
- *        - Step 8: links governing SOP from data/sops/
+ * Three surfaces (kept distinct — per spec & the Jul-3 client call):
+ *   1. Tracker table — all KZ records for this dept. The 5 REAL completed KZs
+ *      (KZ-327/328/342/352/364) open a full read-only A3. Others open the
+ *      walkthrough.
+ *   2. Read-view — full filled A3 (all 8 steps) for a completed KZ that carries
+ *      rich `content`.
+ *   3. Agent-prefilled wizard — triggered by a RED SUB-KPI. Steps 1-6 open with
+ *      an "AI draft — review & edit" block already populated (lib/agent.draftStep),
+ *      grounded in the red KPI + a governing SOP + a prior similar KZ. Step 4 is a
+ *      5-Whys ladder + 6M fishbone; step 5 is the countermeasure scoring matrix;
+ *      step 6 has the ODG gate; step 8 writes back to the SOP library.
+ *
+ * SOPs are the INPUT to steps 1-5 and the OUTPUT of step 8 (Yokoten).
  */
 
 import { byDept, newKZ, progress } from '../lib/eightstep.js';
-import { contributorsOf, mains }   from '../lib/registry.js';
+import { contributorsOf, mains, byId } from '../lib/registry.js';
 import { ragStatus }               from '../lib/rag.js';
-import { bakedReply }              from '../lib/agent.js';
+import { draftStep }               from '../lib/agent.js';
 
 // ─── State (module-level, reset each render) ─────────────────────────────────
 let _activeKZ     = null;   // the KZ being solved in the wizard
+let _readKZ       = null;   // a completed KZ being viewed read-only
 let _currentStep  = 1;      // 1–8 (the wizard page shown)
 let _stepData     = {};     // user-entered values per step
 let _kzRecords    = [];     // all records for this dept
 let _template     = null;   // eightstep-template.json
 let _dept         = null;
 let _mount        = null;
+let _sopWrittenBack = false; // step-8 write-back toggle for the active KZ
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 function ragChip(status) {
-  const label = { green: '● On Track', amber: '● At Risk', red: '● Off Track', nodata: '— No Data' }[status];
+  const label = { green: '● On Track', amber: '▲ At Risk', red: '● Off Track', nodata: '— No Data' }[status] || status;
   return `<span class="rag-chip rag-chip--${status}">${label}</span>`;
 }
 
@@ -52,6 +64,14 @@ function pdcaColor(pdca) {
   return { PLAN: '#1864ab', DO: '#2f9e44', CHECK: '#e8590c', ACT: '#7048e8' }[pdca] || '#6c757d';
 }
 
+// KZs that carry full completed A3 content (rendered as read-view).
+function isCompletedA3(kz) {
+  return !!(kz && kz.content && kz.closed);
+}
+
+// Steps the agent pre-solves.
+const AI_STEPS = [1, 2, 3, 4, 5, 6];
+
 // ─── Step-dot progress strip ─────────────────────────────────────────────────
 
 function stepDotStrip(kz, clickable = false, activeStep = null) {
@@ -68,46 +88,30 @@ function stepDotStrip(kz, clickable = false, activeStep = null) {
   }).join('');
 }
 
-// ─── Golden-thread header ─────────────────────────────────────────────────────
+// ─── Golden-thread header (main → sub) ────────────────────────────────────────
 
 function renderGoldenThread(dept, kpi) {
   if (!kpi || !dept.kpis) return '';
 
-  const contributors = contributorsOf(dept, kpi.id);
-
-  // Build chain: WE main → location contributors → deeper if any
   const chainItems = [`<span class="gt-node gt-node--l1">L3 Leadership OS</span>`];
 
-  // Dept main
-  const mainKpis = mains(dept);
-  if (mainKpis.length) {
-    const m = mainKpis[0];
-    const rag = ragStatus(m.actual, m.target, m.direction || 'higher_better');
-    chainItems.push(`<span class="gt-node gt-node--l2">${dept.name} — ${m.name} ${ragChip(rag)}</span>`);
+  // Dept main (parent of this sub-KPI if one exists, else first main)
+  const parent = kpi.parentId ? byId(dept, kpi.parentId) : null;
+  const mainKpi = parent || mains(dept)[0];
+  if (mainKpi) {
+    const rag = ragStatus(mainKpi.actual, mainKpi.target, mainKpi.direction || 'higher_better');
+    chainItems.push(`<span class="gt-node gt-node--l2">${esc(dept.name)} — ${esc(mainKpi.name)} ${ragChip(rag)}</span>`);
   }
 
-  // The specific KPI
-  if (kpi && kpi !== mainKpis[0]) {
+  // The specific (sub) KPI that triggered the 8-step
+  if (kpi && kpi !== mainKpi) {
     const rag = ragStatus(kpi.actual, kpi.target, kpi.direction || 'higher_better');
-    chainItems.push(`<span class="gt-node gt-node--l3">${kpi.name} ${formatVal(kpi.actual, kpi.unit)} vs ${formatVal(kpi.target, kpi.unit)} ${ragChip(rag)}</span>`);
-  }
-
-  // Contributors (locations / sub-KPIs)
-  if (contributors.length) {
-    const redContributors = contributors.filter(c => {
-      const rag = ragStatus(c.actual, c.target, c.direction || 'higher_better');
-      return rag === 'red' || rag === 'amber';
-    });
-    const displayList = (redContributors.length ? redContributors : contributors).slice(0, 3);
-    displayList.forEach(c => {
-      const rag = ragStatus(c.actual, c.target, c.direction || 'higher_better');
-      chainItems.push(`<span class="gt-node gt-node--l4">${c.name} ${formatVal(c.actual, c.unit)} ${ragChip(rag)}</span>`);
-    });
+    chainItems.push(`<span class="gt-node gt-node--l4">${esc(kpi.name)} ${formatVal(kpi.actual, kpi.unit)} vs ${formatVal(kpi.target, kpi.unit)} ${ragChip(rag)}</span>`);
   }
 
   return `
     <div class="golden-thread">
-      <div class="gt-label">Golden Thread</div>
+      <div class="gt-label">Golden Thread — main red ▸ drill ▸ sub red opens this 8-step</div>
       <div class="gt-chain">
         ${chainItems.join('<span class="gt-arrow">▸</span>')}
       </div>
@@ -118,11 +122,12 @@ function renderGoldenThread(dept, kpi) {
 
 function renderTrackerTable(records, dept) {
   if (!records.length) {
-    return `<p class="text-muted" style="padding:16px 0">No 8-step records for ${dept.name} yet.</p>`;
+    return `<p class="text-muted" style="padding:16px 0">No 8-step records for ${esc(dept.name)} yet.</p>`;
   }
 
-  const rows = records.map(kz => {
+  const rows = records.map((kz, idx) => {
     const p = progress(kz);
+    const completed = isCompletedA3(kz);
     const statusBadge = kz.closed
       ? `<span class="badge badge--success">Closed</span>`
       : kz.active
@@ -131,17 +136,20 @@ function renderTrackerTable(records, dept) {
     const odgBadge = kz.odgSupport
       ? `<span class="badge badge--accent">ODG</span>`
       : `<span class="text-muted" style="font-size:0.75rem">—</span>`;
+    const a3Btn = completed
+      ? `<button class="btn btn--outline" style="font-size:0.75rem;padding:3px 8px" onclick="window._psOpenRead(${idx})">View A3 →</button>`
+      : `<span class="text-muted" style="font-size:0.72rem">—</span>`;
 
     return `
-      <tr>
+      <tr${completed ? ' class="tr--a3"' : ''}>
         <td>
-          <div style="font-weight:500;font-size:0.875rem">${kz.title || kz.kzNumber}</div>
-          ${kz.title !== kz.kzNumber ? `<div class="text-muted" style="font-size:0.75rem">${kz.kzNumber}</div>` : ''}
+          <div style="font-weight:500;font-size:0.875rem">${esc(kz.title || kz.kzNumber)}${completed ? ' <span class="a3-tag">A3</span>' : ''}</div>
+          ${kz.title !== kz.kzNumber ? `<div class="text-muted" style="font-size:0.75rem">${esc(kz.kzNumber)}</div>` : ''}
         </td>
-        <td class="text-mono text-muted" style="white-space:nowrap">${kz.kzNumber}</td>
-        <td style="font-size:0.875rem">${kz.who || '—'}</td>
+        <td class="text-mono text-muted" style="white-space:nowrap">${esc(kz.kzNumber)}</td>
+        <td style="font-size:0.875rem">${esc(kz.who || '—')}</td>
         <td>${odgBadge}</td>
-        <td class="text-muted" style="font-size:0.8rem">${kz.start || '—'}</td>
+        <td class="text-muted" style="font-size:0.8rem">${esc(kz.start || '—')}</td>
         <td>
           <div class="step-dots" style="display:flex;gap:3px;align-items:center">
             ${stepDotStrip(kz)}
@@ -149,6 +157,7 @@ function renderTrackerTable(records, dept) {
           <div class="text-muted" style="font-size:0.7rem;margin-top:3px">${p.done}/8</div>
         </td>
         <td>${statusBadge}</td>
+        <td>${a3Btn}</td>
       </tr>`;
   }).join('');
 
@@ -164,6 +173,7 @@ function renderTrackerTable(records, dept) {
             <th>Start</th>
             <th style="min-width:160px">Progress (1–8)</th>
             <th>Status</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>${rows}</tbody>
@@ -171,107 +181,228 @@ function renderTrackerTable(records, dept) {
     </div>`;
 }
 
-// ─── Red KPI selector ────────────────────────────────────────────────────────
+// ─── Red SUB-KPI selector ─────────────────────────────────────────────────────
+// A 8-step is triggered by a red SUB-KPI (level 2/3), not the main.
+
+function subKpis(dept) {
+  if (!dept.kpis) return [];
+  return dept.kpis.filter(k => !k.isMain && (k.level === 2 || k.level === 3));
+}
 
 function renderRedKpiSelector(dept) {
-  if (!dept.kpis) return '';
-
-  const redKpis = dept.kpis.filter(k => {
+  const subs = subKpis(dept);
+  const redSubs = subs.filter(k => {
     const rag = ragStatus(k.actual, k.target, k.direction || 'higher_better');
     return rag === 'red' || rag === 'amber';
   });
 
-  if (!redKpis.length) {
-    return `<p class="text-muted">No red or amber KPIs currently — no 8-step needed.</p>`;
+  if (!subs.length) {
+    return `<p class="text-muted" style="margin:0;font-size:0.82rem">No sub-KPIs defined for ${esc(dept.name)} — drill from the KPI board to open an 8-step.</p>`;
   }
 
   const ragLabel = { green: '● Green', amber: '▲ Amber', red: '● Red', nodata: '— No data' };
-  const options = redKpis.map(k => {
+  // Prefer red/amber subs; fall back to all subs so the demo always has options.
+  const list = redSubs.length ? redSubs : subs;
+  const options = list.map(k => {
     const rag = ragStatus(k.actual, k.target, k.direction || 'higher_better');
-    return `<option value="${k.id}">${ragLabel[rag] || rag} — ${k.name} (${formatVal(k.actual, k.unit)} vs ${formatVal(k.target, k.unit)})</option>`;
+    return `<option value="${esc(k.id)}">${ragLabel[rag] || rag} — ${esc(k.name)} (${formatVal(k.actual, k.unit)} vs ${formatVal(k.target, k.unit)})</option>`;
   }).join('');
 
   return `
-    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-      <select id="ps-kpi-select" style="padding:7px 10px;border:1px solid var(--slate-300);border-radius:var(--radius);font-size:0.875rem;background:#fff">
-        <option value="">— Select a red KPI —</option>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <select id="ps-kpi-select" style="padding:7px 10px;border:1px solid var(--slate-300);border-radius:var(--radius);font-size:0.85rem;background:#fff;max-width:340px">
+        <option value="">— Select a red sub-KPI —</option>
         ${options}
       </select>
       <button id="ps-open-btn" class="btn btn--primary" onclick="window._psOpenWizard()">
-        Open 8-Step
+        Open 8-Step (AI-drafted)
       </button>
     </div>`;
 }
 
-// ─── 5-Whys + 6M fishbone (Step 4) ──────────────────────────────────────────
+// Pick a prior similar completed KZ in this dept to ground the draft.
+function priorSimilarKZ(dept) {
+  return _kzRecords.find(k => isCompletedA3(k)) || null;
+}
 
-function render5Whys6M(stepDef, kzDraftText) {
-  const whyFields = ['why1','why2','why3','why4','why5'].map((key, i) => `
-    <div class="form-group">
-      <label class="form-label">Why ${i + 1}</label>
-      <input type="text" class="form-input" data-field="${key}" placeholder="${stepDef.fields.find(f=>f.key===key)?.hint || ''}"
-             value="${(_stepData[4] && _stepData[4][key]) || ''}">
-    </div>`).join('');
+function govSop(dept) {
+  // Derive the governing SOP for step-8 write-back from a prior KZ's step8 link
+  // (which references the real SOP-library / data/sops entry) when available.
+  const prior = priorSimilarKZ(dept);
+  if (prior && prior.content && prior.content.step8 && prior.content.step8.sopLink) {
+    return prior.content.step8.sopLink;
+  }
+  return { id: null, title: null };
+}
 
-  const m6Categories = ['Man', 'Method', 'Machine', 'Material', 'Environment', 'Measurement'];
-  const fishboneRows = m6Categories.map(cat => `
-    <tr>
-      <td style="font-weight:500;width:130px;color:var(--slate-600)">${cat}</td>
-      <td><input type="text" class="form-input" data-field="fishbone_${cat.toLowerCase()}"
-                 placeholder="How does ${cat} contribute?"
-                 value="${(_stepData[4] && _stepData[4][`fishbone_${cat.toLowerCase()}`]) || ''}"></td>
-    </tr>`).join('');
+// ─── AI-draft block (shown atop steps 1–6) ────────────────────────────────────
+
+function draftBlock(draft, deptId, stepN) {
+  const solved = AI_STEPS.filter(n => n <= stepN).length; // cosmetic per-step
+  const srcLine = draft && draft.source ? draft.source.line : '';
+  const note = draft && draft.note ? `<div style="margin-top:8px;font-size:0.78rem;color:var(--slate-600);font-style:italic">${esc(draft.note)}</div>` : '';
+  return `
+    <div class="ai-draft">
+      <div class="ai-draft__head">
+        <span class="ai-draft__badge">AI draft — review &amp; edit</span>
+        <span class="ai-draft__src text-mono">${esc(srcLine)}</span>
+      </div>
+      ${note}
+    </div>`;
+}
+
+// ─── Generic prefilled fields (steps 1,2,3) ───────────────────────────────────
+
+function renderPrefillFields(stepDef, stepN, draft) {
+  const saved = _stepData[stepN] || {};
+  const draftFields = (draft && draft.fields) || {};
+  return stepDef.fields.map(f => {
+    if (f.columns) return ''; // handled elsewhere
+    const val = saved[f.key] != null ? saved[f.key] : (draftFields[f.key] || '');
+    const isLong = (f.hint && f.hint.length > 70) || String(val).length > 60;
+    const input = isLong
+      ? `<textarea class="form-input" data-field="${f.key}" rows="3" placeholder="${esc(f.hint)}">${esc(val)}</textarea>`
+      : `<input type="text" class="form-input" data-field="${f.key}" placeholder="${esc(f.hint)}" value="${esc(val)}">`;
+    return `
+      <div class="form-group">
+        <label class="form-label">${esc(f.label)}${draftFields[f.key] ? ' <span class="drafted-tag">drafted</span>' : ''}</label>
+        ${input}
+      </div>`;
+  }).join('');
+}
+
+// ─── 5-Whys ladder + 6M fishbone (Step 4) ─────────────────────────────────────
+
+function render5Whys6M(stepDef, draft) {
+  const saved = _stepData[4] || {};
+  const draftWhys = (draft && draft.whys) || [];
+  const cats = (_template && _template.fishboneCategories) || ['Man', 'Method', 'Machine', 'Material', 'Environment', 'Measurement'];
+
+  const ladder = [1, 2, 3, 4, 5].map((n, i) => {
+    const key = `why${n}`;
+    const dw = draftWhys.find(w => w.n === n);
+    const val = saved[key] != null ? saved[key] : (dw ? dw.text : '');
+    const cat = dw ? dw.category : cats[i];
+    const isLast = n === 5;
+    return `
+      <div class="why-row ${isLast ? 'why-row--root' : ''}">
+        <div class="why-rail">
+          <span class="why-num">Why ${n}</span>
+          <span class="why-cat" title="6M category">${esc(cat)}</span>
+        </div>
+        <textarea class="form-input why-input" data-field="${key}" rows="2"
+          placeholder="${isLast ? 'Root systemic cause — the bone to treat' : 'Why did the level above occur? (fact-based, no blame)'}">${esc(val)}</textarea>
+        ${!isLast ? '<div class="why-connector">↓</div>' : ''}
+      </div>`;
+  }).join('');
+
+  const rootVal = saved.rootCause != null ? saved.rootCause : (draft ? draft.rootCause : '');
+
+  const fishboneRows = cats.map(cat => {
+    const fk = `fishbone_${cat.toLowerCase()}`;
+    const dw = draftWhys.find(w => w.category === cat);
+    const val = saved[fk] != null ? saved[fk] : (dw ? dw.text.replace(/\s+←.*$/, '') : '');
+    return `
+      <tr>
+        <td style="font-weight:600;width:110px;color:var(--slate-600)">${esc(cat)}</td>
+        <td><input type="text" class="form-input" data-field="${fk}" placeholder="How does ${esc(cat)} contribute?" value="${esc(val)}"></td>
+      </tr>`;
+  }).join('');
 
   return `
-    <div class="fishbone-block">
-      <div class="two-col" style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
-        <div>
-          <h4 style="font-size:0.85rem;font-weight:600;margin-bottom:12px;color:var(--slate-700)">5-Whys</h4>
-          ${whyFields}
-          <div class="form-group">
-            <label class="form-label">Root Cause (confirmed)</label>
-            <textarea class="form-input" data-field="rootCause" rows="3" placeholder="The single systemic root cause">${(_stepData[4] && _stepData[4].rootCause) || ''}</textarea>
-          </div>
+    <div class="rootcause-grid">
+      <div class="rc-whys">
+        <h4 class="rc-head">5-Whys Ladder <span class="text-muted" style="font-weight:400">(Genchi Genbutsu — confirm each at the point of occurrence)</span></h4>
+        ${ladder}
+        <div class="form-group" style="margin-top:14px">
+          <label class="form-label">Root Cause (confirmed) <span class="drafted-tag">high-leverage</span></label>
+          <textarea class="form-input" data-field="rootCause" rows="3" placeholder="The single systemic root cause the 5-Whys converge on">${esc(rootVal)}</textarea>
         </div>
-        <div>
-          <h4 style="font-size:0.85rem;font-weight:600;margin-bottom:12px;color:var(--slate-700)">6M Fishbone</h4>
-          <table style="width:100%;border-collapse:collapse;font-size:0.85rem">
-            ${fishboneRows}
-          </table>
-        </div>
+      </div>
+      <div class="rc-fishbone">
+        <h4 class="rc-head">6M Fishbone</h4>
+        <table class="fishbone-tbl">${fishboneRows}</table>
       </div>
     </div>`;
 }
 
-// ─── Action register (Step 6) ────────────────────────────────────────────────
+// ─── Countermeasure scoring matrix (Step 5) ───────────────────────────────────
 
-function renderActionRegister() {
+function renderScoringMatrix(draft) {
+  const cols = (_template && _template.scoringMatrix && _template.scoringMatrix.columns) || [
+    { key: 'S', label: 'Safety' }, { key: 'Q', label: 'Quality' }, { key: 'C', label: 'Cost' },
+    { key: 'T', label: 'Time' }, { key: 'Cu', label: 'Customer' }, { key: 'Ef', label: 'Effective' }, { key: 'OA', label: 'Overall' }
+  ];
+  const saved = (_stepData[5] && _stepData[5].countermeasures) || null;
+  const rows = saved || (draft && draft.countermeasures) || [];
+
+  const scoreCell = (row, ck, i) => {
+    const v = row[ck];
+    const opts = ['', 0, 1, 2].map(o =>
+      `<option value="${o}" ${String(v) === String(o) ? 'selected' : ''}>${o === '' ? '–' : o}</option>`).join('');
+    return `<td class="score-cell"><select class="score-sel" data-cm-field="${ck}" data-cm-row="${i}">${opts}</select></td>`;
+  };
+
+  const body = rows.map((row, i) => `
+    <tr>
+      <td class="cm-text"><input type="text" class="form-input" data-cm-field="text" data-cm-row="${i}" value="${esc(row.text)}" placeholder="Countermeasure candidate"></td>
+      ${cols.map(c => scoreCell(row, c.key, i)).join('')}
+    </tr>`).join('');
+
+  return `
+    <div>
+      <div style="overflow-x:auto">
+        <table class="kpi-table cm-matrix">
+          <thead>
+            <tr>
+              <th style="min-width:220px">Countermeasure</th>
+              ${cols.map(c => `<th title="0 worst · 2 best" class="score-th">${esc(c.label)}</th>`).join('')}
+            </tr>
+          </thead>
+          <tbody id="cm-matrix-body">${body}</tbody>
+        </table>
+      </div>
+      <div style="font-size:0.75rem;color:var(--slate-500);margin-top:8px">
+        Score each 0 (worst) · 1 · 2 (best). <b>Overall</b> = ranked priority, not a sum. Build consensus first (Nemawashi).
+      </div>
+      <button class="btn btn--outline" style="margin-top:8px;font-size:0.8rem" onclick="window._psAddCmRow()">+ Add Countermeasure</button>
+    </div>`;
+}
+
+// ─── Action register + ODG gate (Step 6) ──────────────────────────────────────
+
+function renderActionRegister(draft) {
   const statusColors = { R: 'var(--red)', Y: 'var(--amber)', G: 'var(--green)', C: 'var(--accent)' };
   const statusLabels = { R: 'Behind', Y: 'At Risk', G: 'On Track', C: 'Completed' };
 
-  const savedRows = (_stepData[6] && _stepData[6].actionRows) || Array.from({length:5}, (_,i) => ({
-    no: i+1, plan: '', startDate: '', dueDate: '', responsible: '', status: 'R'
-  }));
+  const savedRows = (_stepData[6] && _stepData[6].actionRows)
+    || (draft && draft.actionRows)
+    || Array.from({ length: 3 }, (_, i) => ({ no: i + 1, plan: '', startDate: '', dueDate: '', responsible: '', status: 'R' }));
 
   const rows = savedRows.map((row, i) => `
     <tr>
-      <td class="text-center text-mono" style="width:40px">${row.no}</td>
-      <td><input type="text" class="form-input" data-ar-field="plan" data-ar-row="${i}" value="${row.plan}" placeholder="What needs to be done"></td>
-      <td><input type="date" class="form-input" data-ar-field="startDate" data-ar-row="${i}" value="${row.startDate}" style="min-width:120px"></td>
-      <td><input type="date" class="form-input" data-ar-field="dueDate" data-ar-row="${i}" value="${row.dueDate}" style="min-width:120px"></td>
-      <td><input type="text" class="form-input" data-ar-field="responsible" data-ar-row="${i}" value="${row.responsible}" placeholder="Name"></td>
+      <td class="text-center text-mono" style="width:40px">${row.no || i + 1}</td>
+      <td><input type="text" class="form-input" data-ar-field="plan" data-ar-row="${i}" value="${esc(row.plan)}" placeholder="What needs to be done"></td>
+      <td><input type="date" class="form-input" data-ar-field="startDate" data-ar-row="${i}" value="${esc(row.startDate)}" style="min-width:120px"></td>
+      <td><input type="date" class="form-input" data-ar-field="dueDate" data-ar-row="${i}" value="${esc(row.dueDate)}" style="min-width:120px"></td>
+      <td><input type="text" class="form-input" data-ar-field="responsible" data-ar-row="${i}" value="${esc(row.responsible)}" placeholder="Name"></td>
       <td>
         <select class="form-input" data-ar-field="status" data-ar-row="${i}" style="min-width:90px">
           ${Object.keys(statusColors).map(s =>
-            `<option value="${s}" ${row.status===s?'selected':''} style="color:${statusColors[s]}">${s} — ${statusLabels[s]}</option>`
-          ).join('')}
+            `<option value="${s}" ${row.status === s ? 'selected' : ''}>${s} — ${statusLabels[s]}</option>`).join('')}
         </select>
       </td>
     </tr>`).join('');
 
-  const legend = Object.entries(statusLabels).map(([k,v]) =>
-    `<span style="color:${statusColors[k]};font-weight:600">${k}</span>=<span style="color:var(--slate-600)">${v}</span>`
-  ).join(' · ');
+  const legend = Object.entries(statusLabels).map(([k, v]) =>
+    `<span style="color:${statusColors[k]};font-weight:600">${k}</span>=<span style="color:var(--slate-600)">${v}</span>`).join(' · ');
+
+  const gate = (_stepData[6] && _stepData[6].odgGate) || (draft && draft.odgGate) || { status: 'pending', reviewer: 'Eric / Allison (ODG)' };
+  const gateBadge = {
+    pending:  '<span class="gate-badge gate-badge--pending">Not yet submitted</span>',
+    submitted:'<span class="gate-badge gate-badge--submitted">Submitted — awaiting ODG</span>',
+    approved: '<span class="gate-badge gate-badge--approved">✓ ODG approved</span>'
+  }[gate.status] || '';
 
   return `
     <div>
@@ -279,65 +410,82 @@ function renderActionRegister() {
         <table class="kpi-table" style="width:100%;font-size:0.85rem">
           <thead>
             <tr>
-              <th style="width:40px">No.</th>
-              <th>Implementation Plan</th>
-              <th>Start Date</th>
-              <th>Due Date</th>
-              <th>Responsible</th>
-              <th>Status</th>
+              <th style="width:40px">No.</th><th>Implementation Plan</th><th>Start</th><th>Due</th><th>Responsible</th><th>Status</th>
             </tr>
           </thead>
           <tbody id="action-register-body">${rows}</tbody>
         </table>
       </div>
-      <div style="font-size:0.75rem;color:var(--slate-500);margin-top:8px">
-        Status: ${legend}
-      </div>
+      <div style="font-size:0.75rem;color:var(--slate-500);margin-top:8px">Status: ${legend}</div>
       <button class="btn btn--outline" style="margin-top:8px;font-size:0.8rem" onclick="window._psAddActionRow()">+ Add Row</button>
+
+      <div class="odg-gate">
+        <div class="odg-gate__left">
+          <div class="odg-gate__label">ODG Gate — Step 6</div>
+          <div class="odg-gate__desc">Countermeasure plan must be reviewed by ${esc(gate.reviewer)} before implementation. ${gateBadge}</div>
+        </div>
+        <button class="btn ${gate.status === 'approved' ? 'btn--success' : 'btn--primary'}"
+          onclick="window._psSubmitOdg()" ${gate.status === 'approved' ? 'disabled' : ''}>
+          ${gate.status === 'approved' ? 'Approved' : gate.status === 'submitted' ? 'Mark ODG-approved' : 'Submit to ODG for gate review'}
+        </button>
+      </div>
     </div>`;
 }
 
-// ─── SOP link (Step 8) ───────────────────────────────────────────────────────
+// ─── Results (Step 7) ─────────────────────────────────────────────────────────
 
-function renderSopLink(dept) {
-  const SOP_MAP = {
-    operations: { id: 'operations-shortcode', title: 'Short-Code Order Entry — Remake Jobs', linkedKpi: 'OTP' },
-    service:    { id: 'service-prospecting',  title: 'Prospecting & Quote Follow-Up Standard Work', linkedKpi: 'Incoming Rev WE' },
-    sales:      { id: 'service-prospecting',  title: 'Prospecting & Quote Follow-Up Standard Work', linkedKpi: 'Incoming Rev WE Outside' },
+function renderResults(stepDef, kpi) {
+  const saved = _stepData[7] || {};
+  const seed = {
+    kpi: kpi ? kpi.name : '',
+    measurementStart: kpi ? `${formatVal(kpi.actual, kpi.unit)} (baseline)` : '',
+    newTarget: kpi ? `${formatVal(kpi.target, kpi.unit)}` : ''
   };
-  const sop = SOP_MAP[dept.id];
-  if (!sop) {
-    return `<p class="text-muted">No SOP embedded for ${dept.name} yet. Submit a WMS SW Update Request and link it above.</p>`;
-  }
-  return `
-    <div class="sop-link-block" style="border:1px solid var(--slate-200);border-radius:var(--radius);padding:16px;background:var(--slate-50)">
-      <div style="font-size:0.75rem;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:var(--slate-500);margin-bottom:6px">Governing Standard Work</div>
-      <div style="font-weight:600;font-size:0.95rem;margin-bottom:4px">${sop.title}</div>
-      <div class="text-muted" style="font-size:0.8rem">Linked KPI: ${sop.linkedKpi}</div>
-      <a href="#/dept/${dept.id}/sop" style="display:inline-block;margin-top:10px;font-size:0.85rem;color:var(--accent)">
-        Open in Standard Work view →
-      </a>
-    </div>`;
+  return stepDef.fields.map(f => {
+    if (f.key === 'chart') {
+      return `<div class="form-group"><label class="form-label">${esc(f.label)}</label>
+        <div class="chart-placeholder">Actual-vs-target chart — attach on close.</div></div>`;
+    }
+    const val = saved[f.key] != null ? saved[f.key] : (seed[f.key] || '');
+    const isLong = f.key === 'narrative';
+    const input = isLong
+      ? `<textarea class="form-input" data-field="${f.key}" rows="4" placeholder="${esc(f.hint)}">${esc(val)}</textarea>`
+      : `<input type="text" class="form-input" data-field="${f.key}" placeholder="${esc(f.hint)}" value="${esc(val)}">`;
+    return `<div class="form-group"><label class="form-label">${esc(f.label)}</label>${input}</div>`;
+  }).join('');
 }
 
-// ─── Generic field renderer ───────────────────────────────────────────────────
+// ─── Standardize + SOP write-back (Step 8) ─────────────────────────────────────
 
-function renderGenericFields(stepDef, stepN) {
-  const saved = _stepData[stepN] || {};
-  return stepDef.fields.map(f => {
+function renderStandardize(stepDef, dept) {
+  const saved = _stepData[8] || {};
+  const fields = stepDef.fields.map(f => {
+    if (f.key === 'improvementImage') {
+      return `<div class="form-group"><label class="form-label">${esc(f.label)}</label>
+        <div class="chart-placeholder">Before/after visual — attach.</div></div>`;
+    }
     const val = saved[f.key] || '';
-    if (f.key === 'actionRegister') return renderActionRegister();
-    if (f.columns) return ''; // action register handled above
-    const isLong = f.hint && f.hint.length > 80;
-    const input = isLong
-      ? `<textarea class="form-input" data-field="${f.key}" rows="4" placeholder="${f.hint}">${val}</textarea>`
-      : `<input type="text" class="form-input" data-field="${f.key}" placeholder="${f.hint}" value="${val}">`;
-    return `
-      <div class="form-group">
-        <label class="form-label">${f.label}</label>
-        ${input}
-      </div>`;
+    return `<div class="form-group"><label class="form-label">${esc(f.label)}</label>
+      <textarea class="form-input" data-field="${f.key}" rows="2" placeholder="${esc(f.hint)}">${esc(val)}</textarea></div>`;
   }).join('');
+
+  const sop = govSop(dept);
+  const sopTitle = sop.title || 'the governing Standard Work';
+  const writeBackBtn = _sopWrittenBack
+    ? `<span class="badge badge--success" style="font-size:0.8rem">✓ Standard Work updated — written back to SOP library</span>`
+    : `<button class="btn btn--primary" onclick="window._psWriteBackSop()">Update Standard Work → write back to SOP library</button>`;
+
+  return `
+    ${fields}
+    <div class="sop-writeback">
+      <div class="sop-writeback__label">SOP Write-Back (Yokoten)</div>
+      <div style="font-weight:600;font-size:0.95rem;margin:2px 0 4px">${esc(sopTitle)}</div>
+      <p class="text-muted" style="margin:0 0 10px;font-size:0.8rem">
+        SOPs are the <b>input</b> to Steps 1–5 and the <b>output</b> of Step 8. Locking in the countermeasure updates the standard work so the problem does not recur, and Yokoten shares it to other locations.
+      </p>
+      ${writeBackBtn}
+      <a href="#/dept/${esc(dept.id)}/sop" style="display:inline-block;margin-left:12px;font-size:0.85rem;color:var(--accent)">Open Standard Work view →</a>
+    </div>`;
 }
 
 // ─── Wizard step page ─────────────────────────────────────────────────────────
@@ -346,80 +494,223 @@ function renderWizardStep(dept, kpi, stepN, template) {
   const stepDef = template.steps[stepN - 1];
   if (!stepDef) return `<p class="text-muted">Step ${stepN} not found in template.</p>`;
 
-  const kzNum    = _activeKZ.kzNumber;
-  const pdca     = stepDef.pdca;
-  const draftText = bakedReply(dept.id, 'draft-step', {
-    step:      stepN,
-    kpi:       kpi?.name || 'KPI',
-    deptId:    dept.id,
-    kpiActual: kpi?.actual ?? null,
-    kpiTarget: kpi?.target ?? null,
-  });
-  const stepsDone = { ..._activeKZ.steps };
+  const kzNum = _activeKZ.kzNumber;
+  const pdca  = stepDef.pdca;
 
-  // Golden thread
+  // Build the structured draft for this step (steps 1–6 only).
+  const prior = _activeKZ._prior || null;
+  const sop   = _activeKZ._sop || null;
+  const draft = AI_STEPS.includes(stepN)
+    ? draftStep(dept.id, stepN, {
+        kpi: kpi?.name, kpiActual: kpi?.actual ?? null, kpiTarget: kpi?.target ?? null,
+        kpiUnit: kpi?.unit, priorKZ: prior, sop
+      })
+    : null;
+
   const thread = renderGoldenThread(dept, kpi);
+  const pdcaBadge = `<span class="pdca-badge" style="background:${pdcaColor(pdca)}">${pdca}</span>`;
 
-  // PDCA badge
-  const pdcaBadge = `<span class="pdca-badge" style="background:${pdcaColor(pdca)};color:#fff;padding:2px 8px;border-radius:3px;font-size:0.7rem;font-weight:700;letter-spacing:0.05em">${pdca}</span>`;
+  // AI pre-solve progress indicator (separate surface from the docked drawer).
+  const solvedCount = AI_STEPS.filter(n => !!_activeKZ.steps[String(n)] || (draft && draft.prefilled && n === stepN)).length;
+  const aiConfirmed = AI_STEPS.filter(n => !!_activeKZ.steps[String(n)]).length;
+  const presolveBar = `
+    <div class="presolve">
+      <div class="presolve__text">
+        <span class="presolve__dot">◆</span>
+        AI pre-solved <b>${AI_STEPS.length} of 6</b> planning steps — you review &amp; finish.
+        <span class="text-muted">${aiConfirmed}/6 confirmed so far.</span>
+      </div>
+      <div class="presolve__track">
+        ${AI_STEPS.map(n => {
+          const done = !!_activeKZ.steps[String(n)];
+          return `<span class="presolve__seg ${done ? 'presolve__seg--done' : 'presolve__seg--ai'}" title="Step ${n}"></span>`;
+        }).join('')}
+      </div>
+    </div>`;
 
-  // Step-specific content
+  // Step-specific body
   let bodyContent = '';
-  if (stepN === 4) {
-    bodyContent = render5Whys6M(stepDef, draftText);
-  } else if (stepN === 6) {
-    bodyContent = renderActionRegister();
-  } else if (stepN === 8) {
-    bodyContent = renderGenericFields(stepDef, stepN) + renderSopLink(dept);
-  } else {
-    bodyContent = renderGenericFields(stepDef, stepN);
-  }
+  if (stepN === 4)      bodyContent = render5Whys6M(stepDef, draft);
+  else if (stepN === 5) bodyContent = renderScoringMatrix(draft);
+  else if (stepN === 6) bodyContent = renderActionRegister(draft);
+  else if (stepN === 7) bodyContent = renderResults(stepDef, kpi);
+  else if (stepN === 8) bodyContent = renderStandardize(stepDef, dept);
+  else                  bodyContent = renderPrefillFields(stepDef, stepN, draft);
 
-  // Navigation
+  const draftHeader = AI_STEPS.includes(stepN) ? draftBlock(draft, dept.id, stepN) : '';
+
   const prevBtn = stepN > 1
-    ? `<button class="btn btn--outline" onclick="window._psGotoStep(${stepN-1})">← Previous</button>`
-    : '';
+    ? `<button class="btn btn--outline" onclick="window._psGotoStep(${stepN - 1})">← Previous</button>` : '<span></span>';
   const nextBtn = stepN < 8
-    ? `<button class="btn btn--primary" onclick="window._psConfirmStep(${stepN})">Confirm & Next →</button>`
-    : `<button class="btn btn--primary btn--success" onclick="window._psConfirmStep(${stepN})">Confirm Step 8 — Close KZ</button>`;
+    ? `<button class="btn btn--primary" onclick="window._psConfirmStep(${stepN})">Confirm &amp; Next →</button>`
+    : `<button class="btn btn--success" onclick="window._psConfirmStep(${stepN})">Confirm Step 8 — Close KZ</button>`;
 
   return `
     <div class="wizard-panel" data-step="${stepN}">
-
+      ${presolveBar}
       ${thread}
 
-      <div class="wizard-header" style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-top:16px">
+      <div class="wizard-header">
         <div>
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
             ${pdcaBadge}
-            <span class="text-muted" style="font-size:0.8rem">Step ${stepN} of 8</span>
+            <span class="text-muted" style="font-size:0.8rem">Step ${stepN} of 8${stepDef.highLeverage ? ' · highest-leverage' : ''}</span>
           </div>
-          <h3 style="margin:0;font-size:1.1rem">Step ${stepN}: ${stepDef.name}</h3>
-          <p class="text-muted" style="margin:4px 0 0;font-size:0.85rem">${stepDef.description}</p>
+          <h3 style="margin:0;font-size:1.1rem">Step ${stepN}: ${esc(stepDef.name)}</h3>
+          <p class="text-muted" style="margin:4px 0 0;font-size:0.85rem">${esc(stepDef.description)}</p>
         </div>
         <div style="text-align:right;flex-shrink:0">
-          <div class="text-mono text-muted" style="font-size:0.75rem">${kzNum}</div>
+          <div class="text-mono text-muted" style="font-size:0.75rem">${esc(kzNum)}</div>
           <div class="step-dots" style="display:flex;gap:4px;margin-top:6px">
             ${stepDotStrip(_activeKZ, true, stepN)}
           </div>
         </div>
       </div>
 
-      <div style="margin:20px 0;padding:14px 16px;background:var(--accent-light);border-left:3px solid var(--accent);border-radius:0 var(--radius) var(--radius) 0">
-        <div style="font-size:0.7rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--accent);margin-bottom:6px">Agent Draft — Review before confirming</div>
-        <pre style="margin:0;font-size:0.8rem;white-space:pre-wrap;font-family:inherit;color:var(--slate-700);line-height:1.5">${draftText}</pre>
-      </div>
+      ${draftHeader}
 
-      <div class="wizard-fields" style="margin-top:16px">
-        ${bodyContent}
-      </div>
+      <div class="wizard-fields">${bodyContent}</div>
 
-      <div class="wizard-nav" style="display:flex;justify-content:space-between;margin-top:24px;padding-top:16px;border-top:1px solid var(--slate-200)">
+      <div class="wizard-nav">
         ${prevBtn}
-        <div style="display:flex;gap:8px">
-          ${nextBtn}
+        <div style="display:flex;gap:8px">${nextBtn}</div>
+      </div>
+    </div>`;
+}
+
+// ─── Read-view: full completed A3 ─────────────────────────────────────────────
+
+function scoreBadge(v) {
+  if (v == null) return '<span class="sc sc--na">–</span>';
+  return `<span class="sc sc--${v}">${v}</span>`;
+}
+
+function renderReadA3(kz, dept, template) {
+  const c = kz.content || {};
+  const h = c.header || {};
+  const cats = (template && template.scoringMatrix && template.scoringMatrix.columns) || [];
+
+  const whysHtml = (c.step4 && c.step4.whys || []).map(w => `
+    <div class="ro-why">
+      <span class="ro-why__n">Why ${w.n}</span>
+      <span class="ro-why__cat">${esc(w.category)}</span>
+      <span class="ro-why__t">${esc(w.text)}</span>
+    </div>`).join('');
+
+  const altChains = (c.step4 && c.step4.altChains || []).map(ch => `
+    <div class="ro-altchain">
+      <div class="text-muted" style="font-size:0.72rem;font-weight:700">${esc(ch.label)}</div>
+      ${ch.whys.map((t, i) => `<div class="ro-alt-why">Why ${i + 1}: ${esc(t)}</div>`).join('')}
+      <div class="ro-alt-root">Root: ${esc(ch.rootCause)}</div>
+    </div>`).join('');
+
+  const cmRows = (c.step5 && c.step5.countermeasures || []).map(cm => `
+    <tr>
+      <td class="cm-text">${esc(cm.text)}</td>
+      ${cats.map(col => `<td class="score-cell">${scoreBadge(cm[col.key])}</td>`).join('')}
+    </tr>`).join('');
+
+  const arRows = (c.step6 && c.step6.actionRows || []).map(r => `
+    <tr>
+      <td class="text-center text-mono">${r.no}</td>
+      <td>${esc(r.plan)}</td>
+      <td class="text-muted">${esc(r.startDate)}</td>
+      <td class="text-muted">${esc(r.dueDate)}</td>
+      <td>${esc(r.responsible)}</td>
+      <td><span class="ar-status ar-status--${r.status}">${esc(r.status)}</span></td>
+    </tr>`).join('');
+
+  const gate = (c.step6 && c.step6.odgGate) || {};
+  const gateBadge = gate.status === 'approved'
+    ? '<span class="gate-badge gate-badge--approved">✓ ODG approved</span>'
+    : gate.status === 'pending'
+      ? '<span class="gate-badge gate-badge--pending">ODG gate pending</span>' : '';
+
+  const sopLink = (c.step8 && c.step8.sopLink) || {};
+  const stepCard = (n, pdca, title, inner) => `
+    <div class="ro-step">
+      <div class="ro-step__head">
+        <span class="pdca-badge" style="background:${pdcaColor(pdca)}">${pdca}</span>
+        <span class="ro-step__n">Step ${n}</span>
+        <span class="ro-step__title">${esc(title)}</span>
+      </div>
+      <div class="ro-step__body">${inner}</div>
+    </div>`;
+
+  const kv = (label, val) => `<div class="ro-kv"><span class="ro-kv__k">${esc(label)}</span><span class="ro-kv__v">${esc(val)}</span></div>`;
+
+  return `
+    <div class="ro-a3">
+      <div style="margin-bottom:14px">
+        <button class="btn btn--outline" onclick="window._psCloseRead()" style="font-size:0.8rem">← Back to tracker</button>
+      </div>
+
+      <div class="ro-header">
+        <div>
+          <div class="ro-header__title">${esc(kz.title)} <span class="a3-tag">A3</span></div>
+          <div class="text-mono text-muted" style="font-size:0.8rem">${esc(kz.kzNumber)} · ${esc(dept.name)}${h.lang ? ' · ' + esc(h.lang) : ''}</div>
+        </div>
+        <div class="ro-header__meta">
+          ${kv('Sponsor', h.sponsor || '—')}
+          ${kv('Leader', h.leader || '—')}
+          ${kv('Team', h.team || '—')}
+          ${kv('Rev Date', h.revDate || '—')}
         </div>
       </div>
+      <div class="step-dots" style="display:flex;gap:4px;margin:12px 0 18px">${stepDotStrip(kz)}</div>
+
+      ${stepCard(1, 'PLAN', 'Clarify the Problem', `
+        ${kv('Ultimate Goal', c.step1?.ultimateGoal)}
+        ${kv('Standard', c.step1?.standard)}
+        ${kv('Current Situation', c.step1?.current)}
+        <div class="ro-gap">Gap = Problem: <b>${esc(c.step1?.gap)}</b></div>`)}
+
+      ${stepCard(2, 'PLAN', 'Break Down the Problem', `
+        ${c.step2?.note ? `<p class="text-muted" style="font-size:0.8rem;margin:0 0 6px">${esc(c.step2.note)}</p>` : ''}
+        <div class="ro-prio">Prioritized problem: <b>${esc(c.step2?.prioritizedProblem)}</b></div>`)}
+
+      ${stepCard(3, 'PLAN', 'Objective', `
+        ${kv('Do What', c.step3?.doWhat)}
+        ${kv('To What', c.step3?.toWhat)}
+        ${kv('By When', c.step3?.byWhen)}`)}
+
+      ${stepCard(4, 'PLAN', 'Root Cause (5-Whys + 6M)', `
+        <div class="ro-whys">${whysHtml}</div>
+        <div class="ro-rootcause">Root Cause: <b>${esc(c.step4?.rootCause)}</b></div>
+        ${altChains ? `<div class="ro-altchains"><div class="text-muted" style="font-size:0.72rem;margin:8px 0 4px">Additional 5-Why chains iterated by the team:</div>${altChains}</div>` : ''}`)}
+
+      ${stepCard(5, 'PLAN', 'Countermeasures (scored)', `
+        <div style="overflow-x:auto"><table class="kpi-table cm-matrix">
+          <thead><tr><th style="min-width:220px">Countermeasure</th>${cats.map(col => `<th class="score-th" title="${esc(col.label)}">${esc(col.label).slice(0, 4)}</th>`).join('')}</tr></thead>
+          <tbody>${cmRows}</tbody>
+        </table></div>`)}
+
+      ${stepCard(6, 'DO', 'Implementation + ODG Gate', `
+        <div style="overflow-x:auto"><table class="kpi-table" style="font-size:0.83rem">
+          <thead><tr><th>No.</th><th>Plan</th><th>Start</th><th>Due</th><th>Responsible</th><th>Status</th></tr></thead>
+          <tbody>${arRows}</tbody>
+        </table></div>
+        <div class="ro-gate">ODG gate: ${gateBadge} <span class="text-muted" style="font-size:0.78rem">${esc(gate.note || '')}</span></div>`)}
+
+      ${stepCard(7, 'CHECK', 'Results', `
+        ${kv('KPI', c.step7?.kpi)}
+        ${kv('Start (baseline)', c.step7?.measurementStart)}
+        ${kv('End (result)', c.step7?.measurementEnd)}
+        ${kv('New Target', c.step7?.newTarget)}
+        ${c.step7?.narrative ? `<div class="ro-narr">${esc(c.step7.narrative)}</div>` : ''}`)}
+
+      ${stepCard(8, 'ACT', 'Standardize + Yokoten', `
+        ${kv('Process Documents', c.step8?.processDocuments)}
+        ${kv('Training', c.step8?.training)}
+        ${kv('Yokoten', c.step8?.yokoten)}
+        <div class="sop-writeback" style="margin-top:12px">
+          <div class="sop-writeback__label">SOP Write-Back</div>
+          <div style="font-weight:600;font-size:0.9rem">${esc(sopLink.title || '—')}</div>
+          <div class="text-muted" style="font-size:0.8rem;margin-top:2px">
+            ${sopLink.writtenBack ? '✓ Standard work updated & written back to the SOP library (Yokoten complete).' : 'Standard-work write-back pending close.'}
+          </div>
+          <a href="#/dept/${esc(dept.id)}/sop" style="display:inline-block;margin-top:8px;font-size:0.85rem;color:var(--accent)">Open Standard Work view →</a>
+        </div>`)}
     </div>`;
 }
 
@@ -428,134 +719,132 @@ function renderWizardStep(dept, kpi, stepN, template) {
 async function doRender() {
   if (!_dept || !_mount) return;
 
-  // Fetch records if needed
   if (!_kzRecords.length) {
     try {
       const res = await fetch('data/kz-records.json');
       const all = await res.json();
       _kzRecords = byDept(all, _dept.id);
-    } catch (e) {
-      console.warn('Could not load kz-records.json', e);
-    }
+    } catch (e) { console.warn('Could not load kz-records.json', e); }
   }
-
-  // Fetch template if needed
   if (!_template) {
     try {
       const res = await fetch('data/eightstep-template.json');
       _template = await res.json();
-    } catch (e) {
-      console.warn('Could not load eightstep-template.json', e);
-    }
+    } catch (e) { console.warn('Could not load eightstep-template.json', e); }
   }
 
   let content;
 
-  if (!_activeKZ) {
+  if (_readKZ) {
+    // ── Read-view of a completed A3 ─────────────────────────────────────────
+    content = renderReadA3(_readKZ, _dept, _template || { steps: [], scoringMatrix: {} });
+  } else if (!_activeKZ) {
     // ── Tracker view ─────────────────────────────────────────────────────────
-    const openItems    = _kzRecords.filter(k => !k.closed).length;
-    const closedItems  = _kzRecords.filter(k => k.closed).length;
+    const openItems   = _kzRecords.filter(k => !k.closed).length;
+    const closedItems = _kzRecords.filter(k => k.closed).length;
+    const a3Count     = _kzRecords.filter(isCompletedA3).length;
 
     content = `
       <div>
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:12px">
+        <div class="ps-tophead">
           <div>
             <h2 style="margin:0 0 4px">Problem-Solving Tracker</h2>
             <p class="text-muted" style="margin:0;font-size:0.85rem">
-              ${_kzRecords.length} total · ${openItems} open · ${closedItems} closed — ${_dept.name}
+              ${_kzRecords.length} total · ${openItems} open · ${closedItems} closed · ${a3Count} full A3${a3Count === 1 ? '' : 's'} — ${esc(_dept.name)}
             </p>
           </div>
-          <div style="display:flex;align-items:center;gap:8px">
-            <span style="font-size:0.8rem;color:var(--slate-500)">Open a new 8-step on a red KPI:</span>
+          <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
+            <span style="font-size:0.78rem;color:var(--slate-500)">Trigger a new 8-step from a red sub-KPI:</span>
             ${renderRedKpiSelector(_dept)}
           </div>
         </div>
 
         ${renderTrackerTable(_kzRecords, _dept)}
 
-        <div style="margin-top:24px;padding:14px 16px;background:var(--slate-50);border:1px solid var(--slate-200);border-radius:var(--radius)">
-          <div style="font-size:0.7rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--slate-500);margin-bottom:4px">About this tracker</div>
+        <div class="ps-about">
+          <div class="ps-about__label">How the 8-step is triggered</div>
           <p class="text-muted" style="margin:0;font-size:0.8rem">
-            Extracted from the 8-Step Problem Solving Tracker workbook (${new Date().toLocaleDateString('en-US',{month:'short',year:'numeric'})}).
-            Operations has the most active items (30 rows). Finance and Sales have 3 and 1 respectively.
-            Marketing, IT, and HR tabs were empty in the source workbook.
+            A main KPI turning red is drilled to its contributing sub-KPIs; a red <b>sub-KPI</b> opens an 8-step owned by the
+            manager at that level. The agent pre-solves the planning steps (1–6) into a reviewable draft — grounded in the red
+            KPI, the governing SOP, and a prior similar KZ — and the human reviews &amp; finishes. Rows tagged <span class="a3-tag">A3</span>
+            carry full completed content from the FMDS-New discovery.
           </p>
         </div>
       </div>`;
   } else {
     // ── Wizard view ───────────────────────────────────────────────────────────
-    const kpiId  = _activeKZ._kpiId;
-    const kpi    = kpiId && _dept.kpis ? _dept.kpis.find(k => k.id === kpiId) : null;
-    const tmpl   = _template || { steps: [] };
+    const kpiId = _activeKZ._kpiId;
+    const kpi   = kpiId && _dept.kpis ? _dept.kpis.find(k => k.id === kpiId) : null;
+    const tmpl  = _template || { steps: [] };
 
     content = `
       <div>
         <div style="margin-bottom:16px">
-          <button class="btn btn--outline" onclick="window._psCloseWizard()" style="font-size:0.8rem">
-            ← Back to tracker
-          </button>
+          <button class="btn btn--outline" onclick="window._psCloseWizard()" style="font-size:0.8rem">← Back to tracker</button>
         </div>
         ${renderWizardStep(_dept, kpi, _currentStep, tmpl)}
       </div>`;
   }
 
-  _mount.innerHTML = `
-    <div class="ps-view">
-      ${content}
-    </div>`;
-
+  _mount.innerHTML = `<div class="ps-view">${content}</div>`;
   attachHandlers();
 }
 
-// ─── Event handlers (attached after each render) ──────────────────────────────
+// ─── Event handlers ───────────────────────────────────────────────────────────
 
 function attachHandlers() {
-  // Expose globals for onclick= handlers (no bundler, so window._ pattern)
   window._psOpenWizard = () => {
     const sel = document.getElementById('ps-kpi-select');
     const kpiId = sel && sel.value;
-    if (!kpiId) { alert('Please select a KPI first.'); return; }
+    if (!kpiId) { alert('Please select a red sub-KPI first.'); return; }
     const kpi = _dept.kpis ? _dept.kpis.find(k => k.id === kpiId) : null;
-    _activeKZ = newKZ({
-      item: kpi?.name || 'Problem',
-      who: _dept.lead || '',
-      deptId: _dept.id,
-    });
+    _activeKZ = newKZ({ item: kpi?.name || 'Problem', who: _dept.lead || '', deptId: _dept.id });
     _activeKZ._kpiId = kpiId;
+    _activeKZ._prior = priorSimilarKZ(_dept);
+    _activeKZ._sop   = govSop(_dept);
     _currentStep = 1;
     _stepData = {};
+    _sopWrittenBack = false;
     doRender();
   };
+
+  window._psOpenRead = (idx) => {
+    _readKZ = _kzRecords[idx] || null;
+    doRender();
+  };
+  window._psCloseRead = () => { _readKZ = null; doRender(); };
 
   window._psCloseWizard = () => {
-    _activeKZ    = null;
-    _currentStep = 1;
-    _stepData    = {};
+    _activeKZ = null; _currentStep = 1; _stepData = {}; _sopWrittenBack = false;
     doRender();
   };
 
-  window._psGotoStep = (n) => {
-    _saveCurrentStepInputs();
-    _currentStep = n;
-    doRender();
-  };
+  window._psGotoStep = (n) => { _saveCurrentStepInputs(); _currentStep = n; doRender(); };
 
   window._psConfirmStep = (n) => {
     _saveCurrentStepInputs();
-    // Flip step dot
-    if (_activeKZ) {
-      _activeKZ.steps[String(n)] = true;
-    }
+    if (_activeKZ) _activeKZ.steps[String(n)] = true;
     if (n === 8) {
-      // Close the KZ
       if (_activeKZ) { _activeKZ.closed = true; _activeKZ.active = false; }
       _kzRecords = [_activeKZ, ..._kzRecords];
-      _activeKZ  = null;
-      _currentStep = 1;
-      _stepData  = {};
+      _activeKZ = null; _currentStep = 1; _stepData = {}; _sopWrittenBack = false;
     } else {
       _currentStep = n + 1;
     }
+    doRender();
+  };
+
+  window._psSubmitOdg = () => {
+    _saveCurrentStepInputs();
+    const cur = (_stepData[6] && _stepData[6].odgGate) || { status: 'pending', reviewer: 'Eric / Allison (ODG)' };
+    const next = cur.status === 'pending' ? 'submitted' : 'approved';
+    _stepData[6] = { ...(_stepData[6] || {}), odgGate: { ...cur, status: next } };
+    doRender();
+  };
+
+  window._psWriteBackSop = () => {
+    _saveCurrentStepInputs();
+    _sopWrittenBack = true;
     doRender();
   };
 
@@ -563,23 +852,30 @@ function attachHandlers() {
     const tbody = document.getElementById('action-register-body');
     if (!tbody) return;
     const n = tbody.querySelectorAll('tr').length + 1;
-    if (n > 10) return; // max 10 rows per template
-    const row = document.createElement('tr');
-    row.innerHTML = `
+    if (n > 10) return;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
       <td class="text-center text-mono" style="width:40px">${n}</td>
-      <td><input type="text" class="form-input" data-ar-field="plan" data-ar-row="${n-1}" placeholder="What needs to be done"></td>
-      <td><input type="date" class="form-input" data-ar-field="startDate" data-ar-row="${n-1}" style="min-width:120px"></td>
-      <td><input type="date" class="form-input" data-ar-field="dueDate" data-ar-row="${n-1}" style="min-width:120px"></td>
-      <td><input type="text" class="form-input" data-ar-field="responsible" data-ar-row="${n-1}" placeholder="Name"></td>
-      <td>
-        <select class="form-input" data-ar-field="status" data-ar-row="${n-1}" style="min-width:90px">
-          <option value="R">R — Behind</option>
-          <option value="Y">Y — At Risk</option>
-          <option value="G" selected>G — On Track</option>
-          <option value="C">C — Completed</option>
-        </select>
-      </td>`;
-    tbody.appendChild(row);
+      <td><input type="text" class="form-input" data-ar-field="plan" data-ar-row="${n - 1}" placeholder="What needs to be done"></td>
+      <td><input type="date" class="form-input" data-ar-field="startDate" data-ar-row="${n - 1}" style="min-width:120px"></td>
+      <td><input type="date" class="form-input" data-ar-field="dueDate" data-ar-row="${n - 1}" style="min-width:120px"></td>
+      <td><input type="text" class="form-input" data-ar-field="responsible" data-ar-row="${n - 1}" placeholder="Name"></td>
+      <td><select class="form-input" data-ar-field="status" data-ar-row="${n - 1}" style="min-width:90px">
+        <option value="R" selected>R — Behind</option><option value="Y">Y — At Risk</option>
+        <option value="G">G — On Track</option><option value="C">C — Completed</option></select></td>`;
+    tbody.appendChild(tr);
+  };
+
+  window._psAddCmRow = () => {
+    const tbody = document.getElementById('cm-matrix-body');
+    if (!tbody) return;
+    const i = tbody.querySelectorAll('tr').length;
+    const cols = (_template && _template.scoringMatrix && _template.scoringMatrix.columns) || [];
+    const tr = document.createElement('tr');
+    const scoreCells = cols.map(c =>
+      `<td class="score-cell"><select class="score-sel" data-cm-field="${c.key}" data-cm-row="${i}"><option value="">–</option><option value="0">0</option><option value="1">1</option><option value="2">2</option></select></td>`).join('');
+    tr.innerHTML = `<td class="cm-text"><input type="text" class="form-input" data-cm-field="text" data-cm-row="${i}" placeholder="Countermeasure candidate"></td>${scoreCells}`;
+    tbody.appendChild(tr);
   };
 }
 
@@ -588,25 +884,35 @@ function _saveCurrentStepInputs() {
   const panel = document.querySelector('.wizard-panel');
   if (!panel) return;
   const stepN = parseInt(panel.dataset.step, 10);
-  const saved = {};
+  const saved = { ...(_stepData[stepN] || {}) };
 
-  // Regular fields
-  panel.querySelectorAll('[data-field]').forEach(el => {
-    saved[el.dataset.field] = el.value;
-  });
+  panel.querySelectorAll('[data-field]').forEach(el => { saved[el.dataset.field] = el.value; });
 
   // Action register rows
-  const arRows = [];
   const tbody = document.getElementById('action-register-body');
   if (tbody) {
+    const arRows = [];
     tbody.querySelectorAll('tr').forEach((tr, i) => {
-      const rowData = { no: i+1 };
-      tr.querySelectorAll('[data-ar-field]').forEach(el => {
-        rowData[el.dataset.arField] = el.value;
-      });
+      const rowData = { no: i + 1 };
+      tr.querySelectorAll('[data-ar-field]').forEach(el => { rowData[el.dataset.arField] = el.value; });
       arRows.push(rowData);
     });
     if (arRows.length) saved.actionRows = arRows;
+  }
+
+  // Countermeasure matrix rows
+  const cmBody = document.getElementById('cm-matrix-body');
+  if (cmBody) {
+    const cmRows = [];
+    cmBody.querySelectorAll('tr').forEach((tr, i) => {
+      const row = {};
+      tr.querySelectorAll('[data-cm-field]').forEach(el => {
+        const f = el.dataset.cmField;
+        row[f] = f === 'text' ? el.value : (el.value === '' ? null : Number(el.value));
+      });
+      cmRows.push(row);
+    });
+    if (cmRows.length) saved.countermeasures = cmRows;
   }
 
   _stepData[stepN] = saved;
@@ -615,147 +921,142 @@ function _saveCurrentStepInputs() {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const PS_STYLES = `
-  .ps-view { max-width: 960px; }
+  .ps-view { max-width: 1000px; }
+  .ps-tophead { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:16px; flex-wrap:wrap; gap:12px; }
 
   /* Golden thread */
-  .golden-thread {
-    background: var(--slate-50);
-    border: 1px solid var(--slate-200);
-    border-radius: var(--radius);
-    padding: 10px 14px;
-    margin-bottom: 0;
-  }
-  .gt-label {
-    font-size: 0.65rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--slate-500);
-    margin-bottom: 6px;
-  }
-  .gt-chain {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 4px;
-    font-size: 0.82rem;
-  }
-  .gt-node {
-    padding: 3px 8px;
-    border-radius: var(--radius);
-    background: #fff;
-    border: 1px solid var(--slate-200);
-    white-space: nowrap;
-  }
+  .golden-thread { background: var(--slate-50); border: 1px solid var(--slate-200); border-radius: var(--radius); padding: 10px 14px; }
+  .gt-label { font-size: 0.63rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--slate-500); margin-bottom: 6px; }
+  .gt-chain { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; font-size: 0.82rem; }
+  .gt-node { padding: 3px 8px; border-radius: var(--radius); background: #fff; border: 1px solid var(--slate-200); white-space: nowrap; }
   .gt-node--l1 { color: var(--slate-500); font-size: 0.75rem; }
   .gt-node--l2 { font-weight: 500; }
-  .gt-node--l3 { font-weight: 600; }
-  .gt-node--l4 { border-color: var(--red-light, #ffd8d8); }
+  .gt-node--l4 { border-color: #ffc9c9; background: #fff5f5; font-weight: 600; }
   .gt-arrow { color: var(--slate-400); font-size: 0.75rem; }
 
+  /* AI pre-solve indicator */
+  .presolve { display:flex; align-items:center; justify-content:space-between; gap:12px;
+    background: linear-gradient(90deg, var(--accent-light,#eaf0ff), #fff);
+    border:1px solid var(--accent, #2f6bff); border-radius: var(--radius); padding:10px 14px; margin-bottom:14px; }
+  .presolve__text { font-size:0.85rem; color: var(--slate-800); }
+  .presolve__dot { color: var(--accent,#2f6bff); margin-right:4px; }
+  .presolve__track { display:flex; gap:4px; }
+  .presolve__seg { width:26px; height:6px; border-radius:3px; }
+  .presolve__seg--ai { background: var(--accent-light,#c9d8ff); border:1px solid var(--accent,#2f6bff); }
+  .presolve__seg--done { background: var(--green,#2f9e44); }
+
+  /* AI draft block */
+  .ai-draft { background: var(--accent-light,#eaf0ff); border-left:3px solid var(--accent,#2f6bff); border-radius: 0 var(--radius) var(--radius) 0; padding:10px 14px; margin:16px 0; }
+  .ai-draft__head { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .ai-draft__badge { font-size:0.68rem; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; color: var(--accent,#2f6bff); }
+  .ai-draft__src { font-size:0.72rem; color: var(--slate-600); }
+  .drafted-tag { font-size:0.6rem; font-weight:700; letter-spacing:0.04em; text-transform:uppercase; color: var(--accent,#2f6bff); background:#fff; border:1px solid var(--accent-light,#c9d8ff); border-radius:3px; padding:1px 5px; margin-left:4px; }
+
+  /* PDCA badge */
+  .pdca-badge { color:#fff; padding:2px 8px; border-radius:3px; font-size:0.68rem; font-weight:700; letter-spacing:0.05em; }
+
   /* Step dots */
-  .step-dot {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    border: 2px solid var(--slate-300);
-    font-size: 0.7rem;
-    font-weight: 600;
-    color: var(--slate-400);
-    cursor: default;
-    transition: all 0.15s;
-  }
-  .step-dot--done {
-    background: var(--green);
-    border-color: var(--green);
-    color: #fff;
-  }
-  .step-dot--active {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: #fff;
-  }
-  [onclick].step-dot { cursor: pointer; }
-  [onclick].step-dot:hover { opacity: 0.8; transform: scale(1.1); }
+  .step-dot { display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; border-radius:50%; border:2px solid var(--slate-300); font-size:0.7rem; font-weight:600; color:var(--slate-400); cursor:default; transition:all .15s; }
+  .step-dot--done { background: var(--green); border-color: var(--green); color:#fff; }
+  .step-dot--active { background: var(--accent); border-color: var(--accent); color:#fff; }
+  [onclick].step-dot { cursor:pointer; }
+  [onclick].step-dot:hover { opacity:.8; transform:scale(1.1); }
 
-  /* Wizard panel */
-  .wizard-panel {
-    background: #fff;
-    border: 1px solid var(--slate-200);
-    border-radius: var(--radius-lg);
-    padding: 24px;
-    box-shadow: var(--shadow-sm);
-  }
+  /* Wizard */
+  .wizard-panel { background:#fff; border:1px solid var(--slate-200); border-radius: var(--radius-lg); padding:24px; box-shadow: var(--shadow-sm); }
+  .wizard-header { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-top:4px; }
+  .wizard-fields { margin-top:16px; }
+  .wizard-nav { display:flex; justify-content:space-between; align-items:center; margin-top:24px; padding-top:16px; border-top:1px solid var(--slate-200); }
 
-  /* Form elements */
-  .form-group { margin-bottom: 14px; }
-  .form-label {
-    display: block;
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: var(--slate-700);
-    margin-bottom: 5px;
-  }
-  .form-input {
-    width: 100%;
-    padding: 7px 10px;
-    border: 1px solid var(--slate-300);
-    border-radius: var(--radius);
-    font-size: 0.875rem;
-    font-family: inherit;
-    color: var(--slate-900);
-    background: #fff;
-    transition: border-color 0.15s;
-    box-sizing: border-box;
-  }
-  .form-input:focus {
-    outline: none;
-    border-color: var(--accent);
-    box-shadow: 0 0 0 2px var(--accent-light);
-  }
-  textarea.form-input { resize: vertical; }
+  /* Forms */
+  .form-group { margin-bottom:14px; }
+  .form-label { display:block; font-size:0.8rem; font-weight:600; color:var(--slate-700); margin-bottom:5px; }
+  .form-input { width:100%; padding:7px 10px; border:1px solid var(--slate-300); border-radius: var(--radius); font-size:0.875rem; font-family:inherit; color:var(--slate-900); background:#fff; transition:border-color .15s; box-sizing:border-box; }
+  .form-input:focus { outline:none; border-color: var(--accent); box-shadow:0 0 0 2px var(--accent-light); }
+  textarea.form-input { resize:vertical; }
+  .chart-placeholder { border:1px dashed var(--slate-300); border-radius: var(--radius); padding:16px; text-align:center; color:var(--slate-400); font-size:0.8rem; background: var(--slate-50); }
 
-  /* Fishbone */
-  .fishbone-block table td { padding: 5px 0 5px 4px; }
+  /* Root cause grid (step 4) */
+  .rootcause-grid { display:grid; grid-template-columns: 1.15fr 0.85fr; gap:24px; }
+  @media (max-width: 820px) { .rootcause-grid { grid-template-columns: 1fr; } }
+  .rc-head { font-size:0.85rem; font-weight:700; margin:0 0 12px; color:var(--slate-700); }
+  .why-row { position:relative; margin-bottom:10px; }
+  .why-rail { display:flex; align-items:center; gap:8px; margin-bottom:4px; }
+  .why-num { font-size:0.72rem; font-weight:700; color:var(--accent,#2f6bff); font-family: var(--mono, monospace); }
+  .why-cat { font-size:0.62rem; font-weight:700; letter-spacing:0.04em; text-transform:uppercase; color:var(--slate-500); background:var(--slate-100); border-radius:3px; padding:1px 6px; }
+  .why-input { border-left:3px solid var(--accent-light,#c9d8ff); }
+  .why-row--root .why-input { border-left:3px solid var(--accent,#2f6bff); background:#fbfcff; }
+  .why-connector { text-align:left; color:var(--slate-300); font-size:0.9rem; line-height:1; margin:2px 0 0 6px; }
+  .fishbone-tbl { width:100%; border-collapse:collapse; font-size:0.85rem; }
+  .fishbone-tbl td { padding:4px 0 4px 4px; }
 
-  /* SOP link */
-  .sop-link-block { margin-top: 20px; }
+  /* Countermeasure matrix */
+  .cm-matrix th, .cm-matrix td { font-size:0.8rem; }
+  .cm-matrix .cm-text { min-width:200px; }
+  .score-th { text-align:center; }
+  .score-cell { text-align:center; }
+  .score-sel { padding:3px 4px; border:1px solid var(--slate-300); border-radius:4px; font-family: var(--mono, monospace); font-size:0.8rem; }
+  .sc { display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; border-radius:4px; font-family: var(--mono, monospace); font-weight:700; font-size:0.78rem; }
+  .sc--0 { background:#ffe3e3; color:#c92a2a; } .sc--1 { background:#fff3bf; color:#e67700; } .sc--2 { background:#d3f9d8; color:#2b8a3e; } .sc--na { background:var(--slate-100); color:var(--slate-400); }
+
+  /* ODG gate */
+  .odg-gate { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-top:18px; padding:14px 16px; border:1px solid #d0bfff; background:#f5f0ff; border-radius: var(--radius); flex-wrap:wrap; }
+  .odg-gate__label { font-size:0.68rem; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; color:#7048e8; margin-bottom:3px; }
+  .odg-gate__desc { font-size:0.82rem; color:var(--slate-700); }
+  .gate-badge { font-size:0.72rem; font-weight:700; padding:2px 8px; border-radius:3px; margin-left:4px; }
+  .gate-badge--pending { background:var(--slate-100); color:var(--slate-500); }
+  .gate-badge--submitted { background:#fff3bf; color:#e67700; }
+  .gate-badge--approved { background:#d3f9d8; color:#2b8a3e; }
+
+  /* SOP write-back */
+  .sop-writeback { margin-top:20px; border:1px solid var(--slate-200); border-radius: var(--radius); padding:16px; background: var(--slate-50); }
+  .sop-writeback__label { font-size:0.68rem; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; color:var(--slate-500); margin-bottom:4px; }
 
   /* Tracker */
-  .kpi-table th, .kpi-table td { font-size: 0.85rem; }
+  .kpi-table th, .kpi-table td { font-size:0.85rem; }
+  .a3-tag { font-size:0.58rem; font-weight:800; letter-spacing:0.04em; color:#fff; background: var(--accent,#2f6bff); border-radius:3px; padding:1px 5px; vertical-align:middle; }
+  .tr--a3 { background: #fbfcff; }
+  .ps-about { margin-top:24px; padding:14px 16px; background: var(--slate-50); border:1px solid var(--slate-200); border-radius: var(--radius); }
+  .ps-about__label { font-size:0.68rem; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; color:var(--slate-500); margin-bottom:4px; }
 
-  /* Badges */
+  /* Read-only A3 */
+  .ro-a3 { }
+  .ro-header { display:flex; align-items:flex-start; justify-content:space-between; gap:20px; flex-wrap:wrap; padding-bottom:12px; border-bottom:2px solid var(--slate-200); }
+  .ro-header__title { font-size:1.25rem; font-weight:700; }
+  .ro-header__meta { display:grid; grid-template-columns: 1fr 1fr; gap:2px 18px; }
+  .ro-kv { display:flex; gap:8px; padding:2px 0; font-size:0.83rem; }
+  .ro-kv__k { color:var(--slate-500); font-weight:600; min-width:120px; }
+  .ro-kv__v { color:var(--slate-800); }
+  .ro-step { border:1px solid var(--slate-200); border-radius: var(--radius); margin-bottom:12px; overflow:hidden; }
+  .ro-step__head { display:flex; align-items:center; gap:10px; padding:8px 14px; background: var(--slate-50); border-bottom:1px solid var(--slate-200); }
+  .ro-step__n { font-family: var(--mono, monospace); font-size:0.75rem; color:var(--slate-500); font-weight:700; }
+  .ro-step__title { font-weight:600; font-size:0.92rem; }
+  .ro-step__body { padding:12px 14px; }
+  .ro-gap, .ro-prio { margin-top:6px; padding:6px 10px; background:#fff5f5; border-left:3px solid #ffc9c9; border-radius:0 4px 4px 0; font-size:0.85rem; }
+  .ro-why { display:flex; gap:10px; align-items:baseline; padding:3px 0; font-size:0.84rem; }
+  .ro-why__n { font-family: var(--mono, monospace); font-weight:700; color:var(--accent,#2f6bff); min-width:46px; }
+  .ro-why__cat { font-size:0.6rem; font-weight:700; text-transform:uppercase; color:var(--slate-500); background:var(--slate-100); border-radius:3px; padding:1px 6px; min-width:70px; text-align:center; }
+  .ro-rootcause { margin-top:10px; padding:8px 12px; background:#fbfcff; border-left:3px solid var(--accent,#2f6bff); border-radius:0 4px 4px 0; font-size:0.86rem; }
+  .ro-altchains { margin-top:8px; }
+  .ro-altchain { border:1px dashed var(--slate-300); border-radius:4px; padding:8px 10px; margin-bottom:6px; }
+  .ro-alt-why { font-size:0.78rem; color:var(--slate-600); }
+  .ro-alt-root { font-size:0.78rem; color:var(--slate-800); font-weight:600; margin-top:3px; }
+  .ro-narr { margin-top:8px; font-size:0.83rem; line-height:1.5; color:var(--slate-700); background:var(--slate-50); border-radius:4px; padding:8px 10px; }
+  .ro-gate { margin-top:10px; font-size:0.85rem; }
+  .ar-status { display:inline-block; width:22px; text-align:center; font-family: var(--mono, monospace); font-weight:700; border-radius:4px; }
+  .ar-status--C { background:#d3f9d8; color:#2b8a3e; } .ar-status--R { background:#ffe3e3; color:#c92a2a; }
+  .ar-status--Y { background:#fff3bf; color:#e67700; } .ar-status--G { background:#e7f5ff; color:#1971c2; }
+
+  /* Badges / buttons */
   .badge--success { background: var(--green-bg); color: var(--green); }
-  .badge--info    { background: var(--accent-tint); color: var(--accent); }
-  .badge--accent  { background: var(--accent-light); color: var(--accent); }
-
-  /* Buttons */
-  .btn--success { background: var(--green) !important; }
-  .btn--outline {
-    background: transparent;
-    border: 1px solid var(--slate-300);
-    color: var(--slate-700);
-    padding: 7px 14px;
-    border-radius: var(--radius);
-    font-size: 0.875rem;
-    cursor: pointer;
-    transition: background 0.1s;
-  }
+  .badge--info { background: var(--accent-tint); color: var(--accent); }
+  .badge--accent { background: var(--accent-light); color: var(--accent); }
+  .btn--success { background: var(--green) !important; border:none; color:#fff; padding:7px 14px; border-radius: var(--radius); font-size:0.875rem; cursor:pointer; }
+  .btn--outline { background:transparent; border:1px solid var(--slate-300); color:var(--slate-700); padding:7px 14px; border-radius: var(--radius); font-size:0.875rem; cursor:pointer; transition:background .1s; }
   .btn--outline:hover { background: var(--slate-100); }
-  .btn--primary {
-    background: var(--accent);
-    border: none;
-    color: #fff;
-    padding: 7px 14px;
-    border-radius: var(--radius);
-    font-size: 0.875rem;
-    cursor: pointer;
-    transition: opacity 0.1s;
-  }
-  .btn--primary:hover { opacity: 0.88; }
+  .btn--primary { background: var(--accent); border:none; color:#fff; padding:7px 14px; border-radius: var(--radius); font-size:0.875rem; cursor:pointer; transition:opacity .1s; }
+  .btn--primary:hover { opacity:.88; }
+  .btn--primary:disabled { opacity:.5; cursor:default; }
 `;
 
 (function injectStyles() {
@@ -770,44 +1071,38 @@ const PS_STYLES = `
 
 /**
  * renderProblemSolving(dept, mount)
- *
  * @param {object} dept   — department data object (from data/<id>.json)
  * @param {Element} mount — DOM element to render into
  */
 export async function renderProblemSolving(dept, mount) {
-  // Reset state for new dept
-  _dept      = dept;
-  _mount     = mount;
-  _activeKZ  = null;
+  _dept = dept;
+  _mount = mount;
+  _activeKZ = null;
+  _readKZ = null;
   _currentStep = 1;
-  _stepData  = {};
+  _stepData = {};
   _kzRecords = [];
-  _template  = null;
+  _template = null;
+  _sopWrittenBack = false;
 
-  // R3 handoff: if the hash carries ?kpi=<id> (e.g. from the Why-panel "Run 8-Step" button),
-  // pre-open the wizard for that KPI after data loads.
+  // R3 handoff: hash ?kpi=<id> pre-opens the wizard for that sub-KPI.
   const hashQuery = location.hash.includes('?') ? location.hash.split('?')[1] : '';
   const preselectKpiId = new URLSearchParams(hashQuery).get('kpi') || null;
 
   mount.innerHTML = `<p class="text-muted" style="padding:24px 0">Loading problem-solving data…</p>`;
   await doRender();
 
-  // Auto-open wizard if a kpi was passed via hash query
   if (preselectKpiId && _dept && _dept.kpis) {
     const kpi = _dept.kpis.find(k => k.id === preselectKpiId);
     if (kpi) {
-      // Pre-select in the dropdown (for visual confirmation)
       const sel = document.getElementById('ps-kpi-select');
       if (sel) sel.value = preselectKpiId;
-      // Open the wizard
-      _activeKZ = newKZ({
-        item:   kpi.name || 'Problem',
-        who:    _dept.lead || '',
-        deptId: _dept.id,
-      });
+      _activeKZ = newKZ({ item: kpi.name || 'Problem', who: _dept.lead || '', deptId: _dept.id });
       _activeKZ._kpiId = preselectKpiId;
+      _activeKZ._prior = priorSimilarKZ(_dept);
+      _activeKZ._sop   = govSop(_dept);
       _currentStep = 1;
-      _stepData    = {};
+      _stepData = {};
       await doRender();
     }
   }
