@@ -291,7 +291,218 @@
       "8": true
     },
     "active": false,
-    "closed": true
+    "closed": true,
+    "content": {
+      "header": {
+        "sponsor": "G. Navarro",
+        "leader": "M. Escalera / B. Juarez",
+        "team": "L. Romero, E. Hernandez, J. Gonzalez",
+        "revDate": "2026-01-20",
+        "lang": "ES"
+      },
+      "step1": {
+        "ultimateGoal": "Eliminar remakes externos por diferencia de tono (Eliminate external remakes due to tone difference)",
+        "standard": "0 remake externo por diferencia de tono (0 external remakes due to tone difference)",
+        "current": "8,323 piezas de remake externo ($13,551.00 USD)",
+        "gap": "8,323 PZ ($13,551.00 USD)"
+      },
+      "step2": {
+        "note": "Breakdown section held visual content only.",
+        "prioritizedProblem": "7,900 PZ en remakes externos porque no coincide el tono de la muestra contra la producción enviada al ser igualado (7,900 pieces — sample tone does not match production after color matching)"
+      },
+      "step3": {
+        "doWhat": "Eliminar 7,900 pzas por diferencia de tono",
+        "toWhat": "0 pzas enviadas al cliente por este defecto",
+        "byWhen": "2026-02-27"
+      },
+      "step4": {
+        "whys": [
+          {
+            "n": 1,
+            "text": "El color no coincide al momento de igualar la impresión para la producción",
+            "category": "Man"
+          },
+          {
+            "n": 2,
+            "text": "Porque la ficha y producción se imprimieron en diferentes equipos",
+            "category": "Method"
+          },
+          {
+            "n": 3,
+            "text": "Por la capacidad que tiene cada equipo",
+            "category": "Machine"
+          },
+          {
+            "n": 4,
+            "text": "(Material — not populated)",
+            "category": "Material"
+          },
+          {
+            "n": 5,
+            "text": "(Environment — not populated)",
+            "category": "Environment"
+          }
+        ],
+        "rootCause": "La impresión de la orden presentó variación de color porque fue impresa en dos equipos diferentes los cuales no tienen la misma calidad de color por la vida útil de los mismos (Color varied because the order was printed on two different plotters with different color capability due to their age).",
+        "altChains": [
+          {
+            "label": "Chain 2",
+            "whys": [
+              "El color no coincide al momento de igualar la impresión para la producción",
+              "No se tiene un método que confirme con exactitud el Pantone solicitado para la igualación",
+              "Por el comportamiento de la impresión en los diferentes materiales usados"
+            ],
+            "rootCause": "No se cuenta con instrumento de medición que nos ayude a corroborar el color aun cambiando el material."
+          },
+          {
+            "label": "Chain 3",
+            "whys": [
+              "Falta de coincidencia entre prueba impresa y guía Pantone",
+              "No se tiene un método que confirme con exactitud el Pantone solicitado en cada material",
+              "El color varía dependiendo la porosidad y color del vinil",
+              "Falta de equipo que mida la interferencia del color en el vinil"
+            ],
+            "rootCause": "No se cuenta con instrumento de medición que nos ayude a corroborar el color aun cambiando el material."
+          }
+        ]
+      },
+      "step5": {
+        "countermeasures": [
+          {
+            "text": "TPM de plotters (plotter maintenance)",
+            "S": 2,
+            "Q": 2,
+            "C": 2,
+            "T": 1,
+            "Cu": 2,
+            "Ef": 2,
+            "OA": 2
+          },
+          {
+            "text": "Mejorar iluminación del área",
+            "S": 2,
+            "Q": 2,
+            "C": 1,
+            "T": 1,
+            "Cu": 2,
+            "Ef": 2,
+            "OA": 2
+          },
+          {
+            "text": "Mejorar ambiente/clima para funcionamiento de los plotter",
+            "S": 2,
+            "Q": 2,
+            "C": 1,
+            "T": 1,
+            "Cu": 2,
+            "Ef": 2,
+            "OA": 1
+          },
+          {
+            "text": "Confirmación visual durante la impresión y cambio de equipo con la ficha liberada",
+            "S": 2,
+            "Q": 2,
+            "C": 2,
+            "T": 2,
+            "Cu": 2,
+            "Ef": 2,
+            "OA": 3
+          },
+          {
+            "text": "Equipo de medición para confirmación de tonos al cambio de materiales",
+            "S": 2,
+            "Q": 2,
+            "C": 2,
+            "T": 2,
+            "Cu": 2,
+            "Ef": 2,
+            "OA": 2
+          }
+        ]
+      },
+      "step6": {
+        "actionRows": [
+          {
+            "no": 1,
+            "plan": "Prueba de confirmación de tonos en los distintos materiales",
+            "startDate": "2026-01-29",
+            "dueDate": "2026-01-29",
+            "responsible": "L. Romero",
+            "status": "C"
+          },
+          {
+            "no": 2,
+            "plan": "Ajustes de color en caso de variación de tono con ayuda de los color chart CMYK",
+            "startDate": "2026-01-29",
+            "dueDate": "2026-01-29",
+            "responsible": "M. Escalera",
+            "status": "C"
+          },
+          {
+            "no": 3,
+            "plan": "Confirmación de color en cama con ayuda de las fichas de igualación",
+            "startDate": "2026-01-29",
+            "dueDate": "2026-01-29",
+            "responsible": "E. Hernandez",
+            "status": "C"
+          },
+          {
+            "no": 4,
+            "plan": "Pruebas de funcionalidad de espectrofotómetro",
+            "startDate": "2026-02-04",
+            "dueDate": "2026-02-06",
+            "responsible": "L. Romero",
+            "status": "C"
+          },
+          {
+            "no": 5,
+            "plan": "Solicitud de compra de espectrofotómetro",
+            "startDate": "2026-02-16",
+            "dueDate": "2026-02-20",
+            "responsible": "M. Escalera",
+            "status": "C"
+          },
+          {
+            "no": 6,
+            "plan": "Diseño con Pantones PMS liberados en cada equipo",
+            "startDate": "2026-02-27",
+            "dueDate": "2026-03-15",
+            "responsible": "B. Juarez",
+            "status": "C"
+          },
+          {
+            "no": 7,
+            "plan": "Resguardo de fichas durante 6 meses",
+            "startDate": "2026-03-02",
+            "dueDate": "2026-03-15",
+            "responsible": "L. Gonzalez",
+            "status": "C"
+          }
+        ],
+        "odgGate": {
+          "status": "approved",
+          "reviewer": "Eric / Allison (ODG)",
+          "note": "All 7 actions completed (C); cleared through gate."
+        }
+      },
+      "step7": {
+        "kpi": "Calidad — remakes externos en FlexStyle por diferencia de tono",
+        "measurementStart": "8,323 PZ ($13,551)",
+        "measurementEnd": "0 target",
+        "newTarget": "0 PZ",
+        "narrative": "Chart-based result (bar chart embedded, not text-readable). All 7 countermeasures completed."
+      },
+      "step8": {
+        "processDocuments": "Actualización de documento AC-FR-7.5-078",
+        "training": "Todos los operadores del proceso de matcheo (all match operators)",
+        "yokoten": "Se dará a conocer el cambio a todos los integrantes del equipo de FlexStyle, ambos turnos (both shifts informed)",
+        "sopLink": {
+          "id": "operations-shortcode",
+          "title": "AC-FR-7.5-078 — FlexStyle Color Match Standard Work",
+          "writtenBack": true
+        }
+      }
+    }
   },
   {
     "item": 15,
@@ -522,7 +733,183 @@
       "8": true
     },
     "active": false,
-    "closed": true
+    "closed": true,
+    "content": {
+      "header": {
+        "sponsor": "Gibran Velasco",
+        "leader": "Ramon Panales",
+        "team": "R. Panales / G. Velasco / M. Vazquez / O. Garcia",
+        "revDate": "2026-02-09",
+        "lang": "ES"
+      },
+      "step1": {
+        "ultimateGoal": "Asegurar que las piezas bordadas en Muestras cumplan con la calidad requerida (Ensure sample-area embroidered pieces meet required quality)",
+        "standard": "120 pzas en PNC al mes",
+        "current": "216 piezas de PNC en 30 días",
+        "gap": "96 piezas"
+      },
+      "step2": {
+        "note": "Breakdown section held no text cells.",
+        "prioritizedProblem": "Reducción de los errores por hilo incorrecto en bordado (Reduce incorrect-thread embroidery errors)"
+      },
+      "step3": {
+        "doWhat": "Eliminar X PNC por defectos B2 por tensión de bobina",
+        "toWhat": "0 piezas PNC",
+        "byWhen": "2026-02-25"
+      },
+      "step4": {
+        "whys": [
+          {
+            "n": 1,
+            "text": "Tenemos incremento en el error B2 el cual es mala tensión de bobina",
+            "category": "Man"
+          },
+          {
+            "n": 2,
+            "text": "La gente no sabe usar el tensionador correctamente",
+            "category": "Method"
+          },
+          {
+            "n": 3,
+            "text": "Nunca han recibido una capacitación",
+            "category": "Machine"
+          },
+          {
+            "n": 4,
+            "text": "No se tiene la información en el SW sobre cómo es el procedimiento completo de tensionado de bobina",
+            "category": "Material"
+          },
+          {
+            "n": 5,
+            "text": "El SW no está actualizado",
+            "category": "Environment"
+          }
+        ],
+        "rootCause": "SW no está actualizado con la capacitación pertinente con respecto al tensionado de bobina (Standard Work not updated with the relevant bobbin-tensioning training)."
+      },
+      "step5": {
+        "countermeasures": [
+          {
+            "text": "Actualizar el SW de la operación para que todos tengan tensionador",
+            "S": 2,
+            "Q": 2,
+            "C": 2,
+            "T": 1,
+            "Cu": 2,
+            "Ef": 2,
+            "OA": null
+          },
+          {
+            "text": "Capacitación en el proceso con el personal de experiencia",
+            "S": 2,
+            "Q": 2,
+            "C": 2,
+            "T": 1,
+            "Cu": 2,
+            "Ef": 2,
+            "OA": null
+          },
+          {
+            "text": "Información sobre niveles de tensión",
+            "S": 2,
+            "Q": 1,
+            "C": 2,
+            "T": 0,
+            "Cu": 2,
+            "Ef": 2,
+            "OA": null
+          },
+          {
+            "text": "Contar con la herramienta completa para el proceso",
+            "S": 2,
+            "Q": 2,
+            "C": 1,
+            "T": 0,
+            "Cu": 2,
+            "Ef": 2,
+            "OA": null
+          },
+          {
+            "text": "Ayuda visual de los parámetros",
+            "S": 2,
+            "Q": 2,
+            "C": 2,
+            "T": 0,
+            "Cu": 0,
+            "Ef": 2,
+            "OA": null
+          },
+          {
+            "text": "Estandarizar el tipo de bobina",
+            "S": 2,
+            "Q": 2,
+            "C": 2,
+            "T": 0,
+            "Cu": 0,
+            "Ef": 2,
+            "OA": null
+          }
+        ]
+      },
+      "step6": {
+        "actionRows": [
+          {
+            "no": 1,
+            "plan": "Actualizar SW sobre la tensión de bobina",
+            "startDate": "2026-02-09",
+            "dueDate": "2026-02-13",
+            "responsible": "M. Vazquez",
+            "status": "C"
+          },
+          {
+            "no": 2,
+            "plan": "Realizar capacitación de tensión de bobina",
+            "startDate": "2026-02-16",
+            "dueDate": "2026-02-16",
+            "responsible": "M. Vazquez",
+            "status": "C"
+          },
+          {
+            "no": 3,
+            "plan": "Realizar ayuda visual sobre los parámetros de tensión de bobina",
+            "startDate": "2026-02-18",
+            "dueDate": "2026-02-20",
+            "responsible": "R. Panales",
+            "status": "C"
+          },
+          {
+            "no": 4,
+            "plan": "Rectificar que las operarias que lo necesiten cuenten con tensionadores",
+            "startDate": "2026-02-23",
+            "dueDate": "2026-02-25",
+            "responsible": "M. Vazquez",
+            "status": "C"
+          }
+        ],
+        "odgGate": {
+          "status": "approved",
+          "reviewer": "Eric / Allison (ODG)",
+          "note": "All 4 actions completed (C) by Feb 25."
+        }
+      },
+      "step7": {
+        "kpi": "Quality (PNC — Muestras)",
+        "measurementStart": "216 PNC / 30 días",
+        "measurementEnd": "0 target",
+        "newTarget": "0 piezas PNC",
+        "narrative": "Se detectó un alto número de PNC por error de tensión de bobina en los últimos 30 días, ocasionado por la falta de actualización en el SW y la falta de capacitación. En el SW se indica el método para tensionar el hilo de la bobina y se capacita al personal involucrado."
+      },
+      "step8": {
+        "processDocuments": "SWI de bordado de Muestras",
+        "training": "Alicia Floriano — team member — 16-FEB",
+        "yokoten": "(not populated in source)",
+        "sopLink": {
+          "id": "operations-shortcode",
+          "title": "SWI — Bordado de Muestras (Bobbin Tension)",
+          "writtenBack": true
+        }
+      }
+    }
   },
   {
     "item": 26,
@@ -648,7 +1035,197 @@
       "8": true
     },
     "active": false,
-    "closed": true
+    "closed": true,
+    "content": {
+      "header": {
+        "sponsor": "J. Kozel",
+        "leader": "P. Fernandez / Arturo Gonzalez",
+        "team": "(not listed)",
+        "revDate": null,
+        "lang": "EN"
+      },
+      "step1": {
+        "ultimateGoal": "Ensure proper billing to achieve customer satisfaction and trust",
+        "standard": "$0 USD worth of discrepancies",
+        "current": "$43K USD in December",
+        "gap": "$43K USD"
+      },
+      "step2": {
+        "note": "Breakdown section held a Pareto chart (embedded graphic, not text-readable).",
+        "prioritizedProblem": "$22,225.41 manual price change in the System"
+      },
+      "step3": {
+        "doWhat": "Eliminate $22,225.41 manual price change",
+        "toWhat": "$0",
+        "byWhen": "2026-01-31"
+      },
+      "step4": {
+        "whys": [
+          {
+            "n": 1,
+            "text": "Manual price change",
+            "category": "Man"
+          },
+          {
+            "n": 2,
+            "text": "Special/custom made products",
+            "category": "Method"
+          },
+          {
+            "n": 3,
+            "text": "These items are not in Episerver",
+            "category": "Machine"
+          },
+          {
+            "n": 4,
+            "text": "Our systems do not change prices automatically for these items",
+            "category": "Material"
+          },
+          {
+            "n": 5,
+            "text": "(Environment — not populated)",
+            "category": "Environment"
+          }
+        ],
+        "rootCause": "Not automated pricing update in BC and Episerver / No custom-made items to put in the system"
+      },
+      "step5": {
+        "countermeasures": [
+          {
+            "text": "Add special items in Episerver",
+            "S": 2,
+            "Q": 2,
+            "C": 1,
+            "T": 1,
+            "Cu": 2,
+            "Ef": 2,
+            "OA": 1
+          },
+          {
+            "text": "Set price in Episerver for these items",
+            "S": 2,
+            "Q": 2,
+            "C": 2,
+            "T": 2,
+            "Cu": 2,
+            "Ef": 2,
+            "OA": 2
+          },
+          {
+            "text": "Create system to set custom item prices automatically in BC and Epi",
+            "S": 2,
+            "Q": 2,
+            "C": 2,
+            "T": 2,
+            "Cu": 2,
+            "Ef": 2,
+            "OA": null
+          },
+          {
+            "text": "Keep a shared Excel record between Sales and Pricing",
+            "S": 2,
+            "Q": 2,
+            "C": 2,
+            "T": 1,
+            "Cu": 2,
+            "Ef": 2,
+            "OA": 2
+          },
+          {
+            "text": "Improve communication between Sales and Pricing (Teams channel, approval flow)",
+            "S": 2,
+            "Q": 2,
+            "C": 2,
+            "T": 2,
+            "Cu": 2,
+            "Ef": 2,
+            "OA": 2
+          }
+        ]
+      },
+      "step6": {
+        "actionRows": [
+          {
+            "no": 1,
+            "plan": "Sales to provide correct pricing to Pricing Dept.",
+            "startDate": "2025-12-22",
+            "dueDate": "2025-12-22",
+            "responsible": "M. Urrow",
+            "status": "C"
+          },
+          {
+            "no": 2,
+            "plan": "Pricing Dept. to set correct pricing in BC",
+            "startDate": "2025-12-22",
+            "dueDate": "2025-12-22",
+            "responsible": "P. Fernandez",
+            "status": "C"
+          },
+          {
+            "no": 3,
+            "plan": "Keep tracking for new orders (Cus. Service)",
+            "startDate": "2025-12-23",
+            "dueDate": "2026-01-16",
+            "responsible": "J. Jara",
+            "status": "C"
+          },
+          {
+            "no": 4,
+            "plan": "Request IT to add automated special items in the System",
+            "startDate": "2025-12-11",
+            "dueDate": "2025-12-11",
+            "responsible": "J. Kozel",
+            "status": "C"
+          },
+          {
+            "no": 5,
+            "plan": "Create flow chart",
+            "startDate": "2026-01-28",
+            "dueDate": "2026-01-29",
+            "responsible": "P. Fernandez",
+            "status": "C"
+          },
+          {
+            "no": 6,
+            "plan": "Create BWI",
+            "startDate": "2026-01-29",
+            "dueDate": "2026-01-30",
+            "responsible": "P. Fernandez",
+            "status": "C"
+          },
+          {
+            "no": 7,
+            "plan": "Train Pricing team and Customer Service",
+            "startDate": "2026-02-02",
+            "dueDate": "2026-02-04",
+            "responsible": "P. Fernandez",
+            "status": "C"
+          }
+        ],
+        "odgGate": {
+          "status": "approved",
+          "reviewer": "Eric / Allison (ODG)",
+          "note": "ODG-supported item — approved for implementation."
+        }
+      },
+      "step7": {
+        "kpi": "Cost",
+        "measurementStart": "$43K (Dec)",
+        "measurementEnd": "$0 (Feb 5–16)",
+        "newTarget": "$0",
+        "narrative": "Since Feb 5th until Feb 16th, $0 in billing issues related to this problem-solving."
+      },
+      "step8": {
+        "processDocuments": "BWI — Edit information from an Open Order in BC",
+        "training": "Paulina Fernandez trained Jessica Jara and CS team (Feb 2–4)",
+        "yokoten": "Pricing and Freight Team and Customer Service notified",
+        "sopLink": {
+          "id": "operations-shortcode",
+          "title": "BWI — Edit information from an Open Order in BC",
+          "writtenBack": true
+        }
+      }
+    }
   },
   {
     "item": 2,
@@ -711,6 +1288,323 @@
       "8": false
     },
     "active": true,
-    "closed": false
+    "closed": false,
+    "content": {
+      "header": {
+        "sponsor": "Tony Morando",
+        "leader": "Tony Morando",
+        "team": "Commercialization",
+        "revDate": null,
+        "lang": "EN"
+      },
+      "step1": {
+        "ultimateGoal": "Improve the delivery system that eliminates preventable credits",
+        "standard": "Every order flows right-first-time from validated customer requirements through delivery, resulting in $0 preventable credits",
+        "current": "Preventable order entry and account setup errors, resulting in $95,162.75 credits for December",
+        "gap": "$95,162.75"
+      },
+      "step2": {
+        "note": "Breakdown section held visual content (no text cells).",
+        "prioritizedProblem": "$94,086.48 in defined pricing approval process"
+      },
+      "step3": {
+        "doWhat": "Eliminate $94,086.48 in credits",
+        "toWhat": "$0.0",
+        "byWhen": "2026-02-20"
+      },
+      "step4": {
+        "whys": [
+          {
+            "n": 1,
+            "text": "The new account was not setup correctly",
+            "category": "Man"
+          },
+          {
+            "n": 2,
+            "text": "Special pricing and freight deals were not communicated",
+            "category": "Method"
+          },
+          {
+            "n": 3,
+            "text": "The approval process was not submitted in CRM",
+            "category": "Machine"
+          },
+          {
+            "n": 4,
+            "text": "The sales rep doesn't have a clear process when not dealing with the standard price list",
+            "category": "Material"
+          },
+          {
+            "n": 5,
+            "text": "(Environment — not populated)",
+            "category": "Environment"
+          }
+        ],
+        "rootCause": "There are no checks and balances when setting up a new account with no standard prices or terms."
+      },
+      "step5": {
+        "countermeasures": [
+          {
+            "text": "Standardize and strengthen customer onboarding standard work",
+            "S": 2,
+            "Q": 2,
+            "C": 2,
+            "T": 1,
+            "Cu": 2,
+            "Ef": 2,
+            "OA": 2
+          },
+          {
+            "text": "Implement ERP validation rules to prevent errors in real time",
+            "S": 2,
+            "Q": 2,
+            "C": 0,
+            "T": 1,
+            "Cu": 2,
+            "Ef": 2,
+            "OA": 1
+          },
+          {
+            "text": "Establish a weekly cross-functional review for new account creation",
+            "S": 2,
+            "Q": 2,
+            "C": 2,
+            "T": 1,
+            "Cu": 2,
+            "Ef": 2,
+            "OA": null
+          },
+          {
+            "text": "Implement dual verification for high-risk orders and high-volume customers",
+            "S": 2,
+            "Q": 2,
+            "C": 1,
+            "T": 1,
+            "Cu": 2,
+            "Ef": 2,
+            "OA": 2
+          }
+        ]
+      },
+      "step6": {
+        "actionRows": [
+          {
+            "no": 1,
+            "plan": "Implement a weekly cross-functional onboarding call",
+            "startDate": "2026-02-06",
+            "dueDate": "2026-02-27",
+            "responsible": "Tony Morando",
+            "status": "R"
+          },
+          {
+            "no": 2,
+            "plan": "Implement a standardized new customer onboarding checklist",
+            "startDate": "2026-02-02",
+            "dueDate": "2026-02-03",
+            "responsible": "Tony Morando",
+            "status": "R"
+          },
+          {
+            "no": 3,
+            "plan": "Log all new account onboarding checklists under corresponding account in CRM",
+            "startDate": "2026-02-03",
+            "dueDate": "2026-02-04",
+            "responsible": "Tony Morando",
+            "status": "R"
+          }
+        ],
+        "odgGate": {
+          "status": "pending",
+          "reviewer": "Eric / Allison (ODG)",
+          "note": "Actions still R-status (behind). Not yet cleared through ODG gate."
+        }
+      },
+      "step7": {
+        "kpi": "Quality — Remakes / Credits",
+        "measurementStart": "$95,162.75 (Dec)",
+        "measurementEnd": "(in progress)",
+        "newTarget": "$0",
+        "narrative": "Decrease credits to $0 generated by setting up new accounts."
+      },
+      "step8": {
+        "processDocuments": "(pending — onboarding checklist + CRM logging SW to be published on close)",
+        "training": "(pending)",
+        "yokoten": "(pending)",
+        "sopLink": {
+          "id": "service-prospecting",
+          "title": "World Emblem New Customer Account Setup",
+          "writtenBack": false
+        }
+      }
+    }
+  },
+  {
+    "item": 31,
+    "kzNumber": "KZ-364",
+    "title": "Reduce Rework at Applications Area — Richardson",
+    "deptId": "operations",
+    "who": "Myrissa Stone",
+    "odgSupport": true,
+    "start": "2026-04-13",
+    "steps": {
+      "1": true,
+      "2": true,
+      "3": true,
+      "4": true,
+      "5": true,
+      "6": true,
+      "7": true,
+      "8": true
+    },
+    "active": false,
+    "closed": true,
+    "content": {
+      "header": {
+        "sponsor": "Hector Rodriguez",
+        "leader": "Myrissa Stone / Michelle Finol",
+        "team": "Myrissa Stone, Michelle Finol, Vanessa Perez",
+        "revDate": "2026-05-01",
+        "lang": "EN"
+      },
+      "step1": {
+        "ultimateGoal": "Reduce rework on Richardson Applications area",
+        "standard": "0 Rework",
+        "current": "72 Rework (during one week)",
+        "gap": "72 (during one week)"
+      },
+      "step2": {
+        "note": "Breakdown section held no text cells.",
+        "prioritizedProblem": "Patches that do not require heat move because the adhesive is not strong enough."
+      },
+      "step3": {
+        "doWhat": "Eliminate caps reworked by off-center issues",
+        "toWhat": "0 rework",
+        "byWhen": "2026-04-17"
+      },
+      "step4": {
+        "whys": [
+          {
+            "n": 1,
+            "text": "We had a lot of rework",
+            "category": "Man"
+          },
+          {
+            "n": 2,
+            "text": "Quality issues",
+            "category": "Method"
+          },
+          {
+            "n": 3,
+            "text": "Patches off center",
+            "category": "Machine"
+          },
+          {
+            "n": 4,
+            "text": "The patch's adhesive doesn't stick to the hats",
+            "category": "Material"
+          },
+          {
+            "n": 5,
+            "text": "If heat is not applied, they move during the process",
+            "category": "Environment"
+          }
+        ],
+        "rootCause": "If heat is not applied, the patches move during the process."
+      },
+      "step5": {
+        "countermeasures": [
+          {
+            "text": "Buy additional glue to apply to the patches",
+            "S": 2,
+            "Q": 2,
+            "C": 0,
+            "T": 1,
+            "Cu": 2,
+            "Ef": 2,
+            "OA": 2
+          },
+          {
+            "text": "Use 3M double tape",
+            "S": 2,
+            "Q": 2,
+            "C": 0,
+            "T": 1,
+            "Cu": 2,
+            "Ef": 2,
+            "OA": 2
+          },
+          {
+            "text": "Do nothing",
+            "S": 2,
+            "Q": 0,
+            "C": 0,
+            "T": 0,
+            "Cu": 0,
+            "Ef": 0,
+            "OA": 2
+          },
+          {
+            "text": "Apply heat to all orders regardless of whether the order requests it or not",
+            "S": 2,
+            "Q": 1,
+            "C": 2,
+            "T": 1,
+            "Cu": 2,
+            "Ef": 2,
+            "OA": 2
+          }
+        ]
+      },
+      "step6": {
+        "actionRows": [
+          {
+            "no": 1,
+            "plan": "Change the process",
+            "startDate": "2026-04-13",
+            "dueDate": "2026-04-13",
+            "responsible": "Vanessa Perez",
+            "status": "C"
+          },
+          {
+            "no": 2,
+            "plan": "Train the staff",
+            "startDate": "2026-04-13",
+            "dueDate": "2026-04-13",
+            "responsible": "Vanessa Perez",
+            "status": "C"
+          },
+          {
+            "no": 3,
+            "plan": "Update the Standard Work",
+            "startDate": "2026-04-14",
+            "dueDate": "2026-04-14",
+            "responsible": "Michelle Finol",
+            "status": "C"
+          }
+        ],
+        "odgGate": {
+          "status": "approved",
+          "reviewer": "Eric / Allison (ODG)",
+          "note": "All 3 actions completed (C) by Apr 14."
+        }
+      },
+      "step7": {
+        "kpi": "Quality",
+        "measurementStart": "72 rework / week",
+        "measurementEnd": "0 target",
+        "newTarget": "0 rework",
+        "narrative": "During the process to complete this 8-step we identified that the main reason was that a big portion of daily orders don’t request heat-transfer application, so the patch moves off-center before sewing. Countermeasure: apply heat transfer to ALL orders regardless of whether the order requests it. Instructions: Top-side machine 344°F, down-side machine 282°F, 5 seconds."
+      },
+      "step8": {
+        "processDocuments": "The Standard Work instruction is already updated",
+        "training": "Vanessa Perez — 04/13/2026 — 10:00 a.m. to 10:40 a.m.",
+        "yokoten": "This process needs to be applied only for Richardson applications use.",
+        "sopLink": {
+          "id": "operations-shortcode",
+          "title": "SW — Richardson Applications Heat-Transfer (344°F / 282°F / 5s)",
+          "writtenBack": true
+        }
+      }
+    }
   }
 ]
