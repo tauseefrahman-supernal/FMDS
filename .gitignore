@@ -1,0 +1,9 @@
+# OS / editor cruft
+.DS_Store
+
+# Brainstorm visual-companion artifacts
+.superpowers/
+
+# Excluded from the repo copy (per owner) — local docs & screenshots
+SCreenshots/
+all docs/
