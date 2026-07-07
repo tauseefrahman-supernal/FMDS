@@ -106,3 +106,38 @@ test('deptId/deptName carried through', () => {
   assert.equal(ctx.deptId, 'operations');
   assert.equal(ctx.deptName, 'Operations');
 });
+
+// ─── nodata branch (kpiRag) ───────────────────────────────────────────────────
+// Real data hits this constantly: HR bench_strength / leader_srr carry
+// actual:null,target:null,nodata:true; illustrative boards (marketing/it/logistics)
+// have null actuals. Two distinct paths into 'nodata' must be covered.
+
+test('nodata: KPI with actual:null (numeric target) → rag nodata, excluded from reds', () => {
+  const dept = {
+    id: 'hr', name: 'HR', lead: 'Clarissa',
+    kpis: [
+      { id: 'leader_srr', name: 'Leadership SRR', level: 1, isMain: true, parentId: null,
+        actual: null, target: 1.0, unit: 'ratio', direction: 'higher_better' },
+    ],
+  };
+  const ctx = buildDeptContext(dept);
+  const kpi = ctx.kpis.find(k => k.id === 'leader_srr');
+  assert.equal(kpi.rag, 'nodata');
+  assert.ok(!ctx.reds.includes('leader_srr'));
+});
+
+test('nodata: kpi.nodata flag forces nodata even with numeric actual+target (ragStatus alone would not)', () => {
+  const dept = {
+    id: 'hr', name: 'HR', lead: 'Clarissa',
+    kpis: [
+      // actual/target are both numeric and would otherwise compute a real RAG,
+      // but the explicit nodata:true flag must win — proves the local guard, not ragStatus.
+      { id: 'bench_strength', name: 'Bench Strength', level: 1, isMain: true, parentId: null,
+        actual: 0.5, target: 1.0, unit: 'ratio', direction: 'higher_better', nodata: true },
+    ],
+  };
+  const ctx = buildDeptContext(dept);
+  const kpi = ctx.kpis.find(k => k.id === 'bench_strength');
+  assert.equal(kpi.rag, 'nodata');
+  assert.ok(!ctx.reds.includes('bench_strength'));
+});
