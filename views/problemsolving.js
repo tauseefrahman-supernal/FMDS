@@ -22,6 +22,7 @@ import { byDept, newKZ, progress } from '../lib/eightstep.js';
 import { contributorsOf, mains, byId } from '../lib/registry.js';
 import { ragStatus }               from '../lib/rag.js';
 import { draftStep, liveReply }    from '../lib/agent.js';
+import { svgRecoveryTrend, svgPareto } from '../lib/charts.js';
 
 // ─── State (module-level, reset each render) ─────────────────────────────────
 let _activeKZ     = null;   // the KZ being solved in the wizard
@@ -252,13 +253,160 @@ function draftBlock(draft, deptId, stepN) {
     </div>`;
 }
 
+// ─── Chart helpers (Steps 1, 2, 3, 7) ─────────────────────────────────────────
+// Real actual-vs-target / breakdown charts drawn from the active KPI's own
+// `series` (data/*.json) via lib/charts.js's svgRecoveryTrend/svgPareto.
+// Zero-invented-data rule: anything we have to synthesize — no real series on
+// file, or the "did it get back to green" future that hasn't happened yet for
+// a still-open KZ — is visibly badged "illustrative", never blended in as if
+// it were a real reading.
+
+function cap(s) {
+  const str = String(s || '');
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+// Deterministic small illustrative trend anchored to the KPI's own
+// target/actual (no RNG — a given KPI always renders the same illustrative
+// shape). Used only when a KPI has no usable real `series` on file.
+function synthIllustrativeSeries(target, actual) {
+  const t = typeof target === 'number' ? target : 100;
+  const a = typeof actual === 'number' ? actual : t * 0.85;
+  const span = Math.abs(t - a) || t * 0.05 || 1;
+  const start = a - span * 0.35;
+  const n = 6;
+  return Array.from({ length: n }, (_, i) => {
+    const f = i / (n - 1);
+    const wobble = (i % 2 === 0 ? -1 : 1) * span * 0.08;
+    return +(start + (a - start) * f + wobble).toFixed(4);
+  });
+}
+
+// Illustrative "what recovery could look like" tail appended after a real
+// (or synthesized) baseline. Step 7 asks "did it get back to green?" — for a
+// KZ still open in the wizard that answer genuinely isn't measured yet, so
+// this is always rendered badged illustrative at the call site.
+function synthRecoveryTail(lastVal, target) {
+  if (typeof target !== 'number' || typeof lastVal !== 'number') return [];
+  if (target === 0) return [lastVal * 0.5, lastVal * 0.15, 0].map(v => +v.toFixed(4));
+  // Climbing toward target, then deliberately through the amber band
+  // (ragStatus green needs ratio>=1.0, amber needs ratio>=0.95) before
+  // landing above target — so the projection visibly crosses red→amber→green
+  // rather than skipping straight from red to green.
+  const step1 = lastVal + (target - lastVal) * 0.5;
+  const step2 = target * 0.965;
+  const step3 = target * 1.02;
+  return [step1, step2, step3].map(v => +v.toFixed(4));
+}
+
+function hasRealSeries(kpi) {
+  return !!(kpi && Array.isArray(kpi.series)
+    && kpi.series.filter(v => typeof v === 'number' && !Number.isNaN(v)).length >= 2);
+}
+
+function chartBlock(svg, { illustrative = false, caption = '' } = {}) {
+  return `
+    <div class="chart-block">
+      <div class="chart-block__svg">${svg}</div>
+      <div class="chart-block__caption">
+        ${caption ? `<span>${esc(caption)}</span>` : ''}
+        ${illustrative ? '<span class="badge badge--illustrative">illustrative</span>' : ''}
+      </div>
+    </div>`;
+}
+
+// Steps 1 & 3 — gap / objective trend: actual vs target from the KPI's own series.
+function gapChartBlock(kpi) {
+  if (!kpi) {
+    return chartBlock(svgRecoveryTrend([], { width: 340, height: 100 }), { illustrative: true, caption: 'No KPI selected yet.' });
+  }
+  const real = hasRealSeries(kpi);
+  const points = real ? kpi.series : synthIllustrativeSeries(kpi.target, kpi.actual);
+  const svg = svgRecoveryTrend(points, { target: kpi.target, width: 340, height: 100 });
+  const illustrative = !real || !!kpi.illustrative;
+  const caption = real
+    ? `${kpi.name} — actual vs target, ${points.length} periods on file`
+    : `${kpi.name} — no weekly series on file; gap trend shown is illustrative`;
+  return chartBlock(svg, { illustrative, caption });
+}
+
+// Step 7 — recovery trend: real baseline + countermeasure-in marker + an
+// illustrative projected recovery tail (an open KZ has no real "back to
+// green" measurement yet — confirming that is what Step 7 asks the human to
+// go do).
+function recoveryChartBlock(kpi) {
+  if (!kpi) {
+    return chartBlock(svgRecoveryTrend([], { width: 340, height: 110 }), { illustrative: true, caption: 'No KPI selected yet.' });
+  }
+  const real = hasRealSeries(kpi);
+  const baseline = real ? kpi.series.slice() : synthIllustrativeSeries(kpi.target, kpi.actual);
+  const target = typeof kpi.target === 'number' ? kpi.target : null;
+  const tail = target != null ? synthRecoveryTail(baseline[baseline.length - 1], target) : [];
+  const points = baseline.concat(tail);
+  const cmIndex = baseline.length - 1;
+  const svg = svgRecoveryTrend(points, { target, cmIndex, width: 340, height: 110 });
+  const caption = real
+    ? `${kpi.name} — periods 1–${baseline.length} actual · marker = countermeasure-in · periods ${baseline.length + 1}–${points.length} projected recovery (not yet measured)`
+    : `${kpi.name} — no weekly series on file; recovery trend shown is illustrative`;
+  return chartBlock(svg, { illustrative: true, caption });
+}
+
+// Step 2 — breakdown/Pareto: stratify the gap by the KPI's own family
+// (siblings sharing a parent = location/rep/team breakdown per the
+// registry), largest contributor first.
+function paretoRowsFor(dept, kpi) {
+  if (!kpi) return { rows: [], illustrative: true };
+  let family = [];
+  if (kpi.contributors && kpi.contributors.length) {
+    family = contributorsOf(dept, kpi.id);
+  } else if (kpi.parentId) {
+    family = contributorsOf(dept, kpi.parentId);
+  }
+  if (family.length >= 2) {
+    const dir = kpi.direction || 'higher_better';
+    const rows = family.map(k => {
+      const value = (typeof k.actual === 'number' && typeof k.target === 'number')
+        ? Math.max(0, dir === 'higher_better' ? k.target - k.actual : k.actual - k.target)
+        : null;
+      return { label: k.location ? cap(k.location) : k.name, value };
+    });
+    return { rows, illustrative: false };
+  }
+  // No real family on file — a small illustrative stratification, sized off
+  // the KPI's own real gap so it's at least proportionate, not made up whole.
+  const t = typeof kpi.target === 'number' ? kpi.target : 100;
+  const a = typeof kpi.actual === 'number' ? kpi.actual : t * 0.85;
+  const totalGap = Math.max(Math.abs(t - a), 0.0001);
+  const shares = [0.42, 0.27, 0.19, 0.12];
+  const labels = ['Location A', 'Location B', 'Location C', 'Other'];
+  return { rows: labels.map((label, i) => ({ label, value: +(totalGap * shares[i]).toFixed(4) })), illustrative: true };
+}
+
+function paretoChartBlock(dept, kpi) {
+  if (!kpi) return '';
+  const { rows, illustrative } = paretoRowsFor(dept, kpi);
+  if (!rows.length) return '';
+  const svg = svgPareto(rows, { width: 340 });
+  const caption = illustrative
+    ? `Illustrative breakdown — no location/rep-level sub-KPI family on file for ${kpi.name}.`
+    : `Where the gap is coming from — ${kpi.name}'s family, largest contributor first.`;
+  return `
+    <div class="form-group">
+      <label class="form-label">Breakdown — Where Is It Coming From?</label>
+      ${chartBlock(svg, { illustrative, caption })}
+    </div>`;
+}
+
 // ─── Generic prefilled fields (steps 1,2,3) ───────────────────────────────────
 
-function renderPrefillFields(stepDef, stepN, draft) {
+function renderPrefillFields(stepDef, stepN, draft, kpi, dept) {
   const saved = _stepData[stepN] || {};
   const draftFields = (draft && draft.fields) || {};
-  return stepDef.fields.map(f => {
+  const fieldsHtml = stepDef.fields.map(f => {
     if (f.columns) return ''; // handled elsewhere
+    if (f.key === 'chart') {
+      return `<div class="form-group"><label class="form-label">${esc(f.label)}</label>${gapChartBlock(kpi)}</div>`;
+    }
     const val = saved[f.key] != null ? saved[f.key] : (draftFields[f.key] || '');
     const isLong = (f.hint && f.hint.length > 70) || String(val).length > 60;
     const input = isLong
@@ -270,6 +418,8 @@ function renderPrefillFields(stepDef, stepN, draft) {
         ${input}
       </div>`;
   }).join('');
+  const extra = stepN === 2 ? paretoChartBlock(dept, kpi) : '';
+  return fieldsHtml + extra;
 }
 
 // ─── 5-Whys ladder + 6M fishbone (Step 4) ─────────────────────────────────────
@@ -444,8 +594,7 @@ function renderResults(stepDef, kpi) {
   };
   return stepDef.fields.map(f => {
     if (f.key === 'chart') {
-      return `<div class="form-group"><label class="form-label">${esc(f.label)}</label>
-        <div class="chart-placeholder">Actual-vs-target chart — attach on close.</div></div>`;
+      return `<div class="form-group"><label class="form-label">${esc(f.label)}</label>${recoveryChartBlock(kpi)}</div>`;
     }
     const val = saved[f.key] != null ? saved[f.key] : (seed[f.key] || '');
     const isLong = f.key === 'narrative';
@@ -536,7 +685,7 @@ function renderWizardStep(dept, kpi, stepN, template) {
   else if (stepN === 6) bodyContent = renderActionRegister(draft);
   else if (stepN === 7) bodyContent = renderResults(stepDef, kpi);
   else if (stepN === 8) bodyContent = renderStandardize(stepDef, dept);
-  else                  bodyContent = renderPrefillFields(stepDef, stepN, draft);
+  else                  bodyContent = renderPrefillFields(stepDef, stepN, draft, kpi, dept);
 
   const draftHeader = AI_STEPS.includes(stepN) ? draftBlock(draft, dept.id, stepN) : '';
 
@@ -1236,6 +1385,12 @@ const PS_STYLES = `
   .form-input:focus { outline:none; border-color: var(--accent); box-shadow:0 0 0 2px var(--accent-light); }
   textarea.form-input { resize:vertical; }
   .chart-placeholder { border:1px dashed var(--slate-300); border-radius: var(--radius); padding:16px; text-align:center; color:var(--slate-400); font-size:0.8rem; background: var(--slate-50); }
+
+  /* Charts (Steps 1,2,3,7 — real actual-vs-target / breakdown SVGs) */
+  .chart-block { border:1px solid var(--slate-200); border-radius: var(--radius); padding:10px 12px 8px; background:#fff; }
+  .chart-block__svg { overflow-x:auto; }
+  .chart-block__svg svg { display:block; }
+  .chart-block__caption { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-top:6px; font-size:0.72rem; color:var(--slate-500); }
 
   /* Root cause grid (step 4) */
   .rootcause-grid { display:grid; grid-template-columns: 1.15fr 0.85fr; gap:24px; }
