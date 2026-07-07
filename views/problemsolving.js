@@ -600,7 +600,7 @@ function renderMarkItem(it, i) {
   } else if (it.type === 'countermeasure') {
     bodyHtml = `
       <div class="mark-item__text">${esc(it.text)}</div>
-      <div class="mark-item__scores">S${it.S} · Q${it.Q} · C${it.C} · T${it.T} · Cu${it.Cu} · Ef${it.Ef} · OA ${it.OA}</div>`;
+      <div class="mark-item__scores">S${esc(it.S)} · Q${esc(it.Q)} · C${esc(it.C)} · T${esc(it.T)} · Cu${esc(it.Cu)} · Ef${esc(it.Ef)} · OA ${esc(it.OA)}</div>`;
   } else {
     bodyHtml = `<div class="mark-item__text">${esc(it.text)}</div>`;
   }
@@ -975,15 +975,15 @@ function attachHandlers() {
     if (item.type === 'chain') {
       item.whys.forEach(w => {
         const el = panel.querySelector(`[data-field="why${w.n}"]`);
-        if (el) el.value = w.text;
+        if (el) el.value = el.value ? `${el.value}\n\n${w.text}` : w.text;
       });
       if (item.rootCause) {
         const rc = panel.querySelector('[data-field="rootCause"]');
-        if (rc) rc.value = item.rootCause;
+        if (rc) rc.value = rc.value ? `${rc.value}\n\n${item.rootCause}` : item.rootCause;
       }
     } else if (item.type === 'altbranch') {
       const el = panel.querySelector(`[data-field="fishbone_${item.category.toLowerCase()}"]`);
-      if (el) el.value = item.text;
+      if (el) el.value = el.value ? `${el.value}\n\n${item.text}` : item.text;
     } else if (item.type === 'countermeasure') {
       _addSuggestedCmRow(item);
     } else if (item.type === 'recovery') {
@@ -993,7 +993,7 @@ function attachHandlers() {
       _addSuggestedActionRow(item);
     } else if (item.type === 'nudge' && item.field) {
       const el = panel.querySelector(`[data-field="${item.field}"]`);
-      if (el) el.value = item.text;
+      if (el) el.value = el.value ? `${el.value}\n\n${item.text}` : item.text;
     }
 
     _markMarkItem(idx, 'added', '✓ Added — edit above before confirming');
