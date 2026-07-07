@@ -321,8 +321,9 @@ function gapChartBlock(kpi) {
     return chartBlock(svgRecoveryTrend([], { width: 340, height: 100 }), { illustrative: true, caption: 'No KPI selected yet.' });
   }
   const real = hasRealSeries(kpi);
+  const direction = kpi.direction || 'higher_better';
   const points = real ? kpi.series : synthIllustrativeSeries(kpi.target, kpi.actual);
-  const svg = svgRecoveryTrend(points, { target: kpi.target, width: 340, height: 100 });
+  const svg = svgRecoveryTrend(points, { target: kpi.target, direction, width: 340, height: 100 });
   const illustrative = !real || !!kpi.illustrative;
   const caption = real
     ? `${kpi.name} — actual vs target, ${points.length} periods on file`
@@ -339,16 +340,29 @@ function recoveryChartBlock(kpi) {
     return chartBlock(svgRecoveryTrend([], { width: 340, height: 110 }), { illustrative: true, caption: 'No KPI selected yet.' });
   }
   const real = hasRealSeries(kpi);
+  const direction = kpi.direction || 'higher_better';
   const baseline = real ? kpi.series.slice() : synthIllustrativeSeries(kpi.target, kpi.actual);
   const target = typeof kpi.target === 'number' ? kpi.target : null;
   const tail = target != null ? synthRecoveryTail(baseline[baseline.length - 1], target) : [];
+  const hasTail = tail.length > 0;
   const points = baseline.concat(tail);
-  const cmIndex = baseline.length - 1;
-  const svg = svgRecoveryTrend(points, { target, cmIndex, width: 340, height: 110 });
-  const caption = real
-    ? `${kpi.name} — periods 1–${baseline.length} actual · marker = countermeasure-in · periods ${baseline.length + 1}–${points.length} projected recovery (not yet measured)`
-    : `${kpi.name} — no weekly series on file; recovery trend shown is illustrative`;
-  return chartBlock(svg, { illustrative: true, caption });
+  // Only mark the countermeasure-in boundary when a projected recovery tail
+  // was actually appended; without a numeric target this is a plain
+  // actual-vs-target trend, so no marker and no projected-range caption.
+  const cmIndex = hasTail ? baseline.length - 1 : null;
+  const svg = svgRecoveryTrend(points, { target, cmIndex, direction, width: 340, height: 110 });
+  // Badge illustrative only when the chart actually contains synthesized data:
+  // a projected recovery tail, or a fully synthesized baseline (no real series).
+  const illustrative = !real || hasTail || !!kpi.illustrative;
+  let caption;
+  if (!real) {
+    caption = `${kpi.name} — no weekly series on file; recovery trend shown is illustrative`;
+  } else if (hasTail) {
+    caption = `${kpi.name} — periods 1–${baseline.length} actual · marker = countermeasure-in · periods ${baseline.length + 1}–${points.length} projected recovery (not yet measured)`;
+  } else {
+    caption = `${kpi.name} — actual vs target, ${baseline.length} periods on file`;
+  }
+  return chartBlock(svg, { illustrative, caption });
 }
 
 // Step 2 — breakdown/Pareto: stratify the gap by the KPI's own family

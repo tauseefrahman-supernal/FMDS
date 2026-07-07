@@ -43,6 +43,41 @@ test('svgRecoveryTrend: RAG-colors dots — a series crossing target shows both 
   assert.ok(svg.includes('#d92d3a'), 'expected red dot fill present');
 });
 
+// Extract only the per-point dot fills (the green "in-band" rect also carries
+// the green hex, so string-scanning the whole SVG can't distinguish dot color).
+function dotFills(svg) {
+  return [...svg.matchAll(/<circle[^>]*fill="(#[0-9a-fA-F]{6})"/g)].map(m => m[1]);
+}
+const RED = '#d92d3a', GREEN = '#1f9d57';
+
+test('svgRecoveryTrend: lower_better + target 0 + rising series → all RED dots (not green)', () => {
+  // A safety KPI (e.g. HR TRIR, target 0, lower_better): positive readings are
+  // bad. Must render red — the pre-fix hardcoded higher_better rendered green.
+  const svg = svgRecoveryTrend([1.957, 18.917, 2.356], { target: 0, direction: 'lower_better', cmIndex: 1 });
+  const fills = dotFills(svg);
+  assert.equal(fills.length, 3, 'expected 3 dots');
+  assert.ok(fills.every(f => f === RED), `expected all dots red, got ${fills.join(',')}`);
+  assert.ok(!fills.includes(GREEN), 'no dot should be green for a rising lower_better/target-0 series');
+});
+
+test('svgRecoveryTrend: same series under higher_better → all GREEN dots (proves direction is threaded)', () => {
+  // Identical inputs, only direction flipped — under higher_better + target 0
+  // any non-negative reading is green. Contrasting with the test above proves
+  // the dot color is driven by opts.direction, not hardcoded.
+  const svg = svgRecoveryTrend([1.957, 18.917, 2.356], { target: 0, direction: 'higher_better', cmIndex: 1 });
+  const fills = dotFills(svg);
+  assert.ok(fills.every(f => f === GREEN), `expected all dots green, got ${fills.join(',')}`);
+});
+
+test('svgRecoveryTrend: lower_better series that meets target → GREEN dots', () => {
+  // Actual at/under a nonzero target with lower_better is on-track → green.
+  const svg = svgRecoveryTrend([4, 3, 2], { target: 5, direction: 'lower_better', cmIndex: 1 });
+  const fills = dotFills(svg);
+  assert.equal(fills.length, 3, 'expected 3 dots');
+  assert.ok(fills.every(f => f === GREEN), `expected all dots green, got ${fills.join(',')}`);
+  assert.ok(!fills.includes(RED), 'no dot should be red when lower_better actuals beat target');
+});
+
 test('svgRecoveryTrend: empty array returns no-data svg', () => {
   const svg = svgRecoveryTrend([], { target: 0.985, cmIndex: 0 });
   assert.ok(svg.startsWith('<svg'));
