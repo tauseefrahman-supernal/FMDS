@@ -10,9 +10,12 @@
  *   Left  (~38%) — "⚠ Action required" queue: one card per red KPI awaiting
  *                  an owner response (lib/accountability.js
  *                  redKpisNeedingResponse), plus a "Recent threads" stub.
- *   Right (~62%) — chat surface: message thread (empty state for now) + a
- *                  composer. Wiring the actual reply is Task 5 — see the
- *                  TODO on the Send handler below.
+ *   Right (~62%) — chat surface: an in-view message thread + composer. Send
+ *                  appends the human turn, awaits a context-grounded scripted
+ *                  reply from lib/agent.js liveReply() (built off this dept's
+ *                  live buildDeptContext — no network), and appends Mark's
+ *                  turn. History persists for the life of this view (reset
+ *                  on next renderAskMark(), e.g. navigating away and back).
  *
  * Header pill math: "N action required" counts LIVE reds needing a response
  * — redKpisNeedingResponse(dept).length — NOT rollupSignal(deptId).redCount.
@@ -28,12 +31,19 @@
  */
 
 import { redKpisNeedingResponse, rollupSignal, getResponse } from '../lib/accountability.js';
+import { liveReply }        from '../lib/agent.js';
+import { getReasonsByDept } from '../lib/reasons.js';
+import { getComments }      from '../lib/comments.js';
 
 // ─── State (module-level, reset each render — mirrors problemsolving.js) ────
 let _dept          = null;
 let _mount         = null;
+let _session       = null;
 let _queue         = [];
 let _selectedKpiId = null;
+let _thread        = [];    // in-view chat history: [{ role: 'me'|'mark', text }]
+let _sending       = false; // guards double-send while a reply is in flight
+let _kzRecordsCache = null; // lazy-loaded data/kz-records.json, shared across sends
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -71,6 +81,15 @@ function formatDueDate(iso) {
 
 function findKpi(dept, kpiId) {
   return (dept.kpis || []).find((k) => k.id === kpiId) || null;
+}
+
+// Attribution for the human side of the chat — signed-in persona when known,
+// falling back to a generic "You" (same fallback comment threads use).
+function humanLabel() {
+  return (_session && _session.persona && _session.persona.name) || 'You';
+}
+function humanInitials(name) {
+  return String(name || 'Y').split(/[\s/—-]+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase() || 'Y';
 }
 
 // ─── Header ──────────────────────────────────────────────────────────────────
@@ -145,11 +164,25 @@ function renderQueueColumn(dept, queue) {
 
 // ─── Right column: chat surface ─────────────────────────────────────────────
 
-function renderThreadBody(item) {
-  if (!item) {
-    return `<div class="mk-chat__empty">Ask Mark about this board…</div>`;
-  }
+// One chat turn, styled with the same .cmt / .cmt__avatar classes as the
+// per-KPI comment threads (lib/comments.js) so Mark reads as one consistent
+// voice across the app — "M" accent avatar, gradient background.
+function renderChatMessage(msg) {
+  const isMark  = msg.role === 'mark';
+  const avatar  = isMark ? 'M' : humanInitials(humanLabel());
+  const author  = isMark ? 'Mark · AI Employee' : humanLabel();
   return `
+    <div class="cmt cmt--${isMark ? 'ai' : 'human'}">
+      <span class="cmt__avatar cmt__avatar--${isMark ? 'ai' : 'human'}">${esc(avatar)}</span>
+      <div class="cmt__body">
+        <div class="cmt__meta"><span class="cmt__author">${esc(author)}</span></div>
+        <div class="cmt__text">${esc(msg.text)}</div>
+      </div>
+    </div>`;
+}
+
+function renderThreadBody(item) {
+  const contextBlock = item ? `
     <div class="mk-chat-context">
       <div class="mk-chat-context__label">Selected from queue</div>
       <div class="mk-chat-context__kpi">${esc(item.kpi)} ${ragChip(item.rag)}</div>
@@ -157,8 +190,14 @@ function renderThreadBody(item) {
         The full response card (cause · action taken · needs-8-step · report-back) lands in Task 6.
         For now, ask Mark about this KPI below.
       </div>
-    </div>
-    <div class="mk-chat__empty">Ask Mark about ${esc(item.kpi)}…</div>`;
+    </div>` : '';
+
+  if (!_thread.length) {
+    const emptyLabel = item ? `Ask Mark about ${esc(item.kpi)}…` : 'Ask Mark about this board…';
+    return `${contextBlock}<div class="mk-chat__empty">${emptyLabel}</div>`;
+  }
+
+  return `${contextBlock}${_thread.map(renderChatMessage).join('')}`;
 }
 
 function renderChatColumn(selectedItem) {
@@ -170,6 +209,75 @@ function renderChatColumn(selectedItem) {
         <button type="button" class="btn btn--primary" id="askmark-send">Send</button>
       </div>
     </div>`;
+}
+
+function scrollThreadToBottom(threadEl) {
+  if (threadEl) threadEl.scrollTop = threadEl.scrollHeight;
+}
+
+function currentSelectedItem() {
+  return _selectedKpiId ? (_queue.find((q) => q.kpiId === _selectedKpiId) || null) : null;
+}
+
+function repaintThread() {
+  const threadEl = document.getElementById('askmark-thread');
+  if (!threadEl) return;
+  threadEl.innerHTML = renderThreadBody(currentSelectedItem());
+  scrollThreadToBottom(threadEl);
+}
+
+// ─── Send: gather live context, get a grounded reply, grow the thread ───────
+
+// data/kz-records.json holds every department's 8-step records; fetched once
+// and cached module-wide (buildDeptContext filters to this dept internally),
+// mirroring the lazy-load pattern in views/problemsolving.js.
+async function loadKzRecords() {
+  if (_kzRecordsCache) return _kzRecordsCache;
+  try {
+    const res = await fetch('data/kz-records.json');
+    _kzRecordsCache = await res.json();
+  } catch (e) {
+    console.warn('Ask Mark: could not load data/kz-records.json', e);
+    _kzRecordsCache = [];
+  }
+  return _kzRecordsCache;
+}
+
+// Flatten stored per-KPI comment threads across every KPI in this dept —
+// cheap (localStorage-backed, no network) and gives liveReply the same
+// "what's driving this" trail a human would see on the KPI board.
+function gatherDeptComments(dept) {
+  return (dept.kpis || []).flatMap((k) => getComments({ deptId: dept.id, kpiId: k.id }));
+}
+
+async function sendMessage() {
+  const inputEl = document.getElementById('askmark-input');
+  const sendBtn = document.getElementById('askmark-send');
+  if (!inputEl || _sending) return;
+  const question = inputEl.value.trim();
+  if (!question) { inputEl.focus(); return; }
+
+  _sending = true;
+  if (sendBtn) sendBtn.disabled = true;
+  inputEl.value = '';
+  _thread.push({ role: 'me', text: question });
+  repaintThread();
+
+  try {
+    const reasons   = getReasonsByDept(_dept.id);
+    const comments  = gatherDeptComments(_dept);
+    const kzRecords = await loadKzRecords();
+    const reply = await liveReply(_dept.id, 'ask', { dept: _dept, question, reasons, comments, kzRecords });
+    _thread.push({ role: 'mark', text: reply });
+  } catch (e) {
+    console.warn('Ask Mark: liveReply failed', e);
+    _thread.push({ role: 'mark', text: 'Sorry — I hit an error pulling that context together. Try asking again.' });
+  }
+
+  _sending = false;
+  if (sendBtn) sendBtn.disabled = false;
+  repaintThread();
+  if (inputEl) inputEl.focus();
 }
 
 // ─── Main render ──────────────────────────────────────────────────────────────
@@ -199,19 +307,28 @@ function attachHandlers() {
       const kpiId = card.dataset.kpiId;
       _selectedKpiId = kpiId;
       cards.forEach((c) => c.classList.toggle('mk-qcard--active', c === card));
-      const item      = _queue.find((q) => q.kpiId === kpiId) || null;
-      const threadEl  = document.getElementById('askmark-thread');
-      if (threadEl) threadEl.innerHTML = renderThreadBody(item);
+      repaintThread();
+
+      // Seed (don't clobber) the composer with a starter question for this KPI.
+      const item    = currentSelectedItem();
+      const inputEl = document.getElementById('askmark-input');
+      if (inputEl && item && !inputEl.value.trim()) {
+        inputEl.value = `Why is ${item.kpi} red?`;
+        inputEl.focus();
+      }
     });
   });
 
   const sendBtn = document.getElementById('askmark-send');
-  if (sendBtn) {
-    sendBtn.addEventListener('click', () => {
-      // TODO(Task 5): wire the composer to a real reply — read #askmark-input,
-      // append the exchange (human question + Mark's answer, grounded via
-      // lib/context.js buildDeptContext / lib/agent.js) into #askmark-thread.
-      // Intentionally a structural no-op for this task (shell + red queue only).
+  if (sendBtn) sendBtn.addEventListener('click', sendMessage);
+
+  const inputEl = document.getElementById('askmark-input');
+  if (inputEl) {
+    inputEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
     });
   }
 }
@@ -307,15 +424,15 @@ const ASKMARK_STYLES = `
  * renderAskMark(dept, mount, session)
  * @param {object} dept    — department data object (from data/<id>.json)
  * @param {Element} mount  — DOM element to render into (#view-mount)
- * @param {object} session — { deptId, role, persona } (unused for now; kept
- *                            for interface symmetry with the coming chat
- *                            wiring in Task 5, which will attribute posts to
- *                            the signed-in persona)
+ * @param {object} session — { deptId, role, persona }; persona.name attributes
+ *                            the human side of the chat (falls back to "You").
  */
 export function renderAskMark(dept, mount, session) {
   _dept = dept;
   _mount = mount;
+  _session = session;
   _selectedKpiId = null;
-  void session; // reserved for Task 5 (persona-attributed chat)
+  _thread = [];
+  _sending = false;
   doRender();
 }
