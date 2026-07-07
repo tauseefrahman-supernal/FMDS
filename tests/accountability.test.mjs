@@ -117,17 +117,52 @@ test('getResponse returns null when no entry exists', () => {
 
 // ─── (b) advanceLifecycle ───────────────────────────────────────────────────
 
-test('advanceLifecycle to "responded" sets answered + lifecycle.responded.done', () => {
-  // Fresh dept/kpi with no prior entry — addResponse not called first.
-  addResponse({ deptId: 'operations', kpiId: 'otp_fresh', owner: 'Jim Kozel',
-    cause: '', action: '', needs8Step: false, kzNumber: null, reportBackWhen: null });
-  const entry = advanceLifecycle({ deptId: 'operations', kpiId: 'otp_fresh', stage: 'responded' });
-  assert.equal(entry.answered, true);
-  assert.equal(entry.lifecycle.responded.done, true);
-  assert.ok(entry.lifecycle.responded.ts);
+test('advanceLifecycle flips a not-done "responded" stage false→true (brief assertion b), then is idempotent', () => {
+  // Inject a raw entry whose `responded` stage is explicitly NOT done (and
+  // answered:false), using the same raw-localStorage injection the tie-break
+  // test uses. This is what makes the assertion honest: addResponse would have
+  // pre-stamped responded.done:true, so advancing to 'responded' after it would
+  // be a guaranteed no-op that passes even if advanceLifecycle did nothing.
+  const raw = JSON.parse(localStorage.getItem('fmds_accountability') || '[]');
+  raw.push({
+    id: 'transition-1', deptId: 'operations', kpiId: 'otp_transition', owner: 'Jim Kozel',
+    dueDate: null, answered: false, onTime: true,
+    cause: '', action: '', needs8Step: false, kzNumber: null, reportBackWhen: null,
+    lifecycle: {
+      detected:        { done: true,  ts: '2026-07-01T00:00:00.000Z' },
+      responded:       { done: false, ts: null },
+      actionUnderway:  { done: false, ts: null },
+      eightStepOpened: { done: false, ts: null },
+      reported:        { done: false, ts: null },
+      recovered:       { done: false, ts: null },
+    },
+    ts: '2026-07-01T00:00:00.000Z',
+  });
+  localStorage.setItem('fmds_accountability', JSON.stringify(raw));
+
+  // Precondition: the stage really is not done yet.
+  const before = getResponse({ deptId: 'operations', kpiId: 'otp_transition' });
+  assert.equal(before.lifecycle.responded.done, false, 'precondition: responded not done');
+  assert.equal(before.answered, false, 'precondition: not answered');
+
+  // The transition under test: false → true, ts stamped, answered flipped.
+  const entry = advanceLifecycle({ deptId: 'operations', kpiId: 'otp_transition', stage: 'responded' });
+  assert.equal(entry.lifecycle.responded.done, true, 'responded flipped false→true');
+  assert.ok(entry.lifecycle.responded.ts, 'responded ts stamped');
+  assert.equal(entry.answered, true, 'answered set by the responded transition');
+
+  // Idempotent: re-advancing the now-done stage is a no-op (ts preserved, no throw).
+  const ts1 = entry.lifecycle.responded.ts;
+  const again = advanceLifecycle({ deptId: 'operations', kpiId: 'otp_transition', stage: 'responded' });
+  assert.equal(again.lifecycle.responded.ts, ts1, 'responded ts unchanged on re-advance');
 });
 
 test('advanceLifecycle is idempotent — re-advancing an already-done stage keeps the original ts', () => {
+  // Self-contained: create the entry here (otp_fresh) rather than relying on a
+  // prior test's side effect. addResponse leaves actionUnderway not-done, so
+  // the first advance is a real transition and the second is the no-op we check.
+  addResponse({ deptId: 'operations', kpiId: 'otp_fresh', owner: 'Jim Kozel',
+    cause: '', action: '', needs8Step: false, kzNumber: null, reportBackWhen: null });
   const first = advanceLifecycle({ deptId: 'operations', kpiId: 'otp_fresh', stage: 'actionUnderway' });
   const firstTs = first.lifecycle.actionUnderway.ts;
   const second = advanceLifecycle({ deptId: 'operations', kpiId: 'otp_fresh', stage: 'actionUnderway' });
