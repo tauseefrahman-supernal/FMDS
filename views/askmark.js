@@ -17,23 +17,40 @@
  *                  turn. History persists for the life of this view (reset
  *                  on next renderAskMark(), e.g. navigating away and back).
  *
- * Header pill math: "N action required" counts LIVE reds needing a response
- * — redKpisNeedingResponse(dept).length — NOT rollupSignal(deptId).redCount.
- * rollupSignal summarizes *persisted* accountability entries ever created for
- * the dept, which can include ones that have since recovered; using it for
- * the headline count would risk showing a red that's no longer actually red.
- * rollupSignal is still useful, so its answered/beingActioned/stalled counts
- * are surfaced as a supporting line under the pill.
+ * Header pill math: BOTH pills are computed off the LIVE red queue —
+ * redKpisNeedingResponse(dept) — split by whether each item already has a
+ * submitted response (getResponse(...).answered):
+ *   "N action required" — live reds with NO response yet.
+ *   "M being actioned"  — live reds that DO have a response (still red on
+ *                         the board, but an owner has answered).
+ * Neither pill reads rollupSignal(deptId) counts: rollupSignal summarizes
+ * *persisted* accountability entries, which can include ones that have since
+ * recovered off the live board, or that haven't yet reached the
+ * 'actionUnderway' stage rollupSignal's own beingActioned count requires —
+ * using it for the headline pills risked an answered-but-not-yet-underway
+ * red not moving out of "action required" the moment it's submitted.
+ * rollupSignal's stalled count is still useful and is surfaced as a
+ * supporting line under the pills.
  *
- * Selecting a queue card highlights it and loads a contextual placeholder in
- * the chat column — the full response-card UI (cause / action / needs-8-step
- * / report-back, backed by addResponse()+advanceLifecycle()) is Task 6.
+ * Selecting a queue card renders the 4-field response card (spec §5.2) above
+ * the chat: an UNANSWERED red gets the fillable form (cause pre-drafted by
+ * Mark via composeMarkNote, editable action / needs-8-step toggle / report-
+ * back), an already-ANSWERED red (getResponse(...).answered) gets a read-back
+ * of the submitted response. Both states render the lifecycle chip track
+ * (spec §5.3) via lifecycleView() — pre-response, a local pseudo-entry with
+ * only 'detected' marked done stands in, since detection isn't persisted
+ * until an owner responds (see lib/accountability.js module header). Submit
+ * → addResponse() + advanceLifecycle('responded'), then a full doRender() so
+ * the queue card, header pills, and lifecycle track all update together.
  */
 
-import { redKpisNeedingResponse, rollupSignal, getResponse } from '../lib/accountability.js';
-import { liveReply }        from '../lib/agent.js';
-import { getReasonsByDept } from '../lib/reasons.js';
-import { getComments }      from '../lib/comments.js';
+import {
+  redKpisNeedingResponse, rollupSignal, getResponse, addResponse,
+  advanceLifecycle, lifecycleView,
+} from '../lib/accountability.js';
+import { liveReply }                    from '../lib/agent.js';
+import { getReasonsByDept }             from '../lib/reasons.js';
+import { getComments, composeMarkNote } from '../lib/comments.js';
 
 // ─── State (module-level, reset each render — mirrors problemsolving.js) ────
 let _dept          = null;
@@ -44,6 +61,22 @@ let _selectedKpiId = null;
 let _thread        = [];    // in-view chat history: [{ role: 'me'|'mark', text }]
 let _sending       = false; // guards double-send while a reply is in flight
 let _kzRecordsCache = null; // lazy-loaded data/kz-records.json, shared across sends
+let _drafts        = {};    // in-progress (unsubmitted) response-card edits, keyed by kpiId:
+                             // { cause, action, needs8Step, reportBackWhen } — cleared per KPI
+                             // once addResponse() persists it, reset entirely on renderAskMark().
+
+// Field-1 prompt (spec §5.2) — Mark adapts what "what's driving the red?"
+// means per department. Generic fallback covers depts not called out in the
+// spec table (sales, finance, it, logistics, odg).
+const CAUSE_PROMPT_BY_DEPT = {
+  operations: 'which location / which standard-work step',
+  service:    'which reps & accounts',
+  marketing:  'which channel',
+  hr:         'incident vs data-entry artifact',
+};
+function causePromptFor(deptId) {
+  return CAUSE_PROMPT_BY_DEPT[deptId] || 'what specifically is driving this';
+}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -94,7 +127,7 @@ function humanInitials(name) {
 
 // ─── Header ──────────────────────────────────────────────────────────────────
 
-function renderHeader(dept, actionRequiredCount, rollup) {
+function renderHeader(dept, unansweredCount, answeredCount, rollup) {
   return `
     <div class="mk-header">
       <div class="mk-header__ident">
@@ -105,10 +138,11 @@ function renderHeader(dept, actionRequiredCount, rollup) {
         </div>
       </div>
       <div class="mk-header__stats">
-        <span class="mk-pill mk-pill--red">${actionRequiredCount} action required</span>
-        <span class="mk-header__rollup">
-          ${rollup.answered} answered · ${rollup.beingActioned} being actioned · ${rollup.stalled} stalled
-        </span>
+        <div class="mk-header__pills">
+          <span class="mk-pill mk-pill--red">${unansweredCount} action required</span>
+          <span class="mk-pill mk-pill--amber">${answeredCount} being actioned</span>
+        </div>
+        <span class="mk-header__rollup">${rollup.stalled} stalled · ${rollup.answered} response${rollup.answered === 1 ? '' : 's'} logged</span>
       </div>
     </div>`;
 }
@@ -144,7 +178,7 @@ function renderQueueCard(item, dept) {
     </button>`;
 }
 
-function renderQueueColumn(dept, queue) {
+function renderQueueColumn(dept, queue, unansweredCount) {
   const cards = queue.length
     ? queue.map((item) => renderQueueCard(item, dept)).join('')
     : `<div class="mk-empty">No reds awaiting a response right now — nice board.</div>`;
@@ -152,7 +186,7 @@ function renderQueueColumn(dept, queue) {
   return `
     <div class="mk-queue-head">
       <span class="mk-queue-head__icon">⚠</span> Action required
-      <span class="mk-queue-head__count">${queue.length}</span>
+      <span class="mk-queue-head__count">${unansweredCount}</span>
     </div>
     <div class="mk-queue-list">${cards}</div>
 
@@ -182,22 +216,13 @@ function renderChatMessage(msg) {
 }
 
 function renderThreadBody(item) {
-  const contextBlock = item ? `
-    <div class="mk-chat-context">
-      <div class="mk-chat-context__label">Selected from queue</div>
-      <div class="mk-chat-context__kpi">${esc(item.kpi)} ${ragChip(item.rag)}</div>
-      <div class="mk-chat-context__note">
-        The full response card (cause · action taken · needs-8-step · report-back) lands in Task 6.
-        For now, ask Mark about this KPI below.
-      </div>
-    </div>` : '';
-
   if (!_thread.length) {
-    const emptyLabel = item ? `Ask Mark about ${esc(item.kpi)}…` : 'Ask Mark about this board…';
-    return `${contextBlock}<div class="mk-chat__empty">${emptyLabel}</div>`;
+    const emptyLabel = item
+      ? `Ask Mark anything about ${esc(item.kpi)} — or fill the response card above.`
+      : 'Ask Mark about this board…';
+    return `<div class="mk-chat__empty">${emptyLabel}</div>`;
   }
-
-  return `${contextBlock}${_thread.map(renderChatMessage).join('')}`;
+  return _thread.map(renderChatMessage).join('');
 }
 
 function renderChatColumn(selectedItem) {
@@ -209,6 +234,137 @@ function renderChatColumn(selectedItem) {
         <button type="button" class="btn btn--primary" id="askmark-send">Send</button>
       </div>
     </div>`;
+}
+
+// ─── Right column: the red-KPI response card (spec §5.2 + §5.3) ──────────────
+
+// The lifecycle chip track (spec §5.3). Fed a real persisted entry once one
+// exists; before a response, a pseudo-entry with only 'detected' done stands
+// in (detection isn't persisted until an owner responds — see
+// lib/accountability.js module header). lifecycleView() flags done/current.
+function renderLifecycleTrack(entry) {
+  const stages = lifecycleView(entry);
+  const chips = stages.map((s) => {
+    const state = s.done ? 'done' : (s.current ? 'current' : 'todo');
+    const glyph = s.done ? '✓' : (s.current ? '→' : '○');
+    return `<span class="mk-lc__chip mk-lc__chip--${state}"><span class="mk-lc__glyph">${glyph}</span>${esc(s.label)}</span>`;
+  }).join('<span class="mk-lc__sep">›</span>');
+  return `
+    <div class="mk-lc">
+      <div class="mk-lc__label">Response lifecycle</div>
+      <div class="mk-lc__track">${chips}</div>
+    </div>`;
+}
+
+// Read-back of an already-submitted response (all persisted, user-entered text
+// escaped). kzNumber, if the seed carried one, is shown as plain text — the
+// actual KZ deep-link/creation is Task 7, not built here.
+function renderReadBack(resp) {
+  const eightStep = resp.needs8Step
+    ? `Yes${resp.kzNumber ? ` — 8-step ${esc(resp.kzNumber)}` : ''}`
+    : 'No — one-off / data artifact';
+  const field = (label, value) =>
+    `<div class="mk-rc__ro-field"><dt>${label}</dt><dd>${value}</dd></div>`;
+  return `
+    <div class="mk-rc__answered-tag">✓ Response submitted${resp.owner ? ` · ${esc(resp.owner)}` : ''}</div>
+    <dl class="mk-rc__readback">
+      ${field("What's driving the red?", esc(resp.cause) || '—')}
+      ${field('What are you doing about it?', esc(resp.action) || '—')}
+      ${field('Needs an 8-step?', eightStep)}
+      ${field('When will you report back?', esc(resp.reportBackWhen) || '—')}
+    </dl>`;
+}
+
+// The fillable 4-field form for an unanswered red. Field 1 pre-drafts from
+// Mark's grounded read (composeMarkNote) unless the owner already edited it
+// (persisted in _drafts). needs8Step defaults to No.
+function renderResponseForm(item, kpi) {
+  const draft   = _drafts[item.kpiId] || {};
+  const cause   = draft.cause != null ? draft.cause : composeMarkNote(kpi || {}, item.rag);
+  const action  = draft.action != null ? draft.action : '';
+  const needs8  = draft.needs8Step != null ? draft.needs8Step : false;
+  const report  = draft.reportBackWhen != null ? draft.reportBackWhen : '';
+  const prompt  = causePromptFor(_dept.id);
+
+  return `
+    <div class="mk-rc__form">
+      <div class="mk-rc__field-group">
+        <div class="mk-rc__label">What's driving the red? <span class="mk-rc__hint">${esc(prompt)}</span></div>
+        <textarea class="mk-rc__input" id="mk-rc-cause" rows="4">${esc(cause)}</textarea>
+        <button type="button" class="btn btn--outline btn--sm mk-rc__draft" id="mk-rc-draft">✦ Ask Mark to draft it</button>
+        <span class="mk-rc__draft-note">Mark pre-fills this from the KPI's grounded read.</span>
+      </div>
+
+      <div class="mk-rc__field-group">
+        <div class="mk-rc__label">What are you doing about it?</div>
+        <textarea class="mk-rc__input" id="mk-rc-action" rows="3" placeholder="The action you're taking…">${esc(action)}</textarea>
+      </div>
+
+      <div class="mk-rc__field-group">
+        <div class="mk-rc__label">Does this need an 8-step?</div>
+        <div class="mk-rc__toggle" id="mk-rc-needs8">
+          <button type="button" class="mk-rc__toggle-btn${needs8 ? ' mk-rc__toggle-btn--active' : ''}" data-val="yes">Yes</button>
+          <button type="button" class="mk-rc__toggle-btn${!needs8 ? ' mk-rc__toggle-btn--active' : ''}" data-val="no">No</button>
+        </div>
+        <div class="mk-rc__esc-note" id="mk-rc-esc-note"${needs8 ? '' : ' style="display:none"'}>
+          Escalation to a KZ (8-step) gets wired in the next step.
+        </div>
+      </div>
+
+      <div class="mk-rc__field-group">
+        <div class="mk-rc__label">When will you report back?</div>
+        <input type="text" class="mk-rc__input mk-rc__input--sm" id="mk-rc-report" placeholder="e.g. Next T3 review, or a date" value="${esc(report)}">
+      </div>
+
+      <div class="mk-rc__actions">
+        <button type="button" class="btn btn--primary" id="mk-rc-submit">Submit response</button>
+      </div>
+    </div>`;
+}
+
+// The full response card: header (KPI/RAG/actual-vs-target/due/owner), the
+// lifecycle track, then either a read-back (answered) or the form (unanswered).
+function renderResponseCard(item) {
+  if (!item) {
+    return `
+      <div class="mk-rc mk-rc--empty">
+        <span class="mk-rc__empty-icon">◇</span>
+        <span>Select a red from the queue to open its response card.</span>
+      </div>`;
+  }
+  const kpi      = findKpi(_dept, item.kpiId);
+  const actual   = kpi ? formatVal(kpi.actual, kpi.unit) : '—';
+  const target   = kpi ? formatVal(kpi.target, kpi.unit) : '—';
+  const resp     = getResponse({ deptId: _dept.id, kpiId: item.kpiId });
+  const answered = !!(resp && resp.answered);
+  const trackEntry = answered ? resp : { lifecycle: { detected: { done: true, ts: null } } };
+
+  return `
+    <div class="mk-rc${answered ? ' mk-rc--answered' : ''}" data-rc-kpi="${esc(item.kpiId)}">
+      <div class="mk-rc__head">
+        <div class="mk-rc__head-top">
+          <span class="mk-rc__kpi">${esc(item.kpi)}</span>
+          ${ragChip(item.rag)}
+        </div>
+        <div class="mk-rc__meta">
+          <span class="text-mono mk-rc__actual">${actual}</span>
+          <span class="mk-rc__vs">vs</span>
+          <span class="text-mono mk-rc__target">${target}</span>
+          <span class="mk-rc__sep-dot">·</span>
+          <span>Due ${formatDueDate(item.dueDate)}</span>
+          <span class="mk-rc__sep-dot">·</span>
+          <span>Owner: ${esc(item.owner || 'Unassigned')}</span>
+        </div>
+      </div>
+      ${renderLifecycleTrack(trackEntry)}
+      ${answered ? renderReadBack(resp) : renderResponseForm(item, kpi)}
+    </div>`;
+}
+
+function renderRightColumn(selectedItem) {
+  return `
+    <div class="mk-rc-wrap" id="askmark-response-card">${renderResponseCard(selectedItem)}</div>
+    ${renderChatColumn(selectedItem)}`;
 }
 
 function scrollThreadToBottom(threadEl) {
@@ -224,6 +380,121 @@ function repaintThread() {
   if (!threadEl) return;
   threadEl.innerHTML = renderThreadBody(currentSelectedItem());
   scrollThreadToBottom(threadEl);
+}
+
+// Re-render only the response-card region (keeps the composer's in-progress
+// text intact — that lives in a separate, un-touched textarea).
+function repaintResponseCard() {
+  const el = document.getElementById('askmark-response-card');
+  if (el) el.innerHTML = renderResponseCard(currentSelectedItem());
+}
+
+// ─── Response-card state + handlers ─────────────────────────────────────────
+
+function setDraft(kpiId, key, val) {
+  _drafts[kpiId] = _drafts[kpiId] || {};
+  _drafts[kpiId][key] = val;
+}
+
+// Mark (re)drafts field 1 from the KPI's grounded read (composeMarkNote), and
+// suggests field 2 only when it's still empty — the "answer via Mark" mode.
+function askMarkToDraft(kpiId) {
+  const item = _queue.find((q) => q.kpiId === kpiId);
+  if (!item) return;
+  const kpi   = findKpi(_dept, kpiId);
+  const cause = composeMarkNote(kpi || {}, item.rag);
+  const wrap  = document.getElementById('askmark-response-card');
+  const causeEl  = wrap && wrap.querySelector('#mk-rc-cause');
+  const actionEl = wrap && wrap.querySelector('#mk-rc-action');
+
+  if (causeEl) causeEl.value = cause;
+  setDraft(kpiId, 'cause', cause);
+
+  if (actionEl && !actionEl.value.trim()) {
+    const suggestion = `Confirming ${causePromptFor(_dept.id)} with the owning team, then correcting the standard work. I'll open an 8-step if the cause needs structured problem-solving.`;
+    actionEl.value = suggestion;
+    setDraft(kpiId, 'action', suggestion);
+  }
+}
+
+// Submit the 4 fields → persist + advance the lifecycle to 'responded', then a
+// full re-render so the queue card flips to ✓, the header pills re-split, and
+// the card swaps to its read-back + advanced track.
+function submitResponse(kpiId) {
+  const wrap = document.getElementById('askmark-response-card');
+  const item = _queue.find((q) => q.kpiId === kpiId);
+  if (!wrap || !item) return;
+
+  const causeEl  = wrap.querySelector('#mk-rc-cause');
+  const actionEl = wrap.querySelector('#mk-rc-action');
+  const reportEl = wrap.querySelector('#mk-rc-report');
+  const yesBtn   = wrap.querySelector('.mk-rc__toggle-btn[data-val="yes"]');
+  const needs8   = !!(yesBtn && yesBtn.classList.contains('mk-rc__toggle-btn--active'));
+
+  const cause  = causeEl  ? causeEl.value.trim()  : '';
+  const action = actionEl ? actionEl.value.trim() : '';
+  const report = reportEl ? reportEl.value.trim() : '';
+
+  // Light client-side validation: cause + action are the substance of a
+  // response; report-back is nudged but optional.
+  if (!cause)  { if (causeEl)  causeEl.focus();  return; }
+  if (!action) { if (actionEl) actionEl.focus(); return; }
+
+  addResponse({
+    deptId: _dept.id,
+    kpiId,
+    owner: item.owner || '',
+    cause,
+    action,
+    needs8Step: needs8,
+    kzNumber: null,            // KZ link/creation is Task 7 — not built here
+    reportBackWhen: report || null,
+  });
+  advanceLifecycle({ deptId: _dept.id, kpiId, stage: 'responded' });
+  delete _drafts[kpiId];
+
+  // Mark posts a confirmation (spec §5.2) into the running chat thread.
+  _thread.push({
+    role: 'mark',
+    text: `Logged your response on ${item.kpi}. I'll roll "being actioned" up to the Leadership OS so the Chief of Staff sees this red is being worked${needs8 ? ' — and that an 8-step is flagged as needed.' : '.'}`,
+  });
+
+  doRender();
+}
+
+// (Re)bind the controls inside the response card. Called after every card
+// (re)paint, so listeners are always fresh against the current DOM.
+function bindResponseCard() {
+  const wrap  = document.getElementById('askmark-response-card');
+  const kpiId = _selectedKpiId;
+  if (!wrap || !kpiId) return;
+
+  const causeEl  = wrap.querySelector('#mk-rc-cause');
+  const actionEl = wrap.querySelector('#mk-rc-action');
+  const reportEl = wrap.querySelector('#mk-rc-report');
+  if (causeEl)  causeEl.addEventListener('input',  () => setDraft(kpiId, 'cause', causeEl.value));
+  if (actionEl) actionEl.addEventListener('input', () => setDraft(kpiId, 'action', actionEl.value));
+  if (reportEl) reportEl.addEventListener('input', () => setDraft(kpiId, 'reportBackWhen', reportEl.value));
+
+  const toggle = wrap.querySelector('#mk-rc-needs8');
+  if (toggle) {
+    toggle.querySelectorAll('.mk-rc__toggle-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const yes = btn.dataset.val === 'yes';
+        setDraft(kpiId, 'needs8Step', yes);
+        toggle.querySelectorAll('.mk-rc__toggle-btn').forEach((b) =>
+          b.classList.toggle('mk-rc__toggle-btn--active', b === btn));
+        const note = wrap.querySelector('#mk-rc-esc-note');
+        if (note) note.style.display = yes ? '' : 'none';
+      });
+    });
+  }
+
+  const draftBtn = wrap.querySelector('#mk-rc-draft');
+  if (draftBtn) draftBtn.addEventListener('click', () => askMarkToDraft(kpiId));
+
+  const submitBtn = wrap.querySelector('#mk-rc-submit');
+  if (submitBtn) submitBtn.addEventListener('click', () => submitResponse(kpiId));
 }
 
 // ─── Send: gather live context, get a grounded reply, grow the thread ───────
@@ -288,12 +559,19 @@ function doRender() {
   const selectedItem = _selectedKpiId ? _queue.find((q) => q.kpiId === _selectedKpiId) || null : null;
   if (!selectedItem) _selectedKpiId = null; // selection no longer on the live board (e.g. it recovered)
 
+  // Split the live red queue by whether each already carries a submitted
+  // response (spec: "action required" = unanswered reds only; "being
+  // actioned" = answered-but-still-red).
+  const answeredCount   = _queue.filter((it) =>
+    !!(getResponse({ deptId: _dept.id, kpiId: it.kpiId }) || {}).answered).length;
+  const unansweredCount = _queue.length - answeredCount;
+
   _mount.innerHTML = `
     <div class="askmark-view">
-      ${renderHeader(_dept, _queue.length, rollup)}
+      ${renderHeader(_dept, unansweredCount, answeredCount, rollup)}
       <div class="askmark-grid">
-        <div class="askmark-col askmark-col--queue">${renderQueueColumn(_dept, _queue)}</div>
-        <div class="askmark-col askmark-col--chat">${renderChatColumn(selectedItem)}</div>
+        <div class="askmark-col askmark-col--queue">${renderQueueColumn(_dept, _queue, unansweredCount)}</div>
+        <div class="askmark-col askmark-col--chat">${renderRightColumn(selectedItem)}</div>
       </div>
     </div>`;
 
@@ -307,6 +585,10 @@ function attachHandlers() {
       const kpiId = card.dataset.kpiId;
       _selectedKpiId = kpiId;
       cards.forEach((c) => c.classList.toggle('mk-qcard--active', c === card));
+      // Targeted repaint (not a full doRender) so the composer's in-progress
+      // text survives selecting a different queue card.
+      repaintResponseCard();
+      bindResponseCard();
       repaintThread();
 
       // Seed (don't clobber) the composer with a starter question for this KPI.
@@ -314,10 +596,13 @@ function attachHandlers() {
       const inputEl = document.getElementById('askmark-input');
       if (inputEl && item && !inputEl.value.trim()) {
         inputEl.value = `Why is ${item.kpi} red?`;
-        inputEl.focus();
       }
     });
   });
+
+  // Bind the response card on first paint too (a selection may already be set
+  // after a submit-triggered doRender()).
+  bindResponseCard();
 
   const sendBtn = document.getElementById('askmark-send');
   if (sendBtn) sendBtn.addEventListener('click', sendMessage);
@@ -349,9 +634,11 @@ const ASKMARK_STYLES = `
     box-shadow: 0 0 0 3px var(--accent-tint); }
   .mk-header__name { font-size:1.05rem; font-weight:700; color:var(--text); line-height:1.2; }
   .mk-header__role { font-size:0.7rem; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:var(--accent); }
-  .mk-header__stats { display:flex; flex-direction:column; align-items:flex-end; gap:5px; }
+  .mk-header__stats { display:flex; flex-direction:column; align-items:flex-end; gap:6px; }
+  .mk-header__pills { display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
   .mk-pill { display:inline-flex; align-items:center; gap:6px; padding:5px 12px; border-radius:999px; font-size:0.8rem; font-weight:700; }
   .mk-pill--red { background: var(--red-bg); color: var(--red); border:1px solid rgba(217,45,58,.22); }
+  .mk-pill--amber { background: var(--amber-bg); color: var(--amber); border:1px solid rgba(224,122,18,.22); }
   .mk-header__rollup { font-size:0.72rem; color: var(--text-muted); }
 
   /* Two-pane grid: ~38% queue / ~62% chat */
@@ -393,16 +680,77 @@ const ASKMARK_STYLES = `
   .mk-threads { margin-top:24px; }
   .mk-threads__head { font-size:0.7rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-muted); margin-bottom:8px; }
 
+  /* Right column stacks the response card above the chat */
+  .askmark-col--chat { display:flex; flex-direction:column; gap:16px; }
+
+  /* Response card (spec §5.2) */
+  .mk-rc-wrap { display:block; }
+  .mk-rc { background: var(--surface); border:1px solid var(--line); border-left:3px solid var(--red);
+    border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); padding:16px 18px; }
+  .mk-rc--answered { border-left-color: var(--green); }
+  .mk-rc--empty { display:flex; align-items:center; gap:10px; justify-content:center; color:var(--text-muted);
+    font-size:0.85rem; border-left-color: var(--line); border-style:dashed; background: var(--surface-2); padding:22px; }
+  .mk-rc__empty-icon { font-size:1.1rem; color: var(--accent); }
+
+  .mk-rc__head { border-bottom:1px solid var(--line); padding-bottom:12px; margin-bottom:12px; }
+  .mk-rc__head-top { display:flex; align-items:center; gap:10px; margin-bottom:6px; }
+  .mk-rc__kpi { font-size:1rem; font-weight:700; color:var(--text); }
+  .mk-rc__meta { display:flex; align-items:center; flex-wrap:wrap; gap:6px; font-size:0.76rem; color:var(--text-muted); }
+  .mk-rc__actual { font-size:0.88rem; color:var(--red); font-weight:700; }
+  .mk-rc__vs { color:var(--text-muted); }
+  .mk-rc__target { color:var(--text); }
+  .mk-rc__sep-dot { color:var(--line-strong); }
+
+  /* Lifecycle chip track (spec §5.3) */
+  .mk-lc { margin-bottom:16px; }
+  .mk-lc__label { font-size:0.62rem; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-muted); margin-bottom:8px; }
+  .mk-lc__track { display:flex; align-items:center; flex-wrap:wrap; gap:4px; }
+  .mk-lc__chip { display:inline-flex; align-items:center; gap:5px; padding:3px 10px; border-radius:999px;
+    font-size:0.72rem; font-weight:600; border:1px solid var(--line); background: var(--surface-2); color:var(--text-muted); }
+  .mk-lc__chip--done { background: var(--green-bg); color: var(--green); border-color: rgba(31,157,87,.22); }
+  .mk-lc__chip--current { background: var(--accent-tint); color: var(--accent); border-color: var(--accent-tint-2); }
+  .mk-lc__glyph { font-size:0.7rem; }
+  .mk-lc__sep { color: var(--line-strong); font-size:0.7rem; }
+
+  /* Read-back (answered state) */
+  .mk-rc__answered-tag { display:inline-flex; align-items:center; gap:6px; font-size:0.74rem; font-weight:700;
+    color: var(--green); background: var(--green-bg); border:1px solid rgba(31,157,87,.22);
+    border-radius:999px; padding:3px 11px; margin-bottom:12px; }
+  .mk-rc__readback { display:flex; flex-direction:column; gap:12px; margin:0; }
+  .mk-rc__ro-field dt { font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; color:var(--text-muted); margin-bottom:3px; }
+  .mk-rc__ro-field dd { margin:0; font-size:0.86rem; color:var(--text); line-height:1.5; }
+
+  /* Form (unanswered state) */
+  .mk-rc__form { display:flex; flex-direction:column; gap:14px; }
+  .mk-rc__field-group { display:flex; flex-direction:column; gap:6px; }
+  .mk-rc__label { font-size:0.8rem; font-weight:700; color:var(--text); }
+  .mk-rc__hint { font-weight:500; font-size:0.72rem; color:var(--accent); margin-left:4px; }
+  .mk-rc__input { width:100%; box-sizing:border-box; resize:vertical; font-family:inherit; font-size:0.85rem;
+    line-height:1.5; padding:9px 11px; border:1px solid var(--line-strong); border-radius: var(--radius);
+    background: var(--canvas); color:var(--text); }
+  .mk-rc__input:focus { outline:none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-tint); }
+  .mk-rc__input--sm { max-width:340px; }
+  .mk-rc__draft { align-self:flex-start; margin-top:2px; }
+  .mk-rc__draft-note { font-size:0.7rem; color:var(--text-muted); }
+  .mk-rc__toggle { display:inline-flex; border:1px solid var(--line-strong); border-radius:999px; overflow:hidden; align-self:flex-start; }
+  .mk-rc__toggle-btn { border:none; border-radius:0; background:var(--surface); color:var(--text-muted);
+    font-size:0.8rem; font-weight:600; padding:5px 18px; cursor:pointer; }
+  /* Compound :hover selectors so the toggle outranks the global button:hover
+     rule (styles.css, specificity 0,0,1,1) — otherwise hovering the active
+     "Yes" repaints it slate-on-white and the white label vanishes. */
+  .mk-rc__toggle-btn.mk-rc__toggle-btn:hover { background: var(--surface-2); }
+  .mk-rc__toggle-btn.mk-rc__toggle-btn--active,
+  .mk-rc__toggle-btn.mk-rc__toggle-btn--active:hover { background: var(--accent); color:#fff; }
+  .mk-rc__esc-note { font-size:0.74rem; color:var(--amber); background: var(--amber-bg);
+    border:1px solid rgba(224,122,18,.22); border-radius: var(--radius); padding:6px 10px; }
+  .mk-rc__actions { display:flex; justify-content:flex-end; padding-top:2px; }
+
   /* Chat column */
-  .mk-chat { display:flex; flex-direction:column; min-height:480px;
+  .mk-chat { display:flex; flex-direction:column; min-height:360px; flex:1;
     background: var(--surface); border:1px solid var(--line); border-radius: var(--radius-lg);
     box-shadow: var(--shadow-sm); overflow:hidden; }
-  .mk-chat__thread { flex:1; overflow-y:auto; padding:20px; display:flex; flex-direction:column; gap:14px; }
+  .mk-chat__thread { flex:1; overflow-y:auto; padding:20px; display:flex; flex-direction:column; gap:14px; min-height:200px; }
   .mk-chat__empty { margin:auto; color:var(--text-muted); font-size:0.88rem; text-align:center; }
-  .mk-chat-context { background: var(--accent-tint); border:1px solid var(--accent-tint-2); border-radius: var(--radius); padding:12px 14px; }
-  .mk-chat-context__label { font-size:0.62rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--accent); margin-bottom:5px; }
-  .mk-chat-context__kpi { display:flex; align-items:center; gap:8px; font-weight:600; font-size:0.9rem; margin-bottom:7px; }
-  .mk-chat-context__note { font-size:0.8rem; color:var(--text-muted); line-height:1.5; }
   .mk-chat__composer { display:flex; gap:10px; padding:14px 16px; border-top:1px solid var(--line); background: var(--surface-2); }
   .mk-chat__composer textarea { flex:1; resize:none; font-family:inherit; font-size:0.85rem; padding:9px 12px;
     border:1px solid var(--line-strong); border-radius: var(--radius); background: var(--canvas); color:var(--text); }
