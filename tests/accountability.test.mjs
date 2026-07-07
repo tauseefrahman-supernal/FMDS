@@ -12,7 +12,7 @@ globalThis.localStorage = {
 // Import after shim so the module init path (auto-seed) sees localStorage.
 const {
   LIFECYCLE, redKpisNeedingResponse, addResponse, getResponse, getResponsesByDept,
-  advanceLifecycle, lifecycleView, stalledDays, rollupSignal, seedDemoAccountability,
+  advanceLifecycle, lifecycleView, linkEightStep, stalledDays, rollupSignal, seedDemoAccountability,
 } = await import('../lib/accountability.js');
 
 // Same shape as tests/context.test.mjs's operationsFixture — real WE figures
@@ -180,6 +180,43 @@ test('advanceLifecycle targets the most recent entry when a kpiId has more than 
   const advanced = advanceLifecycle({ deptId: 'operations', kpiId: 'otp_repeat', stage: 'actionUnderway' });
   assert.equal(advanced.id, second.id, 'advanced the newer entry');
   assert.equal(advanced.lifecycle.actionUnderway.done, true);
+});
+
+// ─── (b2) linkEightStep — escalation link (Task 7) ─────────────────────────
+
+test('linkEightStep stores kzNumber, flips needs8Step true, and advances to eightStepOpened', () => {
+  addResponse({ deptId: 'operations', kpiId: 'otp_escalate', owner: 'Jim Kozel',
+    cause: 'Mexico dragging OTP', action: 'Overtime deployed', needs8Step: false,
+    kzNumber: null, reportBackWhen: null });
+
+  const before = getResponse({ deptId: 'operations', kpiId: 'otp_escalate' });
+  assert.equal(before.kzNumber, null, 'precondition: no KZ linked yet');
+  assert.equal(before.lifecycle.eightStepOpened.done, false, 'precondition: 8-step not opened');
+
+  const entry = linkEightStep({ deptId: 'operations', kpiId: 'otp_escalate', kzNumber: 'KZ-346' });
+  assert.equal(entry.kzNumber, 'KZ-346', 'kzNumber stored');
+  assert.equal(entry.needs8Step, true, 'needs8Step flipped true');
+  assert.equal(entry.lifecycle.eightStepOpened.done, true, 'lifecycle advanced to eightStepOpened');
+  assert.ok(entry.lifecycle.eightStepOpened.ts, 'eightStepOpened ts stamped');
+
+  // Persisted, not just returned.
+  const reloaded = getResponse({ deptId: 'operations', kpiId: 'otp_escalate' });
+  assert.equal(reloaded.kzNumber, 'KZ-346');
+  assert.equal(reloaded.lifecycle.eightStepOpened.done, true);
+});
+
+test('linkEightStep is idempotent — re-linking the same KZ keeps the original eightStepOpened ts', () => {
+  addResponse({ deptId: 'operations', kpiId: 'otp_escalate2', owner: 'Jim Kozel',
+    cause: '', action: '', needs8Step: false, kzNumber: null, reportBackWhen: null });
+  const first = linkEightStep({ deptId: 'operations', kpiId: 'otp_escalate2', kzNumber: 'KZ-9001' });
+  const ts1 = first.lifecycle.eightStepOpened.ts;
+  const second = linkEightStep({ deptId: 'operations', kpiId: 'otp_escalate2', kzNumber: 'KZ-9001' });
+  assert.equal(second.lifecycle.eightStepOpened.ts, ts1, 'ts unchanged on re-link');
+});
+
+test('linkEightStep returns null when no response entry exists yet for the KPI', () => {
+  const result = linkEightStep({ deptId: 'operations', kpiId: 'no_such_kpi', kzNumber: 'KZ-1' });
+  assert.equal(result, null);
 });
 
 // ─── (c) lifecycleView ──────────────────────────────────────────────────────

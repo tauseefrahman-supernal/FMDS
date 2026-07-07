@@ -42,15 +42,29 @@
  * until an owner responds (see lib/accountability.js module header). Submit
  * → addResponse() + advanceLifecycle('responded'), then a full doRender() so
  * the queue card, header pills, and lifecycle track all update together.
+ *
+ * Escalation (Task 7): when field 3 = Yes, the submit path also resolves a
+ * KZ (8-step) for the KPI — reusing an EXISTING open KZ already linked to
+ * it (data/kz-records.json's linkedKpiId, e.g. otp_mexico -> KZ-346) or
+ * minting a fresh one via lib/eightstep.js newKZ() — then calls
+ * lib/accountability.js linkEightStep() to store the kzNumber and advance
+ * the lifecycle to 'eightStepOpened'. The same linkEightStep() path also
+ * backs an "Open 8-step" action on an already-ANSWERED card whose
+ * needs8Step is Yes but hasn't escalated yet (e.g. the seeded OTP entry,
+ * which deliberately ships with a kzNumber but eightStepOpened left
+ * pending). Once opened, the card renders a real deep-link to
+ * #/dept/:id/solve?kpi=<id> — the existing R3 handoff route
+ * (renderProblemSolving) that pre-opens the 8-step wizard for that KPI.
  */
 
 import {
   redKpisNeedingResponse, rollupSignal, getResponse, addResponse,
-  advanceLifecycle, lifecycleView,
+  advanceLifecycle, lifecycleView, linkEightStep,
 } from '../lib/accountability.js';
 import { liveReply }                    from '../lib/agent.js';
 import { getReasonsByDept }             from '../lib/reasons.js';
 import { getComments, composeMarkNote } from '../lib/comments.js';
+import { newKZ }                        from '../lib/eightstep.js';
 
 // ─── State (module-level, reset each render — mirrors problemsolving.js) ────
 let _dept          = null;
@@ -283,12 +297,25 @@ function renderLifecycleTrack(entry) {
 }
 
 // Read-back of an already-submitted response (all persisted, user-entered text
-// escaped). kzNumber, if the seed carried one, is shown as plain text — the
-// actual KZ deep-link/creation is Task 7, not built here.
+// escaped). needs8Step = Yes renders one of three states: a deep-link once
+// the 8-step is actually opened (lifecycle.eightStepOpened.done), an
+// explicit "Open 8-step" action when a KZ is linked/linkable but escalation
+// hasn't happened yet (e.g. the seeded OTP entry — kzNumber present,
+// eightStepOpened deliberately left pending), or plain "Yes" text as a last
+// resort (no entry at all — shouldn't happen via the current submit flow,
+// but keeps old/malformed entries from rendering a dead control).
 function renderReadBack(resp) {
-  const eightStep = resp.needs8Step
-    ? `Yes${resp.kzNumber ? ` — 8-step ${esc(resp.kzNumber)}` : ''}`
-    : 'No — one-off / data artifact';
+  const opened = !!(resp.lifecycle && resp.lifecycle.eightStepOpened && resp.lifecycle.eightStepOpened.done);
+  let eightStep;
+  if (!resp.needs8Step) {
+    eightStep = 'No — one-off / data artifact';
+  } else if (opened && resp.kzNumber) {
+    eightStep = `Yes — <a class="mk-rc__kz-link" href="#/dept/${esc(resp.deptId)}/solve?kpi=${esc(resp.kpiId)}">`
+      + `▸ Open ${esc(resp.kzNumber)} in Problem-Solving →</a>`;
+  } else {
+    eightStep = 'Yes — <button type="button" class="btn btn--outline btn--sm mk-rc__open8step" '
+      + `id="mk-rc-open8step" data-kpi-id="${esc(resp.kpiId)}">▸ Open 8-step →</button>`;
+  }
   const field = (label, value) =>
     `<div class="mk-rc__ro-field"><dt>${label}</dt><dd>${value}</dd></div>`;
   return `
@@ -333,7 +360,7 @@ function renderResponseForm(item, kpi) {
           <button type="button" class="mk-rc__toggle-btn${!needs8 ? ' mk-rc__toggle-btn--active' : ''}" data-val="no">No</button>
         </div>
         <div class="mk-rc__esc-note" id="mk-rc-esc-note"${needs8 ? '' : ' style="display:none"'}>
-          Escalation to a KZ (8-step) gets wired in the next step.
+          Submitting will link or open a KZ (8-step) for this KPI.
         </div>
       </div>
 
@@ -448,10 +475,31 @@ function askMarkToDraft(kpiId) {
   }
 }
 
-// Submit the 4 fields → persist + advance the lifecycle to 'responded', then a
-// full re-render so the queue card flips to ✓, the header pills re-split, and
-// the card swaps to its read-back + advanced track.
-function submitResponse(kpiId) {
+// Escalation (Task 7): given field 3 = Yes, pick the KZ this response should
+// link to. Prefers an EXISTING open KZ already tagged to this KPI —
+// data/kz-records.json's linkedKpiId (e.g. otp_mexico → KZ-346, still
+// open) — so escalating a KPI that's already being worked doesn't spawn a
+// duplicate 8-step. Only mints a fresh KZ (lib/eightstep.js newKZ, then a
+// unique kzNumber — timestamp-based, so it can never collide with a real
+// KZ-### from the data file) when no open KZ is linked yet. Synchronous:
+// callers must await loadKzRecords() first so _kzRecordsCache is populated.
+function resolveKzNumber(kpiId, owner) {
+  const records = _kzRecordsCache || [];
+  const existingOpen = records.find(
+    (r) => r.deptId === _dept.id && r.linkedKpiId === kpiId && !r.closed);
+  if (existingOpen) return existingOpen.kzNumber;
+
+  const kpi = findKpi(_dept, kpiId);
+  const kz  = newKZ({ item: (kpi && kpi.name) || kpiId, who: owner || _dept.lead || '', deptId: _dept.id });
+  kz.kzNumber = 'KZ-NEW-' + Date.now().toString(36).toUpperCase();
+  return kz.kzNumber;
+}
+
+// Submit the 4 fields → persist + advance the lifecycle to 'responded', then
+// (field 3 = Yes) resolve+link a KZ and advance to 'eightStepOpened' too,
+// then a full re-render so the queue card flips to ✓, the header pills
+// re-split, and the card swaps to its read-back + advanced track.
+async function submitResponse(kpiId) {
   const wrap = document.getElementById('askmark-response-card');
   const item = _queue.find((q) => q.kpiId === kpiId);
   if (!wrap || !item) return;
@@ -478,16 +526,50 @@ function submitResponse(kpiId) {
     cause,
     action,
     needs8Step: needs8,
-    kzNumber: null,            // KZ link/creation is Task 7 — not built here
+    kzNumber: null,            // resolved + linked just below when needs8
     reportBackWhen: report || null,
   });
   advanceLifecycle({ deptId: _dept.id, kpiId, stage: 'responded' });
   delete _drafts[draftKey(kpiId)];
 
+  let kzNumber = null;
+  if (needs8) {
+    await loadKzRecords();
+    kzNumber = resolveKzNumber(kpiId, item.owner);
+    linkEightStep({ deptId: _dept.id, kpiId, kzNumber });
+  }
+
   // Mark posts a confirmation (spec §5.2) into the running chat thread.
   _thread.push({
     role: 'mark',
-    text: `Logged your response on ${item.kpi}. I'll roll "being actioned" up to the Leadership OS so the Chief of Staff sees this red is being worked${needs8 ? ' — and that an 8-step is flagged as needed.' : '.'}`,
+    text: needs8
+      ? `Logged your response on ${item.kpi} and opened ${kzNumber} for it — head to Problem-Solving to work the 8-step. I'll roll "being actioned" up to the Leadership OS too.`
+      : `Logged your response on ${item.kpi}. I'll roll "being actioned" up to the Leadership OS so the Chief of Staff sees this red is being worked.`,
+  });
+
+  doRender();
+}
+
+// Escalate an ALREADY-answered response whose needs8Step is Yes but hasn't
+// opened its 8-step yet (the read-back's "▸ Open 8-step →" button — e.g. the
+// seeded OTP entry, which ships with a kzNumber but eightStepOpened left
+// pending on purpose). Reuses the entry's own kzNumber if it already has one
+// (don't spawn a second KZ for a response that's already linked); otherwise
+// resolves one the same way the submit path does.
+async function openEightStepForKpi(kpiId) {
+  const resp = getResponse({ deptId: _dept.id, kpiId });
+  if (!resp) return;
+  let kzNumber = resp.kzNumber;
+  if (!kzNumber) {
+    await loadKzRecords();
+    kzNumber = resolveKzNumber(kpiId, resp.owner);
+  }
+  linkEightStep({ deptId: _dept.id, kpiId, kzNumber });
+
+  const kpi = findKpi(_dept, kpiId);
+  _thread.push({
+    role: 'mark',
+    text: `Opened ${kzNumber} for ${(kpi && kpi.name) || kpiId} — head to Problem-Solving to work the 8-step.`,
   });
 
   doRender();
@@ -526,6 +608,11 @@ function bindResponseCard() {
 
   const submitBtn = wrap.querySelector('#mk-rc-submit');
   if (submitBtn) submitBtn.addEventListener('click', () => submitResponse(kpiId));
+
+  // Read-back state only: escalates an already-answered "needs8Step: Yes"
+  // response that hasn't opened its 8-step yet (see openEightStepForKpi).
+  const open8Btn = wrap.querySelector('#mk-rc-open8step');
+  if (open8Btn) open8Btn.addEventListener('click', () => openEightStepForKpi(open8Btn.dataset.kpiId));
 }
 
 // ─── Send: gather live context, get a grounded reply, grow the thread ───────
@@ -780,6 +867,9 @@ const ASKMARK_STYLES = `
   .mk-rc__readback { display:flex; flex-direction:column; gap:12px; margin:0; }
   .mk-rc__ro-field dt { font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; color:var(--text-muted); margin-bottom:3px; }
   .mk-rc__ro-field dd { margin:0; font-size:0.86rem; color:var(--text); line-height:1.5; }
+  .mk-rc__kz-link { color: var(--accent); font-weight:700; text-decoration:none; }
+  .mk-rc__kz-link:hover { text-decoration:underline; }
+  .mk-rc__open8step { margin-left:2px; }
 
   /* Form (unanswered state) */
   .mk-rc__form { display:flex; flex-direction:column; gap:14px; }
