@@ -89,3 +89,90 @@ test('liveReply "why is OTP red?" against the real Operations shape surfaces the
   assert.match(reply, /Mexico/);
   assert.match(reply, /Jim Kozel/);
 });
+
+// ─── Important 1: headline story only when a CURRENT red is the headline KPI ──
+
+test('liveReply "what is red?" does NOT glue on the headline story when the headline KPI is green', async () => {
+  // Mirrors the real operations.json risk: OTP (headline) can be GREEN while a
+  // non-headline KPI (PPLH — Mexico) is RED. The reds summary must list the red
+  // but must NOT append the static OTP redStory (that would be hardcoded, not grounded).
+  const opsFixture = {
+    id: 'operations', name: 'Operations', lead: 'Jim Kozel',
+    kpis: [
+      { id: 'otp', name: 'OTP (On-Time %)', level: 1, isMain: true, parentId: null,
+        actual: 0.99, target: 0.985, unit: 'ratio', direction: 'higher_better' }, // GREEN
+      { id: 'pplh_mexico', name: 'PPLH — Mexico', level: 2, isMain: false, parentId: 'pplh',
+        actual: 56.23, target: 67.3, unit: 'pcs_per_labor_hour', direction: 'higher_better', who: 'M. Franco' }, // RED
+    ],
+  };
+  const reply = await liveReply('operations', 'ask', { dept: opsFixture, question: 'what is red?' });
+  assert.match(reply, /PPLH — Mexico/, 'lists the actual red');
+  // The OTP redStory corpus mentions the Galls color program + $40K short-code —
+  // none of that should appear, since OTP is green here.
+  assert.ok(!/Galls color program/.test(reply), 'must not glue on the headline OTP story when OTP is green');
+  assert.ok(!/\$40K short-code/.test(reply), 'must not glue on the headline OTP story when OTP is green');
+});
+
+test('liveReply "what is red?" DOES glue on the headline story when the headline KPI is itself red', async () => {
+  const opsFixture = {
+    id: 'operations', name: 'Operations', lead: 'Jim Kozel',
+    kpis: [
+      { id: 'otp', name: 'OTP (On-Time %)', level: 1, isMain: true, parentId: null,
+        actual: 0.863, target: 0.985, unit: 'ratio', direction: 'higher_better' }, // RED (headline)
+    ],
+  };
+  const reply = await liveReply('operations', 'ask', { dept: opsFixture, question: 'what is red?' });
+  assert.match(reply, /OTP/);
+  assert.match(reply, /Galls color program/, 'headline story appended because the headline KPI is red');
+});
+
+// ─── Important 2: the live trail (reasons/comments/kzRecords) is surfaced ─────
+
+test('liveReply surfaces a floor reason from ctx.reasons for the mentioned KPI', async () => {
+  const dept = {
+    id: 'service', name: 'Service', lead: 'JC',
+    kpis: [
+      { id: 'rev_jc', name: 'Revenue Team JC', level: 1, isMain: true, parentId: null,
+        actual: 100, target: 200, unit: '$', direction: 'higher_better' }, // RED
+    ],
+  };
+  const reasons = [
+    { id: 'r1', deptId: 'service', kpiId: 'rev_jc', entityId: 'rep_diane', author: 'Diane',
+      text: 'HubSpot dialer outage 9-11 AM cut quote volume Mon-Tue.', status: 'red',
+      ts: '2026-07-06T10:00:00.000Z' },
+  ];
+  const reply = await liveReply('service', 'ask', { dept, question: 'why is Revenue Team JC red?', reasons });
+  assert.match(reply, /Latest floor note \(Diane\)/);
+  assert.match(reply, /HubSpot dialer outage/);
+});
+
+test('liveReply surfaces an open 8-step from ctx.kzRecords linked to the mentioned KPI', async () => {
+  const dept = {
+    id: 'operations', name: 'Operations', lead: 'Jim Kozel',
+    kpis: [
+      { id: 'otp_mexico', name: 'OTP — Mexico', level: 2, isMain: false, parentId: 'otp',
+        actual: 0.75, target: 0.985, unit: 'ratio', direction: 'higher_better', who: 'M. Franco' }, // RED
+    ],
+  };
+  const kzRecords = [
+    { kzNumber: 'KZ-346', deptId: 'operations', title: 'Galls color short-code', who: 'Jim Kozel',
+      _kpiId: 'otp_mexico', steps: { 1: true, 2: true, 3: true, 4: false, 5: false, 6: false, 7: false, 8: false },
+      active: true, closed: false },
+  ];
+  const reply = await liveReply('operations', 'ask', { dept, question: 'why is OTP — Mexico red?', kzRecords });
+  assert.match(reply, /Open 8-step: KZ-346 \(3\/8 steps\)/);
+});
+
+test('liveReply omits the trail gracefully when no reasons/comments/kz are supplied', async () => {
+  const dept = {
+    id: 'operations', name: 'Operations', lead: 'Jim Kozel',
+    kpis: [
+      { id: 'otp_mexico', name: 'OTP — Mexico', level: 2, isMain: false, parentId: 'otp',
+        actual: 0.75, target: 0.985, unit: 'ratio', direction: 'higher_better', who: 'M. Franco' },
+    ],
+  };
+  const reply = await liveReply('operations', 'ask', { dept, question: 'why is OTP — Mexico red?' });
+  assert.ok(!/Latest floor note/.test(reply));
+  assert.ok(!/Open 8-step/.test(reply));
+  assert.match(reply, /OTP — Mexico is currently red/);
+});
