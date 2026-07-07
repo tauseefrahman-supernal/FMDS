@@ -7,3 +7,7 @@
 # Excluded from the repo copy (per owner) — local docs & screenshots
 SCreenshots/
 all docs/
+
+# tool scratch dirs
+.playwright-mcp/
+.claude/
