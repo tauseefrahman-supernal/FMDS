@@ -21,8 +21,9 @@ test('svgRecoveryTrend: target line rendered dashed (stroke-dasharray)', () => {
 
 test('svgRecoveryTrend: emits a countermeasure-in marker at cmIndex', () => {
   const svg = svgRecoveryTrend([0.9, 0.92, 0.95, 0.97, 0.99], { target: 0.985, cmIndex: 2 });
-  // vertical marker line: some line/rect referencing the cm marker
-  assert.ok(/countermeasure/i.test(svg) || svg.match(/<line/g).length >= 2);
+  // Assert the actual marker element, not just "some line" (the dashed target
+  // line alone would satisfy a bare <line>-count check even without a marker).
+  assert.ok(svg.includes('data-marker="countermeasure"'));
 });
 
 test('svgRecoveryTrend: N dots for N numeric points', () => {
@@ -117,6 +118,19 @@ test('svgPareto: emits N bars (<rect) for N rows, sorted descending by value', (
   assert.equal(rects.length, rows.length);
   // "Late parts" (highest value) should appear before "Other" (lowest value) in markup
   assert.ok(svg.indexOf('Late parts') < svg.indexOf('Other'));
+});
+
+test('svgPareto: a null-valued row is placeholder-rendered, not dropped (one bar per input row)', () => {
+  const rows = [
+    { label: 'Late parts', value: 40 },
+    { label: 'Missing',    value: null }, // must not vanish
+    { label: 'Damage',     value: 25 },
+  ];
+  const svg = svgPareto(rows);
+  const rects = svg.match(/<rect/g) || [];
+  assert.equal(rects.length, rows.length, 'expected one bar per input row incl. the null');
+  assert.ok(svg.includes('Missing'), 'null-valued category label must still render');
+  assert.ok(svg.includes('>—<'), 'null value renders as a — placeholder');
 });
 
 test('svgPareto: contains a cumulative-% polyline overlay', () => {
