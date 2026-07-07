@@ -22,7 +22,7 @@ import { byDept, newKZ, progress } from '../lib/eightstep.js';
 import { contributorsOf, mains, byId } from '../lib/registry.js';
 import { ragStatus }               from '../lib/rag.js';
 import { draftStep, liveReply }    from '../lib/agent.js';
-import { svgRecoveryTrend, svgPareto } from '../lib/charts.js';
+import { svgRecoveryTrend, svgPareto, svgFunnel } from '../lib/charts.js';
 
 // ─── State (module-level, reset each render) ─────────────────────────────────
 let _activeKZ     = null;   // the KZ being solved in the wizard
@@ -122,6 +122,40 @@ function renderGoldenThread(dept, kpi) {
 
 // ─── Tracker table ────────────────────────────────────────────────────────────
 
+// Honest stall/age flag: a KZ record carries no per-step timestamps, only a
+// single real `start` date — so the only fact we can report is "how many
+// whole days has this been open" against the real `start`, never a fabricated
+// "stalled at step k" moment. Closed KZs and KZs with no `start` on file never
+// flag (there is no fact to flag from).
+const STALL_DAYS = 14;
+
+function stallInfo(kz) {
+  if (!kz || kz.closed || !kz.start) return null;
+  const start = new Date(kz.start);
+  if (Number.isNaN(start.getTime())) return null;
+  const days = Math.floor((Date.now() - start.getTime()) / 86_400_000);
+  if (days < STALL_DAYS) return null;
+  const done = progress(kz).done;
+  if (done >= 8) return null;
+  return { days, done };
+}
+
+// Linked red KPI — ties a KZ back to the board KPI it exists to fix (Task 5's
+// `linkedKpiId`). Closed KZs whose linked KPI has since gone green are called
+// out as "resolved"; everything else just shows the KPI's live RAG chip so a
+// KZ that's closed-but-still-red (or open-but-already-green) reads honestly.
+function linkedKpiCell(kz, dept) {
+  const kpi = kz.linkedKpiId ? byId(dept, kz.linkedKpiId) : null;
+  if (!kpi) return '<span class="text-muted" style="font-size:0.78rem">—</span>';
+  const rag = ragStatus(kpi.actual, kpi.target, kpi.direction || 'higher_better');
+  const chip = (kz.closed && rag === 'green')
+    ? `<span class="rag-chip rag-chip--green">✓ Resolved</span>`
+    : ragChip(rag);
+  return `
+    <div style="font-size:0.8rem;font-weight:500;line-height:1.3;margin-bottom:2px">${esc(kpi.name)}</div>
+    ${chip}`;
+}
+
 function renderTrackerTable(records, dept) {
   if (!records.length) {
     return `<p class="text-muted" style="padding:16px 0">No 8-step records for ${esc(dept.name)} yet.</p>`;
@@ -130,11 +164,15 @@ function renderTrackerTable(records, dept) {
   const rows = records.map((kz, idx) => {
     const p = progress(kz);
     const completed = isCompletedA3(kz);
+    const stall = stallInfo(kz);
     const statusBadge = kz.closed
       ? `<span class="badge badge--success">Closed</span>`
       : kz.active
         ? `<span class="badge badge--info">Active</span>`
         : `<span class="badge">—</span>`;
+    const stallFlag = stall
+      ? `<div class="stall-flag" title="Open since ${esc(kz.start)} — no per-step timestamps on file, age is measured from the real start date">⚠ open ${stall.days}d · step ${stall.done}/8</div>`
+      : '';
     const odgBadge = kz.odgSupport
       ? `<span class="badge badge--accent">ODG</span>`
       : `<span class="text-muted" style="font-size:0.75rem">—</span>`;
@@ -150,6 +188,7 @@ function renderTrackerTable(records, dept) {
         </td>
         <td class="text-mono text-muted" style="white-space:nowrap">${esc(kz.kzNumber)}</td>
         <td style="font-size:0.875rem">${esc(kz.who || '—')}</td>
+        <td>${linkedKpiCell(kz, dept)}</td>
         <td>${odgBadge}</td>
         <td class="text-muted" style="font-size:0.8rem">${esc(kz.start || '—')}</td>
         <td>
@@ -158,7 +197,7 @@ function renderTrackerTable(records, dept) {
           </div>
           <div class="text-muted" style="font-size:0.7rem;margin-top:3px">${p.done}/8</div>
         </td>
-        <td>${statusBadge}</td>
+        <td>${statusBadge}${stallFlag}</td>
         <td>${a3Btn}</td>
       </tr>`;
   }).join('');
@@ -171,6 +210,7 @@ function renderTrackerTable(records, dept) {
             <th>Item</th>
             <th>KZ #</th>
             <th>Who</th>
+            <th>Linked red KPI</th>
             <th>ODG</th>
             <th>Start</th>
             <th style="min-width:160px">Progress (1–8)</th>
@@ -180,6 +220,37 @@ function renderTrackerTable(records, dept) {
         </thead>
         <tbody>${rows}</tbody>
       </table>
+    </div>`;
+}
+
+// ─── Tracker header: funnel + counts ─────────────────────────────────────────
+// counts[i] = how many KZs in this dept reached step i+1 — a visual drop-off
+// curve across the 8 steps (a real cliff between, say, steps 6 and 7 shows up
+// as a red bar via svgFunnel's own reach-vs-step-1 RAG grading).
+
+function stepReachCounts(records) {
+  return Array.from({ length: 8 }, (_, i) =>
+    records.filter(kz => !!(kz.steps && kz.steps[String(i + 1)])).length);
+}
+
+function renderTrackerHeaderMeta(records) {
+  const counts  = stepReachCounts(records);
+  const total   = records.length;
+  const open    = records.filter(kz => !kz.closed).length;
+  const closed  = records.filter(kz => kz.closed).length;
+  const flagged = records.filter(kz => !!stallInfo(kz)).length;
+  const svg = svgFunnel(counts, { labels: counts.map((_, i) => `S${i + 1}`), width: 300, height: 108 });
+
+  return `
+    <div class="ps-funnel">
+      <div class="ps-funnel__label">Step reach — where KZs drop off</div>
+      <div class="ps-funnel__svg">${svg}</div>
+      <div class="ps-funnel__counts">
+        <span><b>${total}</b> total</span>
+        <span><b>${open}</b> open</span>
+        <span><b>${closed}</b> closed</span>
+        <span${flagged ? ' class="ps-funnel__counts--flagged"' : ''}><b>${flagged}</b> flagged</span>
+      </div>
     </div>`;
 }
 
@@ -991,6 +1062,7 @@ async function doRender() {
               ${_kzRecords.length} total · ${openItems} open · ${closedItems} closed · ${a3Count} full A3${a3Count === 1 ? '' : 's'} — ${esc(_dept.name)}
             </p>
           </div>
+          ${renderTrackerHeaderMeta(_kzRecords)}
           <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
             <span style="font-size:0.78rem;color:var(--slate-500)">Trigger a new 8-step from a red sub-KPI:</span>
             ${renderRedKpiSelector(_dept)}
@@ -1294,6 +1366,17 @@ const PS_STYLES = `
   .ps-view { max-width: 1000px; }
   .ps-view--wizard { max-width: 1320px; }
   .ps-tophead { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:16px; flex-wrap:wrap; gap:12px; }
+
+  /* Step-reach funnel + counts (tracker header) */
+  .ps-funnel { display:flex; flex-direction:column; align-items:center; gap:2px; }
+  .ps-funnel__label { font-size:0.63rem; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; color:var(--slate-500); }
+  .ps-funnel__svg svg { display:block; }
+  .ps-funnel__counts { display:flex; gap:10px; font-size:0.72rem; color:var(--slate-600); }
+  .ps-funnel__counts b { color:var(--slate-900); }
+  .ps-funnel__counts--flagged, .ps-funnel__counts--flagged b { color:var(--amber); }
+
+  /* Stall / age flag (tracker rows — real start-date age only, no fabricated per-step timing) */
+  .stall-flag { margin-top:4px; font-size:0.68rem; font-weight:600; color:var(--amber); white-space:nowrap; }
 
   /* Golden thread */
   .golden-thread { background: var(--slate-50); border: 1px solid var(--slate-200); border-radius: var(--radius); padding: 10px 14px; }
