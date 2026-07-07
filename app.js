@@ -24,6 +24,7 @@ import { renderMyDay }            from './views/myday.js';
 import { renderProblemSolving }   from './views/problemsolving.js';
 import { renderStandardWork }     from './views/standardwork.js';
 import { renderSources }          from './views/sources.js';
+import { renderAskMark }          from './views/askmark.js';
 import { renderLogin, resolvePersona } from './views/login.js';
 import { bakedReply }             from './lib/agent.js';
 
@@ -138,6 +139,7 @@ function navFor(dept, role) {
       { id: 'kpi',   label: 'My Targets',      icon: '◆' },
       { id: 'solve', label: 'Problem-Solving', icon: '⚑' },
       { id: 'sop',   label: 'Standard Work',   icon: '≣' },
+      { id: 'mark',  label: 'Ask Mark',        icon: '◇' },
     ];
   }
   // L2
@@ -147,6 +149,7 @@ function navFor(dept, role) {
     ...(!isFrozen ? [{ id: 'solve', label: 'Problem-Solving', icon: '⚑' }] : []),
     ...(!isFrozen ? [{ id: 'sop',   label: 'Standard Work',   icon: '≣' }] : []),
     { id: 'sources', label: 'Sources', icon: '⛁' },
+    { id: 'mark',    label: 'Ask Mark', icon: '◇' },
   ];
 }
 
@@ -389,6 +392,9 @@ function dispatchView(dept, view, mount) {
       break;
     case 'sop':
       renderStandardWork(dept, mount);
+      break;
+    case 'mark':
+      renderAskMark(dept, mount, session);
       break;
     default:
       // ODG: fall back to method hub for unknown views too
