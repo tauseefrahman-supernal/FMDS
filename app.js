@@ -27,6 +27,7 @@ import { renderSources }          from './views/sources.js';
 import { renderAskMark }          from './views/askmark.js';
 import { renderLogin, resolvePersona } from './views/login.js';
 import { bakedReply }             from './lib/agent.js';
+import { redKpisNeedingResponse, getResponse } from './lib/accountability.js';
 
 const app   = document.getElementById('app');
 const store = createStore({ departments: [], dept: null, session: null });
@@ -158,6 +159,17 @@ function viewLabel(dept, role, view) {
   return item ? item.label : view;
 }
 
+// ─── Ask Mark queue count ───────────────────────────────────────────────────
+// Mirrors views/askmark.js's header "N action required": live reds
+// (redKpisNeedingResponse) that have NOT yet had a response submitted
+// (getResponse(...).answered). Deliberately NOT rollupSignal().redCount —
+// that counts persisted response entries, a different number from the queue.
+function askMarkActionRequiredCount(dept) {
+  return redKpisNeedingResponse(dept).filter((item) =>
+    !(getResponse({ deptId: dept.id, kpiId: item.kpiId }) || {}).answered
+  ).length;
+}
+
 // ─── Layout: dark command rail + light canvas + top bar ────────────────────
 function renderLayout(dept, activeView) {
   const session = store.get().session;
@@ -173,6 +185,16 @@ function renderLayout(dept, activeView) {
 
   const roleBadgeClass = role === 'L1' ? 'role-badge role-badge--l1' : 'role-badge';
   const initials = persona.name.split(/[\s/]+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase();
+
+  // 🔔 is a shortcut into the Ask Mark queue — gated the same way the "Ask
+  // Mark" nav item is (off on frozen departments), so it never routes
+  // somewhere that isn't reachable from the rail.
+  const canAskMark  = nav.some(v => v.id === 'mark');
+  const inboxCount  = canAskMark ? askMarkActionRequiredCount(dept) : 0;
+  const inboxBtnHtml = canAskMark ? `
+          <button class="inbox-btn" id="inbox-btn" title="Ask Mark — action required">
+            🔔${inboxCount > 0 ? `<span class="inbox-btn__count" id="inbox-btn-count">${inboxCount}</span>` : ''}
+          </button>` : '';
 
   app.innerHTML = `
     <div class="app-shell">
@@ -215,10 +237,7 @@ function renderLayout(dept, activeView) {
             <span class="crumb__sep">▸</span>
             <span class="crumb__view">${viewLabel(dept, role, activeView)}</span>
           </div>
-          <button class="topbar-btn assistant-btn" id="assistant-btn" title="Mark — your AI employee">◇ Ask Mark</button>
-          <button class="inbox-btn" id="inbox-btn" title="Chief of Staff inbox">
-            🔔<span class="inbox-btn__count">2</span>
-          </button>
+          <button class="topbar-btn assistant-btn" id="assistant-btn" title="Mark — your AI employee">◇ Ask Mark</button>${inboxBtnHtml}
           <div class="topbar__search">
             <input type="search" placeholder="Search this board…" aria-label="Search">
           </div>
@@ -238,52 +257,54 @@ function renderLayout(dept, activeView) {
   const signoutBtn = document.getElementById('rail-signout');
   if (signoutBtn) signoutBtn.addEventListener('click', signOut);
 
-  // Chief-of-Staff inbox panel toggle
+  // 🔔 → Ask Mark queue shortcut (standalone Chief-of-Staff popover retired;
+  // the bell now routes into the same queue the "Ask Mark" nav item opens,
+  // with a live badge kept in sync by polling — the queue can change from
+  // inside the Ask Mark view itself, which repaints only its own mount, not
+  // this topbar).
   const inboxBtn = document.getElementById('inbox-btn');
-  if (inboxBtn) inboxBtn.addEventListener('click', () => toggleInbox(inboxBtn, dept));
+  if (inboxBtn) {
+    inboxBtn.addEventListener('click', () => { location.hash = `#/dept/${dept.id}/mark`; });
+    startInboxBadgePoll(dept);
+  } else {
+    stopInboxBadgePoll();
+  }
 
   // AI Assistant drawer toggle
   const assistantBtn = document.getElementById('assistant-btn');
   if (assistantBtn) assistantBtn.addEventListener('click', () => toggleAssistant(dept));
 }
 
-// ─── Chief-of-Staff inbox panel ─────────────────────────────────────────────
-function toggleInbox(anchor, dept) {
-  const existing = document.getElementById('inbox-panel');
-  if (existing) { existing.remove(); return; }
-  const panel = document.createElement('div');
-  panel.id = 'inbox-panel';
-  panel.className = 'inbox-panel';
-  panel.innerHTML = `
-    <div class="inbox-panel__head">
-      <div class="inbox-panel__title">Leadership OS · Chief of Staff</div>
-      <div class="inbox-panel__sub">Requests context from ${dept.name}</div>
-    </div>
-    <div class="inbox-item">
-      <span class="inbox-item__dot"></span>
-      <div>
-        <div class="inbox-item__body">Confirm the root cause on your red headline KPI before the Monday roll-up review.</div>
-        <div class="inbox-item__from">Chief of Staff · due Mon 9:00</div>
-      </div>
-    </div>
-    <div class="inbox-item">
-      <span class="inbox-item__dot"></span>
-      <div>
-        <div class="inbox-item__body">Attach the governing standard work for this week's countermeasure.</div>
-        <div class="inbox-item__from">Chief of Staff · this week</div>
-      </div>
-    </div>`;
-  anchor.parentElement.appendChild(panel);
-  // Dismiss on outside click
-  setTimeout(() => {
-    const onDoc = (e) => {
-      if (!panel.contains(e.target) && e.target !== anchor) {
-        panel.remove();
-        document.removeEventListener('click', onDoc);
+// ─── 🔔 live badge poll ─────────────────────────────────────────────────────
+// The Ask Mark queue is backed by localStorage (lib/accountability.js) and
+// can be mutated by the Ask Mark view without a route change (submitting a
+// response calls its own local re-render, not renderLayout()). Poll rather
+// than wire a cross-view event so this stays a single-file change.
+let _inboxPollTimer = null;
+
+function stopInboxBadgePoll() {
+  if (_inboxPollTimer) { clearInterval(_inboxPollTimer); _inboxPollTimer = null; }
+}
+
+function startInboxBadgePoll(dept) {
+  stopInboxBadgePoll();
+  _inboxPollTimer = setInterval(() => {
+    const btn = document.getElementById('inbox-btn');
+    if (!btn) { stopInboxBadgePoll(); return; } // topbar re-rendered elsewhere (route change)
+    const count = askMarkActionRequiredCount(dept);
+    let countEl = document.getElementById('inbox-btn-count');
+    if (count > 0) {
+      if (!countEl) {
+        countEl = document.createElement('span');
+        countEl.className = 'inbox-btn__count';
+        countEl.id = 'inbox-btn-count';
+        btn.appendChild(countEl);
       }
-    };
-    document.addEventListener('click', onDoc);
-  }, 0);
+      countEl.textContent = String(count);
+    } else if (countEl) {
+      countEl.remove();
+    }
+  }, 800);
 }
 
 // ─── AI Assistant right drawer ──────────────────────────────────────────────
