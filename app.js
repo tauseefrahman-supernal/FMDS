@@ -3,7 +3,7 @@
  *
  * Routes:
  *   #/                       → home (placeholder)
- *   #/dept/:id/:view         → one of: team | kpi | my | solve | sop
+ *   #/dept/:id/:view         → one of: team | kpi | my | solve | sop | mark
  *
  * Left-rail views per department:
  *   Team Board      — always visible
@@ -149,7 +149,7 @@ function navFor(dept, role) {
     ...(!isFrozen ? [{ id: 'solve', label: 'Problem-Solving', icon: '⚑' }] : []),
     ...(!isFrozen ? [{ id: 'sop',   label: 'Standard Work',   icon: '≣' }] : []),
     { id: 'sources', label: 'Sources', icon: '⛁' },
-    { id: 'mark',    label: 'Ask Mark', icon: '◇' },
+    ...(!isFrozen ? [{ id: 'mark', label: 'Ask Mark', icon: '◇' }] : []),
   ];
 }
 
