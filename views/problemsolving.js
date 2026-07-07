@@ -21,7 +21,7 @@
 import { byDept, newKZ, progress } from '../lib/eightstep.js';
 import { contributorsOf, mains, byId } from '../lib/registry.js';
 import { ragStatus }               from '../lib/rag.js';
-import { draftStep }               from '../lib/agent.js';
+import { draftStep, liveReply }    from '../lib/agent.js';
 
 // ─── State (module-level, reset each render) ─────────────────────────────────
 let _activeKZ     = null;   // the KZ being solved in the wizard
@@ -33,6 +33,7 @@ let _template     = null;   // eightstep-template.json
 let _dept         = null;
 let _mount        = null;
 let _sopWrittenBack = false; // step-8 write-back toggle for the active KZ
+let _markStepHelp = null;   // docked Mark co-pilot: current step's proactive suggestion set
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -578,6 +579,80 @@ function renderWizardStep(dept, kpi, stepN, template) {
     </div>`;
 }
 
+// ─── Docked Mark co-pilot (proactive, per-step) ───────────────────────────────
+// Sits beside the wizard (never shown in the tracker or read-only A3). Refreshes
+// with a scripted, KPI-grounded suggestion every time the step changes
+// (_psGotoStep / _psConfirmStep both re-render the whole wizard view). Each idea
+// offers an "Add" action that writes straight into the wizard's own DOM fields —
+// no separate state model, no network. See lib/agent.js stepHelpFor() for the
+// content; this file only renders it and wires the Add/Dismiss/Ask actions.
+
+function renderMarkItem(it, i) {
+  let bodyHtml;
+  if (it.type === 'chain') {
+    bodyHtml = `
+      <div class="mark-item__chain">
+        ${it.whys.map(w => `<div class="mark-item__why"><b>Why ${w.n}</b><span class="mark-item__cat">${esc(w.category)}</span>${esc(w.text)}</div>`).join('')}
+        ${it.rootCause ? `<div class="mark-item__root">Root (hypothesis): ${esc(it.rootCause)}</div>` : ''}
+      </div>`;
+  } else if (it.type === 'altbranch') {
+    bodyHtml = `<div class="mark-item__text"><span class="mark-item__tag">${esc(it.category)}</span>${esc(it.text)}</div>`;
+  } else if (it.type === 'countermeasure') {
+    bodyHtml = `
+      <div class="mark-item__text">${esc(it.text)}</div>
+      <div class="mark-item__scores">S${it.S} · Q${it.Q} · C${it.C} · T${it.T} · Cu${it.Cu} · Ef${it.Ef} · OA ${it.OA}</div>`;
+  } else {
+    bodyHtml = `<div class="mark-item__text">${esc(it.text)}</div>`;
+  }
+
+  return `
+    <div class="mark-item" id="mark-item-${i}">
+      ${bodyHtml}
+      <div class="mark-item__actions">
+        <button class="mark-item__btn mark-item__btn--add" onclick="window._psMarkAdd(${i})">${esc(it.label || 'Add')}</button>
+        <button class="mark-item__btn mark-item__btn--skip" onclick="window._psMarkSkip(${i})">Dismiss</button>
+      </div>
+    </div>`;
+}
+
+function renderMarkDock(stepN, stepHelp) {
+  const items = (stepHelp && stepHelp.items) || [];
+  const itemsHtml = items.length
+    ? items.map((it, i) => renderMarkItem(it, i)).join('')
+    : `<p class="text-muted" style="font-size:0.78rem;margin:0">Nothing scripted for this step yet — ask below.</p>`;
+
+  return `
+    <aside class="mark-dock" id="mark-dock">
+      <button class="mark-dock__pill" onclick="window._psMarkReopen()" title="Reopen Mark">
+        <span class="mark-dock__avatar mark-dock__avatar--sm">M</span>
+      </button>
+      <div class="mark-dock__panel">
+        <div class="mark-dock__head">
+          <div class="mark-dock__ident">
+            <span class="mark-dock__avatar">M</span>
+            <div>
+              <div class="mark-dock__name">Mark</div>
+              <div class="mark-dock__meta">helping · Step ${stepN}</div>
+            </div>
+          </div>
+          <button class="mark-dock__close" onclick="window._psMarkDismiss()" title="Dismiss panel">×</button>
+        </div>
+
+        ${stepHelp && stepHelp.headline ? `<div class="mark-dock__headline">${esc(stepHelp.headline)}</div>` : ''}
+        ${stepHelp && stepHelp.note ? `<div class="mark-dock__note">${esc(stepHelp.note)}</div>` : ''}
+
+        <div class="mark-dock__body">${itemsHtml}</div>
+
+        <div id="mark-dock-answers" class="mark-dock__answers"></div>
+
+        <div class="mark-dock__composer">
+          <textarea id="mark-dock-input" rows="2" placeholder="Ask Mark about this step…"></textarea>
+          <button class="btn btn--primary" style="width:100%;margin-top:6px;font-size:0.8rem" onclick="window._psMarkAsk()">Ask</button>
+        </div>
+      </div>
+    </aside>`;
+}
+
 // ─── Read-view: full completed A3 ─────────────────────────────────────────────
 
 function scoreBadge(v) {
@@ -777,16 +852,28 @@ async function doRender() {
     const kpi   = kpiId && _dept.kpis ? _dept.kpis.find(k => k.id === kpiId) : null;
     const tmpl  = _template || { steps: [] };
 
+    // Docked Mark co-pilot: a fresh, proactive suggestion every time the step
+    // (re)renders — grounded in the KPI via lib/agent.js, no network.
+    _markStepHelp = await liveReply(_dept.id, 'step-help', {
+      dept: _dept, step: _currentStep, kpi,
+      kpiActual: kpi ? kpi.actual : null, kpiTarget: kpi ? kpi.target : null, kpiUnit: kpi ? kpi.unit : null,
+      kz: _activeKZ
+    });
+
     content = `
       <div>
         <div style="margin-bottom:16px">
           <button class="btn btn--outline" onclick="window._psCloseWizard()" style="font-size:0.8rem">← Back to tracker</button>
         </div>
-        ${renderWizardStep(_dept, kpi, _currentStep, tmpl)}
+        <div class="wizard-layout">
+          ${renderWizardStep(_dept, kpi, _currentStep, tmpl)}
+          ${renderMarkDock(_currentStep, _markStepHelp)}
+        </div>
       </div>`;
   }
 
-  _mount.innerHTML = `<div class="ps-view">${content}</div>`;
+  const viewClass = _activeKZ ? 'ps-view ps-view--wizard' : 'ps-view';
+  _mount.innerHTML = `<div class="${viewClass}">${content}</div>`;
   attachHandlers();
 }
 
@@ -815,7 +902,7 @@ function attachHandlers() {
   window._psCloseRead = () => { _readKZ = null; doRender(); };
 
   window._psCloseWizard = () => {
-    _activeKZ = null; _currentStep = 1; _stepData = {}; _sopWrittenBack = false;
+    _activeKZ = null; _currentStep = 1; _stepData = {}; _sopWrittenBack = false; _markStepHelp = null;
     doRender();
   };
 
@@ -827,7 +914,7 @@ function attachHandlers() {
     if (n === 8) {
       if (_activeKZ) { _activeKZ.closed = true; _activeKZ.active = false; }
       _kzRecords = [_activeKZ, ..._kzRecords];
-      _activeKZ = null; _currentStep = 1; _stepData = {}; _sopWrittenBack = false;
+      _activeKZ = null; _currentStep = 1; _stepData = {}; _sopWrittenBack = false; _markStepHelp = null;
     } else {
       _currentStep = n + 1;
     }
@@ -877,6 +964,126 @@ function attachHandlers() {
     tr.innerHTML = `<td class="cm-text"><input type="text" class="form-input" data-cm-field="text" data-cm-row="${i}" placeholder="Countermeasure candidate"></td>${scoreCells}`;
     tbody.appendChild(tr);
   };
+
+  // ── Docked Mark co-pilot ────────────────────────────────────────────────
+  window._psMarkAdd = (idx) => {
+    if (!_markStepHelp || !_markStepHelp.items || !_markStepHelp.items[idx]) return;
+    const item = _markStepHelp.items[idx];
+    const panel = document.querySelector('.wizard-panel');
+    if (!panel) return;
+
+    if (item.type === 'chain') {
+      item.whys.forEach(w => {
+        const el = panel.querySelector(`[data-field="why${w.n}"]`);
+        if (el) el.value = w.text;
+      });
+      if (item.rootCause) {
+        const rc = panel.querySelector('[data-field="rootCause"]');
+        if (rc) rc.value = item.rootCause;
+      }
+    } else if (item.type === 'altbranch') {
+      const el = panel.querySelector(`[data-field="fishbone_${item.category.toLowerCase()}"]`);
+      if (el) el.value = item.text;
+    } else if (item.type === 'countermeasure') {
+      _addSuggestedCmRow(item);
+    } else if (item.type === 'recovery') {
+      const el = panel.querySelector('[data-field="narrative"]');
+      if (el) el.value = el.value ? `${el.value}\n\n${item.text}` : item.text;
+    } else if (item.type === 'action') {
+      _addSuggestedActionRow(item);
+    } else if (item.type === 'nudge' && item.field) {
+      const el = panel.querySelector(`[data-field="${item.field}"]`);
+      if (el) el.value = item.text;
+    }
+
+    _markMarkItem(idx, 'added', '✓ Added — edit above before confirming');
+  };
+
+  window._psMarkSkip = (idx) => {
+    _markMarkItem(idx, 'skipped', null);
+  };
+
+  window._psMarkDismiss = () => {
+    const dock = document.getElementById('mark-dock');
+    if (dock) dock.classList.add('mark-dock--collapsed');
+  };
+
+  window._psMarkReopen = () => {
+    const dock = document.getElementById('mark-dock');
+    if (dock) dock.classList.remove('mark-dock--collapsed');
+  };
+
+  window._psMarkAsk = async () => {
+    const input = document.getElementById('mark-dock-input');
+    const q = input && input.value.trim();
+    if (!q || !_activeKZ) return;
+    const kpiId = _activeKZ._kpiId;
+    const kpi = kpiId && _dept.kpis ? _dept.kpis.find(k => k.id === kpiId) : null;
+    const reply = await liveReply(_dept.id, 'step-help', { dept: _dept, step: _currentStep, kpi, kz: _activeKZ, question: q });
+    const list = document.getElementById('mark-dock-answers');
+    const answerText = (reply && reply.items && reply.items[0] && reply.items[0].text) || '';
+    if (list) {
+      const div = document.createElement('div');
+      div.className = 'mark-answer';
+      div.innerHTML = `<div class="mark-answer__q">${esc(q)}</div><div class="mark-answer__a">${esc(answerText)}</div>`;
+      list.appendChild(div);
+    }
+    input.value = '';
+  };
+}
+
+// Visually marks a docked-panel suggestion as handled (added/skipped) in place —
+// deliberately NOT a full doRender(), so unsaved edits elsewhere in the wizard
+// (and other suggestion rows) are left untouched.
+function _markMarkItem(idx, state, doneLabel) {
+  const row = document.getElementById(`mark-item-${idx}`);
+  if (!row) return;
+  row.classList.add(`mark-item--${state}`);
+  row.querySelectorAll('button').forEach(b => { b.disabled = true; });
+  if (doneLabel) {
+    const tag = document.createElement('div');
+    tag.className = 'mark-item__done';
+    tag.textContent = doneLabel;
+    row.appendChild(tag);
+  }
+}
+
+// Appends one prefilled row to the Step 5 scoring matrix (mirrors _psAddCmRow,
+// but seeded with the suggestion's text + scores instead of a blank row).
+function _addSuggestedCmRow(item) {
+  const tbody = document.getElementById('cm-matrix-body');
+  if (!tbody) return;
+  const i = tbody.querySelectorAll('tr').length;
+  const cols = (_template && _template.scoringMatrix && _template.scoringMatrix.columns) || [];
+  const scoreCells = cols.map(c => {
+    const v = item[c.key];
+    const opts = ['', 0, 1, 2].map(o =>
+      `<option value="${o}" ${String(v) === String(o) ? 'selected' : ''}>${o === '' ? '–' : o}</option>`).join('');
+    return `<td class="score-cell"><select class="score-sel" data-cm-field="${c.key}" data-cm-row="${i}">${opts}</select></td>`;
+  }).join('');
+  const tr = document.createElement('tr');
+  tr.innerHTML = `<td class="cm-text"><input type="text" class="form-input" data-cm-field="text" data-cm-row="${i}" value="${esc(item.text)}" placeholder="Countermeasure candidate"></td>${scoreCells}`;
+  tbody.appendChild(tr);
+}
+
+// Appends one prefilled row to the Step 6 action register (mirrors _psAddActionRow,
+// but seeded with the suggestion's text as the plan).
+function _addSuggestedActionRow(item) {
+  const tbody = document.getElementById('action-register-body');
+  if (!tbody) return;
+  const n = tbody.querySelectorAll('tr').length + 1;
+  if (n > 10) return;
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td class="text-center text-mono" style="width:40px">${n}</td>
+    <td><input type="text" class="form-input" data-ar-field="plan" data-ar-row="${n - 1}" value="${esc(item.text)}" placeholder="What needs to be done"></td>
+    <td><input type="date" class="form-input" data-ar-field="startDate" data-ar-row="${n - 1}" style="min-width:120px"></td>
+    <td><input type="date" class="form-input" data-ar-field="dueDate" data-ar-row="${n - 1}" style="min-width:120px"></td>
+    <td><input type="text" class="form-input" data-ar-field="responsible" data-ar-row="${n - 1}" placeholder="Name"></td>
+    <td><select class="form-input" data-ar-field="status" data-ar-row="${n - 1}" style="min-width:90px">
+      <option value="R" selected>R — Behind</option><option value="Y">Y — At Risk</option>
+      <option value="G">G — On Track</option><option value="C">C — Completed</option></select></td>`;
+  tbody.appendChild(tr);
 }
 
 function _saveCurrentStepInputs() {
@@ -922,6 +1129,7 @@ function _saveCurrentStepInputs() {
 
 const PS_STYLES = `
   .ps-view { max-width: 1000px; }
+  .ps-view--wizard { max-width: 1320px; }
   .ps-tophead { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:16px; flex-wrap:wrap; gap:12px; }
 
   /* Golden thread */
@@ -967,6 +1175,59 @@ const PS_STYLES = `
   .wizard-header { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-top:4px; }
   .wizard-fields { margin-top:16px; }
   .wizard-nav { display:flex; justify-content:space-between; align-items:center; margin-top:24px; padding-top:16px; border-top:1px solid var(--slate-200); }
+
+  /* Docked Mark co-pilot (wizard only) */
+  .wizard-layout { display:flex; align-items:flex-start; gap:20px; }
+  .wizard-layout .wizard-panel { flex:1 1 auto; min-width:0; }
+  @media (max-width: 980px) { .wizard-layout { flex-direction:column; } .mark-dock { width:100%; position:static; } }
+
+  .mark-dock { width:280px; flex-shrink:0; position:sticky; top:16px; }
+  .mark-dock__pill { display:none; align-items:center; justify-content:center; width:40px; height:40px; border-radius:50%; border:1px solid var(--slate-200); background:#fff; cursor:pointer; box-shadow: var(--shadow-sm); padding:0; }
+  .mark-dock--collapsed .mark-dock__panel { display:none; }
+  .mark-dock--collapsed .mark-dock__pill { display:flex; }
+
+  .mark-dock__panel { background:#fff; border:1px solid var(--slate-200); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); overflow:hidden; display:flex; flex-direction:column; max-height: calc(100vh - 140px); }
+  .mark-dock__head { display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border-bottom:1px solid var(--slate-200); background: var(--slate-50); flex-shrink:0; }
+  .mark-dock__ident { display:flex; align-items:center; gap:8px; }
+  .mark-dock__avatar { width:28px; height:28px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-family: var(--font-mono, monospace); font-weight:700; font-size:0.78rem; color:#fff; background: linear-gradient(140deg, var(--accent), #6f4bff); box-shadow: 0 0 0 3px var(--accent-light, #eaf0ff); }
+  .mark-dock__avatar--sm { width:24px; height:24px; font-size:0.7rem; box-shadow:none; }
+  .mark-dock__name { font-size:0.85rem; font-weight:700; color: var(--slate-800); line-height:1.1; }
+  .mark-dock__meta { font-size:0.62rem; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color: var(--accent); margin-top:2px; }
+  .mark-dock__close { background:none; border:none; font-size:1.15rem; line-height:1; color: var(--slate-400); cursor:pointer; padding:0 2px; }
+  .mark-dock__close:hover { color: var(--slate-700); }
+
+  .mark-dock__headline { padding:10px 14px 0; font-size:0.8rem; font-weight:600; color: var(--slate-800); }
+  .mark-dock__note { padding:4px 14px 0; font-size:0.7rem; font-style:italic; color: var(--slate-500); }
+
+  .mark-dock__body { padding:10px 14px; overflow-y:auto; display:flex; flex-direction:column; gap:10px; }
+  .mark-item { border:1px solid var(--slate-200); border-radius: var(--radius); padding:8px 10px; background: var(--slate-50); }
+  .mark-item--added { border-color: var(--green); background: var(--green-bg); }
+  .mark-item--skipped { opacity:0.5; }
+  .mark-item__text { font-size:0.78rem; color: var(--slate-700); line-height:1.4; }
+  .mark-item__tag { font-size:0.6rem; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; color: var(--accent); background:#fff; border:1px solid var(--accent-light,#c9d8ff); border-radius:3px; padding:1px 5px; margin-right:5px; }
+  .mark-item__chain { display:flex; flex-direction:column; gap:3px; }
+  .mark-item__why { font-size:0.76rem; color: var(--slate-700); line-height:1.4; }
+  .mark-item__why b { color: var(--accent); font-family: var(--font-mono, monospace); font-size:0.72rem; margin-right:4px; }
+  .mark-item__cat { font-size:0.58rem; font-weight:700; text-transform:uppercase; color: var(--slate-500); background: var(--slate-100); border-radius:3px; padding:0 4px; margin:0 5px 0 2px; }
+  .mark-item__root { margin-top:4px; font-size:0.76rem; font-weight:600; color: var(--slate-800); }
+  .mark-item__scores { margin-top:4px; font-family: var(--font-mono, monospace); font-size:0.68rem; color: var(--slate-500); }
+  .mark-item__actions { display:flex; gap:6px; margin-top:8px; }
+  .mark-item__btn { flex:1; font-size:0.7rem; font-weight:600; padding:4px 8px; border-radius: var(--radius-sm); cursor:pointer; border:1px solid transparent; }
+  .mark-item__btn:disabled { cursor:default; opacity:.6; }
+  .mark-item__btn--add { background: var(--accent); color:#fff; }
+  .mark-item__btn--add:hover:not(:disabled) { opacity:.88; }
+  .mark-item__btn--skip { background:transparent; border-color: var(--slate-300); color: var(--slate-600); }
+  .mark-item__btn--skip:hover:not(:disabled) { background: var(--slate-100); }
+  .mark-item__done { margin-top:6px; font-size:0.68rem; font-weight:700; color: var(--green); }
+
+  .mark-dock__answers { padding: 0 14px; display:flex; flex-direction:column; gap:8px; }
+  .mark-answer { font-size:0.75rem; }
+  .mark-answer__q { font-weight:700; color: var(--slate-700); }
+  .mark-answer__a { color: var(--slate-600); margin-top:2px; white-space:pre-wrap; }
+
+  .mark-dock__composer { padding:10px 14px 14px; border-top:1px solid var(--slate-200); flex-shrink:0; }
+  .mark-dock__composer textarea { width:100%; resize:none; font-size:0.78rem; padding:7px 9px; border:1px solid var(--slate-300); border-radius: var(--radius); box-sizing:border-box; font-family:inherit; }
+  .mark-dock__composer textarea:focus { outline:none; border-color: var(--accent); box-shadow:0 0 0 2px var(--accent-light); }
 
   /* Forms */
   .form-group { margin-bottom:14px; }
@@ -1084,6 +1345,7 @@ export async function renderProblemSolving(dept, mount) {
   _kzRecords = [];
   _template = null;
   _sopWrittenBack = false;
+  _markStepHelp = null;
 
   // R3 handoff: hash ?kpi=<id> pre-opens the wizard for that sub-KPI.
   const hashQuery = location.hash.includes('?') ? location.hash.split('?')[1] : '';
