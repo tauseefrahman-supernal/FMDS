@@ -1,4 +1,5 @@
 import test from 'node:test'; import assert from 'node:assert';
+import { readFile } from 'node:fs/promises';
 import { liveReply } from '../lib/agent.js';
 
 // ─── No ctx.dept → falls back to bakedReply (existing drawer behavior) ────────
@@ -146,7 +147,11 @@ test('liveReply surfaces a floor reason from ctx.reasons for the mentioned KPI',
   assert.match(reply, /HubSpot dialer outage/);
 });
 
-test('liveReply surfaces an open 8-step from ctx.kzRecords linked to the mentioned KPI', async () => {
+test('liveReply surfaces the REAL linked open 8-step (KZ-346 → otp_mexico) from data/kz-records.json', async () => {
+  // Uses the actual shipped records — proves linkedKpiId is populated in the
+  // data file, not just a synthetic fixture. Real KZ-346 = "Pricing Credit
+  // Memos Feb '26", open, 6/8, now linked to otp_mexico.
+  const kzRecords = JSON.parse(await readFile(new URL('../data/kz-records.json', import.meta.url), 'utf8'));
   const dept = {
     id: 'operations', name: 'Operations', lead: 'Jim Kozel',
     kpis: [
@@ -154,13 +159,34 @@ test('liveReply surfaces an open 8-step from ctx.kzRecords linked to the mention
         actual: 0.75, target: 0.985, unit: 'ratio', direction: 'higher_better', who: 'M. Franco' }, // RED
     ],
   };
-  const kzRecords = [
-    { kzNumber: 'KZ-346', deptId: 'operations', title: 'Galls color short-code', who: 'Jim Kozel',
-      _kpiId: 'otp_mexico', steps: { 1: true, 2: true, 3: true, 4: false, 5: false, 6: false, 7: false, 8: false },
-      active: true, closed: false },
-  ];
   const reply = await liveReply('operations', 'ask', { dept, question: 'why is OTP — Mexico red?', kzRecords });
-  assert.match(reply, /Open 8-step: KZ-346 \(3\/8 steps\)/);
+  assert.match(reply, /Open 8-step: KZ-346 \(6\/8 steps\)/);
+});
+
+test('liveReply surfaces the latest thread note from real lib/comments.js seed (kpiId "otp")', async () => {
+  // Faithful to the browser path: seed the real comment thread (localStorage
+  // shim, same as tests/comments.test.mjs), read it back, thread it through.
+  const _store = {};
+  globalThis.localStorage = {
+    getItem: (k) => (k in _store ? _store[k] : null),
+    setItem: (k, v) => { _store[k] = String(v); },
+    removeItem: (k) => { delete _store[k]; },
+  };
+  const { seedDemoComments, getComments } = await import('../lib/comments.js');
+  seedDemoComments();
+  const comments = getComments({ deptId: 'operations', kpiId: 'otp' });
+  assert.ok(comments.length, 'seed produced Operations OTP comments');
+
+  const dept = {
+    id: 'operations', name: 'Operations', lead: 'Jim Kozel',
+    kpis: [
+      { id: 'otp', name: 'OTP (On-Time %)', level: 1, isMain: true, parentId: null,
+        actual: 0.863, target: 0.985, unit: 'ratio', direction: 'higher_better' },
+    ],
+  };
+  const reply = await liveReply('operations', 'ask', { dept, question: 'why is OTP red?', comments });
+  assert.match(reply, /Latest thread note \(/);
+  delete globalThis.localStorage;
 });
 
 test('liveReply omits the trail gracefully when no reasons/comments/kz are supplied', async () => {
