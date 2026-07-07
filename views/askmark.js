@@ -61,8 +61,12 @@ let _selectedKpiId = null;
 let _thread        = [];    // in-view chat history: [{ role: 'me'|'mark', text }]
 let _sending       = false; // guards double-send while a reply is in flight
 let _kzRecordsCache = null; // lazy-loaded data/kz-records.json, shared across sends
-let _drafts        = {};    // in-progress (unsubmitted) response-card edits, keyed by kpiId:
-                             // { cause, action, needs8Step, reportBackWhen } — cleared per KPI
+let _drafts        = {};    // in-progress (unsubmitted) response-card edits, keyed by
+                             // `${deptId}:${kpiId}` (draftKey) — NOT bare kpiId: KPI ids
+                             // collide across departments (e.g. credits_remakes, rev_total
+                             // exist in both service.json and sales.json), so a bare key
+                             // would leak one dept's draft into another's card. Each value:
+                             // { cause, action, needs8Step, reportBackWhen }. Cleared per KPI
                              // once addResponse() persists it, reset entirely on renderAskMark().
 
 // Field-1 prompt (spec §5.2) — Mark adapts what "what's driving the red?"
@@ -178,17 +182,39 @@ function renderQueueCard(item, dept) {
     </button>`;
 }
 
-function renderQueueColumn(dept, queue, unansweredCount) {
-  const cards = queue.length
-    ? queue.map((item) => renderQueueCard(item, dept)).join('')
-    : `<div class="mk-empty">No reds awaiting a response right now — nice board.</div>`;
+function renderQueueColumn(dept, queue) {
+  // Split so each group's header count matches exactly the cards listed under
+  // it (spec §5: unanswered reds need action; answered-but-still-red are being
+  // actioned).
+  const unanswered = [];
+  const answered   = [];
+  for (const item of queue) {
+    const resp = getResponse({ deptId: dept.id, kpiId: item.kpiId });
+    (resp && resp.answered ? answered : unanswered).push(item);
+  }
+  const cardsFor = (items) => items.map((item) => renderQueueCard(item, dept)).join('');
+
+  const actionSection = `
+    <div class="mk-queue-head mk-queue-head--red">
+      <span class="mk-queue-head__icon">⚠</span> Action required
+      <span class="mk-queue-head__count">${unanswered.length}</span>
+    </div>
+    <div class="mk-queue-list">${
+      unanswered.length
+        ? cardsFor(unanswered)
+        : `<div class="mk-empty">No unanswered reds — every red has a response.</div>`
+    }</div>`;
+
+  const actionedSection = answered.length ? `
+    <div class="mk-queue-head mk-queue-head--green mk-queue-head--spaced">
+      <span class="mk-queue-head__icon">✓</span> Being actioned
+      <span class="mk-queue-head__count mk-queue-head__count--green">${answered.length}</span>
+    </div>
+    <div class="mk-queue-list">${cardsFor(answered)}</div>` : '';
 
   return `
-    <div class="mk-queue-head">
-      <span class="mk-queue-head__icon">⚠</span> Action required
-      <span class="mk-queue-head__count">${unansweredCount}</span>
-    </div>
-    <div class="mk-queue-list">${cards}</div>
+    ${actionSection}
+    ${actionedSection}
 
     <div class="mk-threads">
       <div class="mk-threads__head">Recent threads</div>
@@ -279,7 +305,7 @@ function renderReadBack(resp) {
 // Mark's grounded read (composeMarkNote) unless the owner already edited it
 // (persisted in _drafts). needs8Step defaults to No.
 function renderResponseForm(item, kpi) {
-  const draft   = _drafts[item.kpiId] || {};
+  const draft   = getDraft(item.kpiId);
   const cause   = draft.cause != null ? draft.cause : composeMarkNote(kpi || {}, item.rag);
   const action  = draft.action != null ? draft.action : '';
   const needs8  = draft.needs8Step != null ? draft.needs8Step : false;
@@ -391,9 +417,14 @@ function repaintResponseCard() {
 
 // ─── Response-card state + handlers ─────────────────────────────────────────
 
+// Draft keys are dept-scoped (see _drafts note) so colliding KPI ids across
+// departments can't share a draft.
+function draftKey(kpiId) { return `${_dept.id}:${kpiId}`; }
+function getDraft(kpiId) { return _drafts[draftKey(kpiId)] || {}; }
 function setDraft(kpiId, key, val) {
-  _drafts[kpiId] = _drafts[kpiId] || {};
-  _drafts[kpiId][key] = val;
+  const k = draftKey(kpiId);
+  _drafts[k] = _drafts[k] || {};
+  _drafts[k][key] = val;
 }
 
 // Mark (re)drafts field 1 from the KPI's grounded read (composeMarkNote), and
@@ -451,7 +482,7 @@ function submitResponse(kpiId) {
     reportBackWhen: report || null,
   });
   advanceLifecycle({ deptId: _dept.id, kpiId, stage: 'responded' });
-  delete _drafts[kpiId];
+  delete _drafts[draftKey(kpiId)];
 
   // Mark posts a confirmation (spec §5.2) into the running chat thread.
   _thread.push({
@@ -528,6 +559,33 @@ async function sendMessage() {
   const question = inputEl.value.trim();
   if (!question) { inputEl.focus(); return; }
 
+  // Entry mode: "answer in chat → Mark fills the card" (brief §"Two entry
+  // modes"). When an UNANSWERED response card is open, a chat message is
+  // treated as the owner *stating the cause*: it drops into Field 1's draft
+  // and Mark acknowledges — the owner then edits/submits on the card as
+  // normal. This is the honest Phase-1 version: NO prose-parsing, the whole
+  // message becomes the cause verbatim. Richer prose → multi-field extraction
+  // (splitting a paragraph into cause/action/8-step/report-back) is deferred
+  // to the live-SDK phase (Task 12). With no card selected, chat is unchanged.
+  const selected = currentSelectedItem();
+  if (selected) {
+    const resp = getResponse({ deptId: _dept.id, kpiId: selected.kpiId });
+    if (!(resp && resp.answered)) {
+      inputEl.value = '';
+      _thread.push({ role: 'me', text: question });
+      setDraft(selected.kpiId, 'cause', question);
+      const causeEl = document.getElementById('mk-rc-cause');
+      if (causeEl) causeEl.value = question;
+      _thread.push({
+        role: 'mark',
+        text: "Got it — I've dropped that into your response draft (Field 1: what's driving the red). Review and submit when you're ready.",
+      });
+      repaintThread();
+      inputEl.focus();
+      return;
+    }
+  }
+
   _sending = true;
   if (sendBtn) sendBtn.disabled = true;
   inputEl.value = '';
@@ -570,7 +628,7 @@ function doRender() {
     <div class="askmark-view">
       ${renderHeader(_dept, unansweredCount, answeredCount, rollup)}
       <div class="askmark-grid">
-        <div class="askmark-col askmark-col--queue">${renderQueueColumn(_dept, _queue, unansweredCount)}</div>
+        <div class="askmark-col askmark-col--queue">${renderQueueColumn(_dept, _queue)}</div>
         <div class="askmark-col askmark-col--chat">${renderRightColumn(selectedItem)}</div>
       </div>
     </div>`;
@@ -648,7 +706,10 @@ const ASKMARK_STYLES = `
   /* Queue column */
   .mk-queue-head { display:flex; align-items:center; gap:8px; font-size:0.76rem; font-weight:700;
     letter-spacing:0.05em; text-transform:uppercase; color: var(--red); margin-bottom:12px; }
+  .mk-queue-head--green { color: var(--green); }
+  .mk-queue-head--spaced { margin-top:22px; }
   .mk-queue-head__count { margin-left:auto; background: var(--red-bg); color: var(--red); border-radius:999px; padding:1px 9px; font-size:0.72rem; }
+  .mk-queue-head__count--green { background: var(--green-bg); color: var(--green); }
   .mk-queue-list { display:flex; flex-direction:column; gap:10px; }
 
   .mk-qcard { display:block; width:100%; text-align:left; cursor:pointer; font-family:inherit;
@@ -782,5 +843,7 @@ export function renderAskMark(dept, mount, session) {
   _selectedKpiId = null;
   _thread = [];
   _sending = false;
+  _drafts = {};   // reset unsubmitted drafts per render (also guards against
+                  // any stale cross-dept draft surviving a dept switch)
   doRender();
 }
