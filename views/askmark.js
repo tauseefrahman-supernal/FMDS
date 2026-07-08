@@ -57,7 +57,6 @@ import {
 import { liveReply }                       from '../lib/agent.js';
 import { getReasonsByDept }                from '../lib/reasons.js';
 import { getComments, composeMarkNote }    from '../lib/comments.js';
-import { newKZ }                           from '../lib/eightstep.js';
 import { sparkline, stepChart, VIZ }       from '../lib/charts.js';
 
 // ─── State (module-level, reset each render — mirrors problemsolving.js) ────
@@ -542,17 +541,20 @@ function askMarkToDraft(kpiId) {
 // Escalation: given field 3 = Yes, pick the KZ this response should link to.
 // Prefers an EXISTING open KZ already tagged to this KPI (data/kz-records.json's
 // linkedKpiId) so escalating a KPI that's already being worked doesn't spawn a
-// duplicate 8-step; only mints a fresh KZ (lib/eightstep.js newKZ) otherwise.
+// duplicate 8-step — that's a REAL kzNumber, safe to display and deep-link to.
+// Otherwise there is no real KZ record yet: rather than fabricate a
+// timestamp-suffixed placeholder ID that never resolves to anything (the old
+// bug — Ask Mark would promise a number that Problem-Solving could never
+// look up, and silently mint a DIFFERENT blank wizard instead), we return
+// null. Callers must not display a fake number; the honest promise is "an
+// 8-step draft is available for this KPI" and the actual draft is minted
+// live by views/problemsolving.js's `?kpi=<id>` handoff when the owner gets
+// there.
 function resolveKzNumber(kpiId, owner) {
   const records = _kzRecordsCache || [];
   const existingOpen = records.find(
     (r) => r.deptId === _dept.id && r.linkedKpiId === kpiId && !r.closed);
-  if (existingOpen) return existingOpen.kzNumber;
-
-  const kpi = findKpi(_dept, kpiId);
-  const kz  = newKZ({ item: (kpi && kpi.name) || kpiId, who: owner || _dept.lead || '', deptId: _dept.id });
-  kz.kzNumber = 'KZ-NEW-' + Date.now().toString(36).toUpperCase();
-  return kz.kzNumber;
+  return existingOpen ? existingOpen.kzNumber : null;
 }
 
 // Submit the 4 fields → persist + advance the lifecycle to 'responded', then
@@ -609,13 +611,19 @@ async function submitResponse(kpiId) {
   }
 
   // Mark posts a confirmation into the currently active chat thread — the
-  // "system confirmations" sage-tinted bubble (spec §5.8).
+  // "system confirmations" sage-tinted bubble (spec §5.8). Only names a real
+  // KZ number when one actually exists (an existing open KZ); otherwise the
+  // honest promise is "an 8-step draft is available" — no fake ID — which
+  // now matches exactly what views/problemsolving.js's `?kpi=` handoff mints
+  // live when the owner gets there.
   const thread = activeThread();
   if (thread) {
     thread.msgs.push({
       role: 'mark', system: true,
       text: needs8
-        ? `Logged your response on ${item.kpi} and opened ${kzNumber} for it — head to Problem-Solving to work the 8-step. I'll roll "being actioned" up to the Leadership OS too.`
+        ? (kzNumber
+            ? `Logged your response on ${item.kpi} and opened ${kzNumber} for it — head to Problem-Solving to work the 8-step. I'll roll "being actioned" up to the Leadership OS too.`
+            : `Logged your response on ${item.kpi} — I've opened an 8-step draft for it. Head to Problem-Solving to work it. I'll roll "being actioned" up to the Leadership OS too.`)
         : `Logged your response on ${item.kpi}. I'll roll "being actioned" up to the Leadership OS so the Chief of Staff sees this red is being worked.`,
     });
   }
@@ -629,7 +637,14 @@ async function submitResponse(kpiId) {
 // opened its 8-step yet (the read-back's "Open 8-step →" button — e.g. the
 // seeded OTP entry, which ships with a kzNumber but eightStepOpened left
 // pending on purpose). Reuses the entry's own kzNumber if it already has one;
-// otherwise resolves one the same way the submit path does.
+// otherwise resolveKzNumber() now returns null rather than a fake ID (see its
+// comment) — so this also actually NAVIGATES to Problem-Solving's `?kpi=`
+// handoff, which mints the real draft live. That's the fix for the old
+// mismatch: Ask Mark used to just log a fake "opened <placeholder-id>"
+// message and go nowhere, so the promised ID could never be found once the
+// owner clicked through on their own. `&kz=<kzNumber>` is only appended when
+// we resolved a REAL existing record, so the deep link never references a
+// number that doesn't exist on file.
 async function openEightStepForKpi(kpiId) {
   const resp = getResponse({ deptId: _dept.id, kpiId });
   if (!resp) return;
@@ -641,15 +656,20 @@ async function openEightStepForKpi(kpiId) {
   linkEightStep({ deptId: _dept.id, kpiId, kzNumber });
 
   const kpi = findKpi(_dept, kpiId);
+  const kpiName = (kpi && kpi.name) || kpiId;
   const thread = activeThread();
   if (thread) {
     thread.msgs.push({
       role: 'mark', system: true,
-      text: `Opened ${kzNumber} for ${(kpi && kpi.name) || kpiId} — head to Problem-Solving to work the 8-step.`,
+      text: kzNumber
+        ? `Opened ${kzNumber} for ${kpiName} — head to Problem-Solving to work the 8-step.`
+        : `I've opened an 8-step draft for ${kpiName} — head to Problem-Solving to work it.`,
     });
   }
 
   doRender();
+  const kzParam = kzNumber ? `&kz=${encodeURIComponent(kzNumber)}` : '';
+  location.hash = `#/dept/${_dept.id}/solve?kpi=${encodeURIComponent(kpiId)}${kzParam}`;
 }
 
 // ─── Data loaders ────────────────────────────────────────────────────────────

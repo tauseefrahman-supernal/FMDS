@@ -156,8 +156,16 @@ function renderKzMeta(dept, kz, kpi) {
   }
 
   segs.push('<span class="kz-meta__sep"></span>');
+  // Only claim "steps 1-6 pre-solved" once at least one of them is actually
+  // confirmed done — a freshly-opened draft (0/8, e.g. from a red-sub-KPI
+  // candidate row) has AI-drafted CONTENT available (draftStep() runs live,
+  // every render) but nothing pre-solved/confirmed yet, so it gets the
+  // honest "not yet confirmed" copy instead of implying finished work exists.
   const aiConfirmed = AI_STEPS.filter((n) => !!(kz.steps && kz.steps[String(n)])).length;
-  segs.push(`<span class="badge badge--info"><span class="dot"></span>AI draft · steps 1–6 pre-solved · ${aiConfirmed} confirmed</span>`);
+  const aiBadgeText = aiConfirmed > 0
+    ? `AI draft · steps 1–6 pre-solved · ${aiConfirmed} confirmed`
+    : 'AI draft — not yet confirmed';
+  segs.push(`<span class="badge badge--info"><span class="dot"></span>${aiBadgeText}</span>`);
 
   return `<div class="kz-meta">${segs.join('')}</div>`;
 }
@@ -239,6 +247,78 @@ function resolveAiDraftKz(dept, records) {
   return candidates[0];
 }
 
+// Honest "not started yet" AI-draft candidates — computed LIVE from every red/
+// amber sub-KPI (subKpis(), same filter renderRedKpiSelector already uses)
+// that has no OPEN KZ already linked to it. Unlike resolveAiDraftKz() above
+// (which only matches a PERSISTED record whose steps 1–6 are already marked
+// done — real seed data like Operations' KZ-346), this never claims any step
+// is pre-solved: it only surfaces the real kpiId/kpiName/rag so a dept with
+// zero KZ records on file (Service) can still show clickable, honest
+// "ready to draft" tracker rows and an honest count. Exported so tests can
+// exercise it directly against real data/*.json fixtures (no DOM/fetch
+// needed — see tests/problemsolving-view.test.mjs).
+export function aiDraftCandidatesFromRedKpis(dept, records) {
+  return subKpis(dept)
+    .filter((kpi) => {
+      const rag = ragStatus(kpi.actual, kpi.target, kpi.direction || 'higher_better');
+      if (rag !== 'red' && rag !== 'amber') return false;
+      return !records.some((kz) => kz.linkedKpiId === kpi.id && !kz.closed);
+    })
+    .map((kpi) => ({
+      kpiId: kpi.id,
+      kpiName: kpi.name,
+      rag: ragStatus(kpi.actual, kpi.target, kpi.direction || 'higher_better'),
+    }));
+}
+
+// One tracker row for a not-yet-started AI-draft candidate — styled like the
+// real AI-draft row above (sage tint, "AI draft ready" chip) but HONEST about
+// there being no progress yet: KZ# reads "Draft" (nothing has been minted or
+// numbered), Progress shows 0/8, and Status reads "Ready to draft" rather
+// than any completed-step language. The whole row is clickable (data-open-
+// ai-draft carries the real kpiId) and reuses the exact same _psOpenWizard()
+// path the sidebar red-KPI <select> already uses — no separate code path.
+function candidateRowHTML(candidate) {
+  return `
+    <tr class="ps-candidate-row" data-open-ai-draft="${esc(candidate.kpiId)}" style="background:hsl(var(--action-1));cursor:pointer">
+      <td>
+        <div style="font-weight:500;font-size:0.875rem">${esc(candidate.kpiName)} <span class="chip" style="border-color:hsl(var(--action-4));background:var(--panel);color:var(--accent-text)">AI draft ready</span></div>
+        <div class="faint" style="font-size:0.75rem">Not started — no 8-step on file yet</div>
+      </td>
+      <td class="text-mono muted" style="white-space:nowrap">Draft</td>
+      <td class="muted" style="font-size:0.875rem">—</td>
+      <td>
+        <div style="font-size:0.8rem;font-weight:500;line-height:1.3;margin-bottom:2px">${esc(candidate.kpiName)}</div>
+        ${ragChip(candidate.rag)}
+      </td>
+      <td><span class="faint">—</span></td>
+      <td class="muted tnum" style="white-space:nowrap">—</td>
+      <td>
+        ${stepDotStrip({ steps: {} })}
+        <span class="faint tnum" style="font-size:11.5px;margin-left:6px">0/8</span>
+      </td>
+      <td><span class="badge badge--neutral">Ready to draft</span></td>
+      <td style="text-align:right"><button class="btn btn--outline btn--sm">Open 8-Step</button></td>
+    </tr>`;
+}
+
+// Lightweight sage banner for a dept that has red-sub-KPI AI-draft candidates
+// but no PERSISTED AI-draft-ready KZ (resolveAiDraftKz found none) — e.g.
+// Service, which has 0 KZ records on file today. Deliberately worded to
+// never claim pre-solved content: Mark CAN draft an 8-step from the top
+// candidate, not "steps 1–6 already done".
+function renderAiDraftCandidateBanner(dept, candidate) {
+  return `
+    <section class="card ai-draft-banner">
+      <div class="ai-note__avatar" style="width:36px;height:36px;font-size:15px">M</div>
+      <div style="flex:1;min-width:0">
+        <b style="font-size:13.5px">Mark can draft an 8-step for ${esc(candidate.kpiName)}</b>
+        <div class="muted" style="font-size:12.5px;margin-top:2px">This red sub-KPI has no 8-step on file yet — open to review the AI draft for steps 1–6 and confirm as you go.</div>
+      </div>
+      <button class="btn btn--primary" data-open-ai-draft="${esc(candidate.kpiId)}">Review AI Draft →</button>
+    </section>`;
+}
+
 // Grounded one-liner for the banner — built only from fields the app already
 // resolves elsewhere for this exact KZ (the linked KPI, the governing SOP
 // step 8 would write back to, a prior completed KZ) so nothing here is
@@ -266,8 +346,8 @@ function renderAiDraftBanner(dept, kz) {
     </section>`;
 }
 
-function renderTrackerTable(records, dept, aiDraftKz) {
-  if (!records.length) {
+function renderTrackerTable(records, dept, aiDraftKz, candidates = []) {
+  if (!records.length && !candidates.length) {
     return `<p class="muted" style="padding:16px 0">No 8-step records for ${esc(dept.name)} yet.</p>`;
   }
 
@@ -297,13 +377,19 @@ function renderTrackerTable(records, dept, aiDraftKz) {
       : '';
     const a3Tag = completed ? ' <span class="badge badge--accent" style="font-size:9.5px">A3</span>' : '';
 
+    // A closed-at-step-8 record minted live from newKZ() carries kzNumber:
+    // null (no real sequential number has ever been allocated — see
+    // lib/eightstep.js's newKZ) — show the honest "Draft" label rather than
+    // an empty cell, never a fabricated number.
+    const kzNumberLabel = kz.kzNumber || 'Draft';
+
     return `
       <tr${isAiDraft ? ' style="background:hsl(var(--action-1))"' : ''}>
         <td>
-          <div style="font-weight:500;font-size:0.875rem">${esc(kz.title || kz.kzNumber)}${a3Tag}${aiTag}</div>
-          ${kz.title && kz.title !== kz.kzNumber ? `<div class="faint" style="font-size:0.75rem">${esc(kz.kzNumber)}</div>` : ''}
+          <div style="font-weight:500;font-size:0.875rem">${esc(kz.title || kz.kzNumber || kzNumberLabel)}${a3Tag}${aiTag}</div>
+          ${kz.title && kz.kzNumber && kz.title !== kz.kzNumber ? `<div class="faint" style="font-size:0.75rem">${esc(kz.kzNumber)}</div>` : ''}
         </td>
-        <td class="text-mono muted" style="white-space:nowrap">${esc(kz.kzNumber)}</td>
+        <td class="text-mono muted" style="white-space:nowrap">${esc(kzNumberLabel)}</td>
         <td class="muted" style="font-size:0.875rem">${esc(kz.who || '—')}</td>
         <td>${linkedKpiCell(kz, dept)}</td>
         <td>${odgCell}</td>
@@ -316,6 +402,10 @@ function renderTrackerTable(records, dept, aiDraftKz) {
         <td style="text-align:right">${actionCell}</td>
       </tr>`;
   }).join('');
+
+  // candidates already excludes any KPI with an open KZ on file (see
+  // aiDraftCandidatesFromRedKpis) — just append them after the real rows.
+  const candidateRows = candidates.map(candidateRowHTML).join('');
 
   return `
     <div class="table-wrap"><div class="table-scroll">
@@ -333,7 +423,7 @@ function renderTrackerTable(records, dept, aiDraftKz) {
             <th></th>
           </tr>
         </thead>
-        <tbody>${rows}</tbody>
+        <tbody>${rows}${candidateRows}</tbody>
       </table>
     </div></div>`;
 }
@@ -1247,13 +1337,21 @@ async function doRender() {
     const closedItems = _kzRecords.filter(k => k.closed).length;
     const a3Count     = _kzRecords.filter(isCompletedA3).length;
     const aiDraftKz   = resolveAiDraftKz(_dept, _kzRecords);
+    // Honest red-sub-KPI gap count — separate from the _kzRecords-only totals
+    // above (owner ask: reflect the red sub-KPIs that have no 8-step yet,
+    // even for a dept like Service with zero persisted KZ records on file).
+    const aiDraftCandidates = aiDraftCandidatesFromRedKpis(_dept, _kzRecords);
+    const redGaps = aiDraftCandidates.length;
+    const redGapsNote = redGaps
+      ? ` · ${redGaps} red sub-KPI${redGaps === 1 ? '' : 's'} ready for an 8-step`
+      : '';
 
     content = `
       <div class="page-head">
         <div>
           <span class="running-head page-head__eyebrow">${esc(_dept.name)} · 8-Step</span>
           <h1>Problem-Solving Tracker</h1>
-          <p class="page-head__sub">${_kzRecords.length} total · ${openItems} open · ${closedItems} closed · ${a3Count} full A3${a3Count === 1 ? '' : 's'} — ${esc(_dept.name)}</p>
+          <p class="page-head__sub">${_kzRecords.length} total · ${openItems} open · ${closedItems} closed · ${a3Count} full A3${a3Count === 1 ? '' : 's'}${redGapsNote} — ${esc(_dept.name)}</p>
         </div>
         <div class="page-head__side">
           ${renderRedKpiSelector(_dept)}
@@ -1262,9 +1360,11 @@ async function doRender() {
 
       ${_kzRecords.length ? `<section class="card card--pad">${renderTrackerHeaderMeta(_kzRecords)}</section>` : ''}
 
-      ${aiDraftKz ? renderAiDraftBanner(_dept, aiDraftKz) : ''}
+      ${aiDraftKz
+        ? renderAiDraftBanner(_dept, aiDraftKz)
+        : (aiDraftCandidates.length ? renderAiDraftCandidateBanner(_dept, aiDraftCandidates[0]) : '')}
 
-      ${renderTrackerTable(_kzRecords, _dept, aiDraftKz)}
+      ${renderTrackerTable(_kzRecords, _dept, aiDraftKz, aiDraftCandidates)}
 
       <section class="card card--pad" style="margin-top:24px">
         <span class="running-head">How the 8-step is triggered</span>
@@ -1303,7 +1403,7 @@ async function doRender() {
       <div class="page-head" style="margin-bottom:16px">
         <div>
           <span class="running-head page-head__eyebrow">8-Step Problem Solving A3 · ${esc(eyebrow)}</span>
-          <h1>${esc(_activeKZ.kzNumber)} · ${kzTitle}</h1>
+          <h1>${_activeKZ.kzNumber ? esc(_activeKZ.kzNumber) + ' · ' : ''}${kzTitle}</h1>
           ${renderKzMeta(_dept, _activeKZ, kpi)}
         </div>
         <div class="page-head__side">
@@ -1339,6 +1439,19 @@ function attachHandlers() {
     });
   });
 
+  // Not-yet-started AI-draft candidate rows/banner (aiDraftCandidatesFromRedKpis)
+  // — no KZ record exists yet, so there's nothing to hash-link to; open the
+  // SAME in-memory wizard the sidebar red-KPI <select> already uses, just
+  // pre-seeded with this row's real kpiId. Works whether the attribute sits
+  // on the whole <tr> (candidateRowHTML) or a standalone button
+  // (renderAiDraftCandidateBanner) — a click on the row's inner button
+  // bubbles up to the row's own listener, so each element only needs one.
+  _mount.querySelectorAll('[data-open-ai-draft]').forEach((el) => {
+    el.addEventListener('click', () => {
+      window._psOpenWizard(el.dataset.openAiDraft);
+    });
+  });
+
   // Step 6 action register — recolor the status <select> live (R/Y/G/C tone
   // tokens matching `.badge--{tone}`) on change, without a full doRender()
   // (which would lose focus/in-progress edits elsewhere in the row). Event
@@ -1358,9 +1471,14 @@ function attachHandlers() {
     });
   }
 
-  window._psOpenWizard = () => {
+  // presetKpiId lets a candidate row / banner button (data-open-ai-draft)
+  // open the wizard directly for a specific KPI, bypassing the <select> —
+  // the sidebar "Open 8-Step (AI-Drafted)" button still calls this with no
+  // argument, falling back to whatever's selected there, so both entry
+  // points share this one code path.
+  window._psOpenWizard = (presetKpiId) => {
     const sel = document.getElementById('ps-kpi-select');
-    const kpiId = sel && sel.value;
+    const kpiId = presetKpiId || (sel && sel.value);
     if (!kpiId) { alert('Please select a red sub-KPI first.'); return; }
     const kpi = _dept.kpis ? _dept.kpis.find(k => k.id === kpiId) : null;
     _activeKZ = newKZ({ item: kpi?.name || 'Problem', who: _dept.lead || '', deptId: _dept.id });
@@ -1714,6 +1832,11 @@ const PS_STYLES = `
 `;
 
 (function injectStyles() {
+  // Guard for non-browser module loads (node --test importing this file to
+  // reach an exported pure helper like aiDraftCandidatesFromRedKpis — see
+  // tests/problemsolving-view.test.mjs). No behavior change in the browser,
+  // where `document` always exists.
+  if (typeof document === 'undefined') return;
   if (document.getElementById('ps-styles')) return;
   const el = document.createElement('style');
   el.id = 'ps-styles';
@@ -1753,10 +1876,10 @@ export async function renderProblemSolving(dept, mount) {
   await doRender(); // populates _kzRecords, needed for the kz-param lookup below
 
   // Prefer a REAL linked KZ when the deep-link resolves to an actual record
-  // on file (e.g. KZ-346, linked via linkedKpiId to otp_mexico). A freshly
-  // minted kzNumber not yet in the data file (KZ-NEW-…), or no kz param at
-  // all, falls through unchanged to the existing ?kpi= mint-a-blank-wizard
-  // handoff below.
+  // on file (e.g. KZ-346, linked via linkedKpiId to otp_mexico). No kz param
+  // at all (Ask Mark's escalation no longer fabricates one for a fresh
+  // draft — see views/askmark.js's resolveKzNumber) falls through unchanged
+  // to the existing ?kpi= mint-a-fresh-wizard handoff below.
   const realKz = preselectKzNumber
     ? _kzRecords.find((k) => k.kzNumber === preselectKzNumber)
     : null;

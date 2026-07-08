@@ -12,3 +12,16 @@ test('newKZ starts at step 0, active', () => {
   const k = newKZ({ item:'Mexico OTP', who:'Jim', deptId:'operations' });
   assert.equal(progress(k).done, 0); assert.equal(k.active, true);
 });
+test('newKZ no longer fabricates a placeholder kzNumber — real number is unallocated (null)', () => {
+  const k = newKZ({ item:'# WEI New Opps', who:'JC', deptId:'service' });
+  assert.equal(k.kzNumber, null);
+  assert.notEqual(k.kzNumber, 'KZ-NEW');
+});
+test('newKZ defaults title to item so the wizard header has a grounded, non-placeholder title', () => {
+  const k = newKZ({ item:'# WEI New Opps', who:'JC', deptId:'service' });
+  assert.equal(k.title, '# WEI New Opps');
+});
+test('newKZ honors an explicit title distinct from item', () => {
+  const k = newKZ({ item:'new_opps_wei', title:'# WEI New Opps', who:'JC', deptId:'service' });
+  assert.equal(k.title, '# WEI New Opps');
+});
