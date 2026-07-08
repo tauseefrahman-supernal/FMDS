@@ -154,14 +154,12 @@ python3 serve.py                 # local dev on http://localhost:8770  (hardcode
 node --test tests/*.test.mjs     # 75/75 expected
 
 # Rebuild the hosted bundle after any change:
-python3 "<scratchpad>/bundle.py"           # → dist-artifact.html + .bundle-check.js
+python3 scripts/bundle.py                   # → dist + wrappers + .bundle-check.js
 node --check .bundle-check.js               # syntax gate
 #   then rebuild wrappers dist-test.html + FMDS-OS-World-Emblem.html (see below),
 #   then re-publish FMDS-OS-World-Emblem.html to the SAME artifact URL.
 ```
 
-- `bundle.py` currently lives in the session scratchpad — **consider moving it into
-  the repo** (`scripts/bundle.py`) so it survives across sessions.
 - Wrapper build: `dist-test.html` = full-page wrapper of the fragment (local verify);
   `FMDS-OS-World-Emblem.html` = `<title>`+`<meta>` prepended (the Artifact publish file).
 - **Checkpoint tags:** `v3-r1-console`, `v3-r4-console`. Latest commit: Mark + comments.
