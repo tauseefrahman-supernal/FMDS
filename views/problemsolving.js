@@ -178,69 +178,130 @@ function linkedKpiCell(kz, dept) {
     ${chip}`;
 }
 
-function renderTrackerTable(records, dept) {
+// ─── AI-draft KZ detector (tracker banner + row) ──────────────────────────
+// "AI-drafted 8-step ready for review" is real, derived state, never a
+// hardcoded KZ number: a KZ qualifies when the agent has finished exactly
+// the steps it's scoped to pre-solve (AI_STEPS, 1–6), the human hasn't
+// closed out 7–8 yet, and it's linked (linkedKpiId) to a KPI that's
+// currently red or amber. This is the same red-sub-KPI-triggered signal
+// views/overview.js's findLinkedKz() / lib/agent.js's liveReply() / the
+// accountability seed all key off of (see tests/agent-live.test.mjs's
+// "liveReply surfaces the REAL linked open 8-step (KZ-346 → otp_mexico)"
+// case) — it just happens that KZ-346/Operations is the only record on file
+// that currently matches, so the banner naturally appears only there.
+function resolveAiDraftKz(dept, records) {
+  const candidates = records.filter((kz) => {
+    if (kz.closed || !kz.linkedKpiId) return false;
+    const steps = kz.steps || {};
+    if (!AI_STEPS.every((n) => steps[String(n)])) return false;
+    if (steps['7'] || steps['8']) return false;
+    const kpi = byId(dept, kz.linkedKpiId);
+    if (!kpi) return false;
+    const rag = ragStatus(kpi.actual, kpi.target, kpi.direction || 'higher_better');
+    return rag === 'red' || rag === 'amber';
+  });
+  if (!candidates.length) return null;
+  candidates.sort((a, b) => progress(b).done - progress(a).done);
+  return candidates[0];
+}
+
+// Grounded one-liner for the banner — built only from fields the app already
+// resolves elsewhere for this exact KZ (the linked KPI, the governing SOP
+// step 8 would write back to, a prior completed KZ) so nothing here is
+// invented; any piece that doesn't resolve is simply omitted.
+function renderAiDraftBanner(dept, kz) {
+  const kpi = kz.linkedKpiId ? byId(dept, kz.linkedKpiId) : null;
+  const title = kz.title || kz.item || kz.kzNumber;
+  const sop = govSop(dept);
+  const prior = priorSimilarKZ(dept);
+  const grounded = [];
+  if (sop && sop.title) grounded.push(`the ${esc(sop.title)} SOP`);
+  if (prior && prior.kzNumber && prior.kzNumber !== kz.kzNumber) grounded.push(`prior similar ${esc(prior.kzNumber)}`);
+  let note = `Mark pre-solved planning steps 1–6 from the red ${esc(kpi ? kpi.name : 'linked')} sub-KPI`;
+  note += grounded.length ? `, grounded in ${grounded.join(' and ')}.` : '.';
+  note += ' You review, edit and confirm.';
+
+  return `
+    <section class="card ai-draft-banner">
+      <div class="ai-note__avatar" style="width:36px;height:36px;font-size:15px">M</div>
+      <div style="flex:1;min-width:0">
+        <b style="font-size:13.5px">AI-drafted 8-step ready for review — ${esc(kz.kzNumber)} · ${esc(title)}</b>
+        <div class="muted" style="font-size:12.5px;margin-top:2px">${note}</div>
+      </div>
+      <button class="btn btn--primary" data-go-kz="${esc(kz.kzNumber)}" data-go-kpi="${esc(kz.linkedKpiId || '')}">Review Draft 8-Step →</button>
+    </section>`;
+}
+
+function renderTrackerTable(records, dept, aiDraftKz) {
   if (!records.length) {
-    return `<p class="text-muted" style="padding:16px 0">No 8-step records for ${esc(dept.name)} yet.</p>`;
+    return `<p class="muted" style="padding:16px 0">No 8-step records for ${esc(dept.name)} yet.</p>`;
   }
 
   const rows = records.map((kz, idx) => {
     const p = progress(kz);
     const completed = isCompletedA3(kz);
     const stall = stallInfo(kz);
+    const isAiDraft = !!aiDraftKz && kz === aiDraftKz;
     const statusBadge = kz.closed
-      ? `<span class="badge badge--success">Closed</span>`
+      ? `<span class="badge badge--green"><span class="dot"></span>Closed</span>`
       : kz.active
-        ? `<span class="badge badge--info">Active</span>`
-        : `<span class="badge">—</span>`;
+        ? `<span class="badge badge--info"><span class="dot"></span>Active</span>`
+        : `<span class="badge badge--neutral">—</span>`;
     const stallFlag = stall
-      ? `<div class="stall-flag" title="Open since ${esc(kz.start)} — no per-step timestamps on file, age is measured from the real start date">⚠ open ${stall.days}d · step ${stall.done}/8</div>`
+      ? `<div class="stall-flag" title="Open since ${esc(kz.start)} — no per-step timestamps on file, age is measured from the real start date">open ${stall.days}d · step ${stall.done}/8</div>`
       : '';
-    const odgBadge = kz.odgSupport
-      ? `<span class="badge badge--accent">ODG</span>`
-      : `<span class="text-muted" style="font-size:0.75rem">—</span>`;
-    const a3Btn = completed
-      ? `<button class="btn btn--outline" style="font-size:0.75rem;padding:3px 8px" onclick="window._psOpenRead(${idx})">View A3 →</button>`
-      : `<span class="text-muted" style="font-size:0.72rem">—</span>`;
+    const odgCell = kz.odgSupport
+      ? `<span class="badge badge--neutral" style="font-size:10.5px">ODG</span>`
+      : `<span class="faint">—</span>`;
+    const actionCell = completed
+      ? `<button class="btn btn--ghost btn--sm" onclick="window._psOpenRead(${idx})">View A3 →</button>`
+      : isAiDraft
+        ? `<button class="btn btn--outline btn--sm" data-go-kz="${esc(kz.kzNumber)}" data-go-kpi="${esc(kz.linkedKpiId || '')}">Open 8-Step</button>`
+        : '';
+    const aiTag = isAiDraft
+      ? ` <span class="chip" style="border-color:hsl(var(--action-4));background:var(--panel);color:var(--accent-text)">AI draft ready</span>`
+      : '';
+    const a3Tag = completed ? ' <span class="badge badge--accent" style="font-size:9.5px">A3</span>' : '';
 
     return `
-      <tr${completed ? ' class="tr--a3"' : ''}>
+      <tr${isAiDraft ? ' style="background:hsl(var(--action-1))"' : ''}>
         <td>
-          <div style="font-weight:500;font-size:0.875rem">${esc(kz.title || kz.kzNumber)}${completed ? ' <span class="a3-tag">A3</span>' : ''}</div>
-          ${kz.title !== kz.kzNumber ? `<div class="text-muted" style="font-size:0.75rem">${esc(kz.kzNumber)}</div>` : ''}
+          <div style="font-weight:500;font-size:0.875rem">${esc(kz.title || kz.kzNumber)}${a3Tag}${aiTag}</div>
+          ${kz.title && kz.title !== kz.kzNumber ? `<div class="faint" style="font-size:0.75rem">${esc(kz.kzNumber)}</div>` : ''}
         </td>
-        <td class="text-mono text-muted" style="white-space:nowrap">${esc(kz.kzNumber)}</td>
-        <td style="font-size:0.875rem">${esc(kz.who || '—')}</td>
+        <td class="text-mono muted" style="white-space:nowrap">${esc(kz.kzNumber)}</td>
+        <td class="muted" style="font-size:0.875rem">${esc(kz.who || '—')}</td>
         <td>${linkedKpiCell(kz, dept)}</td>
-        <td>${odgBadge}</td>
-        <td class="text-muted" style="font-size:0.8rem">${esc(kz.start || '—')}</td>
+        <td>${odgCell}</td>
+        <td class="muted tnum" style="white-space:nowrap">${esc(kz.start || '—')}</td>
         <td>
           ${stepDotStrip(kz)}
-          <div class="text-muted" style="font-size:0.7rem;margin-top:3px">${p.done}/8</div>
+          <span class="faint tnum" style="font-size:11.5px;margin-left:6px">${p.done}/8</span>
         </td>
         <td>${statusBadge}${stallFlag}</td>
-        <td>${a3Btn}</td>
+        <td style="text-align:right">${actionCell}</td>
       </tr>`;
   }).join('');
 
   return `
-    <div style="overflow-x:auto">
-      <table class="kpi-table" style="width:100%">
+    <div class="table-wrap"><div class="table-scroll">
+      <table class="dt">
         <thead>
           <tr>
-            <th>Item</th>
+            <th style="min-width:260px">Item</th>
             <th>KZ #</th>
             <th>Who</th>
             <th>Linked red KPI</th>
             <th>ODG</th>
             <th>Start</th>
-            <th style="min-width:160px">Progress (1–8)</th>
+            <th style="min-width:220px">Progress (1–8)</th>
             <th>Status</th>
             <th></th>
           </tr>
         </thead>
         <tbody>${rows}</tbody>
       </table>
-    </div>`;
+    </div></div>`;
 }
 
 // ─── Tracker header: funnel + counts ─────────────────────────────────────────
@@ -290,7 +351,7 @@ function renderRedKpiSelector(dept) {
   });
 
   if (!subs.length) {
-    return `<p class="text-muted" style="margin:0;font-size:0.82rem">No sub-KPIs defined for ${esc(dept.name)} — drill from the KPI board to open an 8-step.</p>`;
+    return `<p class="muted" style="margin:0;font-size:0.82rem">No sub-KPIs defined for ${esc(dept.name)} — drill from the KPI board to open an 8-step.</p>`;
   }
 
   const ragLabel = { green: '● Green', amber: '▲ Amber', red: '● Red', nodata: '— No data' };
@@ -302,15 +363,12 @@ function renderRedKpiSelector(dept) {
   }).join('');
 
   return `
-    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-      <select id="ps-kpi-select" style="max-width:340px">
-        <option value="">— Select a red sub-KPI —</option>
-        ${options}
-      </select>
-      <button id="ps-open-btn" class="btn btn--primary" onclick="window._psOpenWizard()">
-        Open 8-Step (AI-drafted)
-      </button>
-    </div>`;
+    <label class="muted" style="font-size:13px" for="ps-kpi-select">Trigger a new 8-step from a red sub-KPI</label>
+    <select id="ps-kpi-select" class="input" style="width:auto;min-width:250px">
+      <option value="">— Select a red sub-KPI —</option>
+      ${options}
+    </select>
+    <button id="ps-open-btn" class="btn btn--primary" onclick="window._psOpenWizard()">Open 8-Step (AI-Drafted)</button>`;
 }
 
 // Pick a prior similar completed KZ in this dept to ground the draft.
@@ -1041,35 +1099,38 @@ async function doRender() {
     const openItems   = _kzRecords.filter(k => !k.closed).length;
     const closedItems = _kzRecords.filter(k => k.closed).length;
     const a3Count     = _kzRecords.filter(isCompletedA3).length;
+    const aiDraftKz   = resolveAiDraftKz(_dept, _kzRecords);
 
     content = `
-      <div>
-        <div class="ps-tophead">
-          <div>
-            <h2 style="margin:0 0 4px">Problem-Solving Tracker</h2>
-            <p class="text-muted" style="margin:0;font-size:0.85rem">
-              ${_kzRecords.length} total · ${openItems} open · ${closedItems} closed · ${a3Count} full A3${a3Count === 1 ? '' : 's'} — ${esc(_dept.name)}
-            </p>
-          </div>
-          ${_kzRecords.length ? renderTrackerHeaderMeta(_kzRecords) : ''}
-          <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
-            <span style="font-size:0.78rem;color:var(--text-faint)">Trigger a new 8-step from a red sub-KPI:</span>
-            ${renderRedKpiSelector(_dept)}
-          </div>
+      <div class="page-head">
+        <div>
+          <span class="running-head page-head__eyebrow">${esc(_dept.name)} · 8-Step</span>
+          <h1>Problem-Solving Tracker</h1>
+          <p class="page-head__sub">${_kzRecords.length} total · ${openItems} open · ${closedItems} closed · ${a3Count} full A3${a3Count === 1 ? '' : 's'} — ${esc(_dept.name)}</p>
         </div>
-
-        ${renderTrackerTable(_kzRecords, _dept)}
-
-        <div class="ps-about">
-          <div class="ps-about__label">How the 8-step is triggered</div>
-          <p class="text-muted" style="margin:0;font-size:0.8rem">
-            A main KPI turning red is drilled to its contributing sub-KPIs; a red <b>sub-KPI</b> opens an 8-step owned by the
-            manager at that level. The agent pre-solves the planning steps (1–6) into a reviewable draft — grounded in the red
-            KPI, the governing SOP, and a prior similar KZ — and the human reviews &amp; finishes. Rows tagged <span class="a3-tag">A3</span>
-            carry full completed content from the FMDS-New discovery.
-          </p>
+        <div class="page-head__side">
+          ${renderRedKpiSelector(_dept)}
         </div>
-      </div>`;
+      </div>
+
+      ${_kzRecords.length ? `<section class="card card--pad">${renderTrackerHeaderMeta(_kzRecords)}</section>` : ''}
+
+      ${aiDraftKz ? renderAiDraftBanner(_dept, aiDraftKz) : ''}
+
+      ${renderTrackerTable(_kzRecords, _dept, aiDraftKz)}
+
+      <section class="card card--pad" style="margin-top:24px">
+        <span class="running-head">How the 8-step is triggered</span>
+        <p style="margin:12px 0 0;font-size:13.5px;line-height:1.6;color:var(--text-secondary);max-width:90ch">
+          A main KPI turning red is drilled to its contributing sub-KPIs; a red <b>sub-KPI</b> opens an 8-step owned by the
+          manager at that level. The agent pre-solves the planning steps (1–6) into a reviewable draft — grounded in the red
+          KPI, the governing SOP, and a prior similar KZ — and the human reviews &amp; finishes. Rows tagged
+          <span class="badge badge--accent" style="font-size:9.5px">A3</span> carry full completed content from the FMDS-New
+          discovery.
+        </p>
+      </section>
+
+      <p class="board-hint">Extracted from the 8-Step Problem Solving Tracker workbook (Jul 2026). ${esc(_dept.name)} has ${_kzRecords.length} row${_kzRecords.length === 1 ? '' : 's'} on file — ${openItems} open, ${closedItems} closed.</p>`;
   } else {
     // ── Wizard view ───────────────────────────────────────────────────────────
     const kpiId = _activeKZ._kpiId;
@@ -1123,6 +1184,18 @@ async function doRender() {
 // ─── Event handlers ───────────────────────────────────────────────────────────
 
 function attachHandlers() {
+  // Tracker: AI-draft banner + AI-draft row's "Open 8-Step" button — the SAME
+  // `?kpi=<id>&kz=<kzNumber>` hash handoff views/overview.js's "Review Draft
+  // 8-Step" note already uses, so the exported entry point's real-KZ lookup
+  // (below) resolves the actual record and lands on its first open step.
+  _mount.querySelectorAll('[data-go-kz]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const kzNumber = btn.dataset.goKz;
+      const kpiId = btn.dataset.goKpi || '';
+      location.hash = `#/dept/${_dept.id}/solve?kpi=${encodeURIComponent(kpiId)}&kz=${encodeURIComponent(kzNumber)}`;
+    });
+  });
+
   window._psOpenWizard = () => {
     const sel = document.getElementById('ps-kpi-select');
     const kpiId = sel && sel.value;
@@ -1378,9 +1451,8 @@ function _saveCurrentStepInputs() {
 const PS_STYLES = `
   .ps-view { max-width: 1000px; }
   .ps-view--wizard { max-width: 1320px; }
-  .ps-tophead { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:16px; flex-wrap:wrap; gap:12px; }
 
-  /* Step-reach funnel (tracker header) — counts render via the shared .ps-summary strip */
+  /* Step-reach funnel (tracker header card) — counts render via the shared .ps-summary strip */
   .ps-funnel { display:flex; flex-direction:column; align-items:center; gap:4px; }
   .ps-funnel__svg svg { display:block; }
 
@@ -1502,12 +1574,11 @@ const PS_STYLES = `
   .sop-writeback { margin-top:20px; border:1px solid var(--border-soft); border-radius: var(--radius); padding:16px; background: var(--bg-subtle); }
   .sop-writeback__label { font-size:0.68rem; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; color:var(--text-faint); margin-bottom:4px; }
 
-  /* Tracker */
+  /* Wizard / read-only A3 tables (score matrix, action register, read-view) */
   .kpi-table th, .kpi-table td { font-size:0.85rem; }
+  /* .a3-tag — the read-only A3 header's "A3" mark (renderReadA3 only; the
+     tracker's own A3/AI-draft tags moved to .badge/.chip, see renderTrackerTable) */
   .a3-tag { font-size:0.58rem; font-weight:800; letter-spacing:0.04em; color:var(--accent-fg); background: var(--accent); border-radius:3px; padding:1px 5px; vertical-align:middle; }
-  .tr--a3 { background: var(--bg-subtle); }
-  .ps-about { margin-top:24px; padding:14px 16px; background: var(--bg-subtle); border:1px solid var(--border-soft); border-radius: var(--radius); }
-  .ps-about__label { font-size:0.68rem; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; color:var(--text-faint); margin-bottom:4px; }
 
   /* Read-only A3 */
   .ro-header { display:flex; align-items:flex-start; justify-content:space-between; gap:20px; flex-wrap:wrap; padding-bottom:12px; border-bottom:2px solid var(--border); }
