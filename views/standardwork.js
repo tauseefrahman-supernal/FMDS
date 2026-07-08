@@ -41,29 +41,41 @@ const SOP_KZ_BACKLINKS = {
   ],
 };
 
-// Drive display metadata
+// Drive display metadata — a decorative identity classification (which
+// SharePoint drive a doc lives in), not a status, so it rides the viz palette
+// per design-system spec §3/§4 ("viz = identity + decoration, never status").
 const DRIVE_META = {
-  WMS_SOP:         { label: 'WMS SOP',       color: '#2f6bff', bg: '#e8f0ff', desc: 'World Emblem Management System — 868 docs, operational SWIs' },
-  QA_SOP:          { label: 'QA SOP',         color: '#0ca678', bg: '#d3f9d8', desc: 'Quality Assurance — 2,525 ISO-coded procedures (PR/FR/DA/IN)' },
-  ODG_LSW:         { label: 'ODG LSW (live)', color: '#e67700', bg: '#fff3bf', desc: 'ODG Leader Standard Work — live drive' },
-  ODG_LSW_Archive: { label: 'ODG LSW Archive', color: '#9c36b5', bg: '#f3d9fa', desc: 'ODG Leader Standard Work — 98 historical files by role/location' },
+  WMS_SOP:         { label: 'WMS SOP',        stop: 'single', desc: 'World Emblem Management System — 868 docs, operational SWIs' },
+  QA_SOP:          { label: 'QA SOP',         stop: '5',      desc: 'Quality Assurance — 2,525 ISO-coded procedures (PR/FR/DA/IN)' },
+  ODG_LSW:         { label: 'ODG LSW (live)', stop: '2',      desc: 'ODG Leader Standard Work — live drive' },
+  ODG_LSW_Archive: { label: 'ODG LSW Archive',stop: '4',      desc: 'ODG Leader Standard Work — 98 historical files by role/location' },
 };
 
-// Doc-type display order and colours
+// Doc-type display order and colours — 10 categories, likewise identity/
+// decoration (never status), so each cycles through a distinct viz stop.
 const DOC_TYPE_ORDER = ['Policy', 'BWI', 'SWI', 'Procedure', 'Form', 'Work-Instruction', 'LSW', 'Template', 'Checklist', 'Kaizen-A3'];
 
-const DOC_TYPE_COLORS = {
-  'Policy':          { bg: '#fff3bf', color: '#7c5a00', border: '#ffe066' },
-  'BWI':             { bg: '#f3d9fa', color: '#6741d9', border: '#cc5de8' },
-  'SWI':             { bg: '#e7f5ff', color: '#1864ab', border: '#74c0fc' },
-  'Procedure':       { bg: '#d3f9d8', color: '#0ca678', border: '#63e6be' },
-  'Form':            { bg: '#fff4e6', color: '#d9480f', border: '#ffa94d' },
-  'Work-Instruction':{ bg: '#e0f2fe', color: '#0369a1', border: '#7dd3fc' },
-  'LSW':             { bg: '#fce7f3', color: '#a2136c', border: '#f9a8d4' },
-  'Template':        { bg: '#f1f5f9', color: '#334155', border: '#cbd5e1' },
-  'Checklist':       { bg: '#f0fdf4', color: '#15803d', border: '#86efac' },
-  'Kaizen-A3':       { bg: '#fef3c7', color: '#92400e', border: '#fcd34d' },
+const DOC_TYPE_VIZ_STOP = {
+  'Policy':           '1',
+  'BWI':              '4',
+  'SWI':              'single',
+  'Procedure':        '5',
+  'Form':             '6',
+  'Work-Instruction': '2',
+  'LSW':              '3',
+  'Template':         '7',
+  'Checklist':        '5',
+  'Kaizen-A3':        '1',
 };
+
+// {bg, color, border} CSS-value triplets, one per viz stop — built once so
+// call sites can keep using the same shape they always have.
+function vizTriplet(stop) {
+  return { bg: `var(--viz-${stop}-bg)`, color: `hsl(var(--viz-${stop}))`, border: `hsl(var(--viz-${stop}) / 0.35)` };
+}
+const DOC_TYPE_COLORS = {};
+for (const [type, stop] of Object.entries(DOC_TYPE_VIZ_STOP)) DOC_TYPE_COLORS[type] = vizTriplet(stop);
+const DOC_TYPE_FALLBACK = { bg: 'var(--muted)', color: 'hsl(var(--surface-8))', border: 'var(--border)' };
 
 // ─── State ────────────────────────────────────────────────────────────────────
 let _dept      = null;
@@ -82,30 +94,38 @@ function escHtml(str) {
 }
 
 function typeBadge(docType) {
-  const c = DOC_TYPE_COLORS[docType] || { bg: '#f1f5f9', color: '#334155', border: '#cbd5e1' };
-  return `<span class="sw-type-badge" style="background:${c.bg};color:${c.color};border:1px solid ${c.border}">${escHtml(docType)}</span>`;
+  const c = DOC_TYPE_COLORS[docType] || DOC_TYPE_FALLBACK;
+  return `<span class="chip" style="background:${c.bg};color:${c.color};border:1px solid ${c.border}">${escHtml(docType)}</span>`;
 }
 
 function driveBadge(drive) {
   const m = DRIVE_META[drive];
-  if (!m) return `<span class="sw-drive-badge">${escHtml(drive)}</span>`;
-  return `<span class="sw-drive-badge" title="${escHtml(m.desc)}" style="background:${m.bg};color:${m.color}">${escHtml(m.label)}</span>`;
+  if (!m) return `<span class="chip">${escHtml(drive)}</span>`;
+  const c = vizTriplet(m.stop);
+  return `<span class="chip" title="${escHtml(m.desc)}" style="background:${c.bg};color:${c.color};border:1px solid ${c.border}">${escHtml(m.label)}</span>`;
 }
 
+// Language is metadata, not status — a light viz-identity tint keeps EN/ES/
+// bilingual visually distinct without borrowing a RAG hue.
 function langTag(lang) {
   if (!lang) return '';
-  const map = { EN: '#e7f5ff:#1864ab', ES: '#fff3bf:#7c5a00', bilingual: '#d3f9d8:#0ca678' };
-  const [bg, color] = (map[lang] || '#f1f5f9:#334155').split(':');
-  return `<span class="sw-lang-tag" style="background:${bg};color:${color}">${escHtml(lang)}</span>`;
+  const stops = { EN: 'single', ES: '1', bilingual: '5' };
+  const c = vizTriplet(stops[lang] || '7');
+  return `<span class="chip" style="background:${c.bg};color:${c.color};border:1px solid ${c.border}">${escHtml(lang)}</span>`;
 }
 
-function freqColor(freq) {
-  if (!freq) return 'var(--slate-400)';
+// Cadence frequency → {bg,text,border} token triplet. (Previously built the
+// chip's background/border by string-concatenating an alpha suffix onto a
+// var(--x) reference, e.g. `${color}1a` — invalid CSS that silently dropped
+// the declaration. Real -bg/-text/-border tiers fix the rendering, not just
+// the token choice.)
+function freqTokens(freq) {
+  if (!freq) return { bg: 'var(--muted)', text: 'var(--text-faint)', border: 'var(--border)' };
   const f = freq.toLowerCase();
-  if (f.includes('daily') || f.includes('4x') || f.includes('2x')) return 'var(--accent)';
-  if (f.includes('weekly') || f.includes('bi-week')) return 'var(--green)';
-  if (f.includes('monthly') || f.includes('3x/mo')) return 'var(--amber)';
-  return 'var(--slate-500)';
+  if (f.includes('daily') || f.includes('4x') || f.includes('2x')) return { bg: 'hsl(var(--action-1))', text: 'var(--accent-text)', border: 'hsl(var(--action-3))' };
+  if (f.includes('weekly') || f.includes('bi-week')) return { bg: 'var(--green-bg)', text: 'var(--green-text)', border: 'var(--green-border)' };
+  if (f.includes('monthly') || f.includes('3x/mo')) return { bg: 'var(--amber-bg)', text: 'var(--amber-text)', border: 'var(--amber-border)' };
+  return { bg: 'var(--muted)', text: 'var(--text-dim)', border: 'var(--border)' };
 }
 
 function freqGroup(freq) {
@@ -232,8 +252,8 @@ function renderLibrarySection(deptLib) {
 
     return `
       <div class="sw-lib-group">
-        <div class="sw-lib-group-header" style="border-left:3px solid ${c.border || '#cbd5e1'}">
-          <span class="sw-lib-group-label" style="color:${c.color || '#334155'}">${t}</span>
+        <div class="sw-lib-group-header" style="border-left:3px solid ${c.border || DOC_TYPE_FALLBACK.border}">
+          <span class="sw-lib-group-label" style="color:${c.color || DOC_TYPE_FALLBACK.color}">${t}</span>
           <span class="sw-lib-group-count">${rows.length}</span>
         </div>
         <div style="overflow-x:auto">
@@ -316,7 +336,7 @@ function renderSopList(sopObjects) {
       <div class="sop-card" onclick="window._swOpenSop(${escHtml(JSON.stringify(sop.id))})">
         <div class="sop-card__top">
           <div>
-            <span class="sw-type-badge" style="background:#e8f0ff;color:#1864ab;border:1px solid #74c0fc">${escHtml(isLsw ? 'LSW' : sop.docType || 'BWI')}</span>
+            ${typeBadge(isLsw ? 'LSW' : (sop.docType || 'BWI'))}
             <span class="sw-inapp-badge" style="margin-left:6px">Full content in-app</span>
             <h3 class="sop-card__title">${escHtml(sop.title)}</h3>
           </div>
@@ -388,17 +408,16 @@ function renderSopDetail(sop) {
 
   return `
     <div class="sop-detail">
-      <button class="btn btn--outline" style="margin-bottom:20px;font-size:0.8rem"
-              onclick="window._swCloseSop()">← Back to library</button>
-
-      <div class="sop-detail__header">
-        <span class="sw-type-badge" style="background:#f3d9fa;color:#6741d9;border:1px solid #cc5de8">${escHtml(sop.docType || 'BWI')}</span>
-        <h2 style="margin-top:8px">${escHtml(sop.title)}</h2>
-        <div class="sop-detail__meta text-muted">
-          ${sop.deptId ? `Dept: <strong>${escHtml(sop.deptId)}</strong>` : ''}
-          ${sop.scope ? `· Scope: ${escHtml(sop.scope)}` : ''}
+      <div class="page-head">
+        <div>
+          <span class="running-head page-head__eyebrow">Standard Work · ${escHtml(sop.docType || 'BWI')}${sop.deptId ? ` · ${escHtml(sop.deptId)}` : ''}</span>
+          <h1 style="max-width:36ch">${escHtml(sop.title)}</h1>
+          ${sop.scope ? `<p class="page-head__sub">Scope: ${escHtml(sop.scope)}</p>` : ''}
+          ${linkedForms}
         </div>
-        ${linkedForms}
+        <div class="page-head__side">
+          <button class="btn btn--secondary" onclick="window._swCloseSop()">← Back to Library</button>
+        </div>
       </div>
 
       <div class="sop-detail__purpose">
@@ -460,7 +479,7 @@ function renderLswDetail(lsw) {
   const groupHtml = groups.map(g => {
     const rows = byGroup[g];
     if (!rows || !rows.length) return '';
-    const color = freqColor(rows[0].frequency);
+    const t = freqTokens(rows[0].frequency);
 
     const rowsHtml = rows.map(row => `
       <tr>
@@ -469,18 +488,18 @@ function renderLswDetail(lsw) {
           ${row.specificDay ? `<span class="text-muted" style="display:block;font-size:0.72rem;margin-top:2px">${escHtml(row.specificDay)}</span>` : ''}
         </td>
         <td>
-          <span class="lsw-freq-chip" style="background:${color}1a;color:${color};border-color:${color}33">
+          <span class="lsw-freq-chip" style="background:${t.bg};color:${t.text};border-color:${t.border}">
             ${escHtml(row.frequency)}
           </span>
         </td>
         <td style="font-size:0.8rem">${escHtml(row.workType || '')}</td>
         <td><span class="lsw-focus-chip">${escHtml(row.focus || '')}</span></td>
-        <td style="font-size:0.78rem;color:var(--slate-600)">${escHtml(row.description || '')}</td>
+        <td style="font-size:0.78rem;color:var(--text-dim)">${escHtml(row.description || '')}</td>
       </tr>`).join('');
 
     return `
       <div class="lsw-group">
-        <div class="lsw-group-label" style="color:${color}">${g}</div>
+        <div class="lsw-group-label" style="color:${t.text}">${g}</div>
         <div style="overflow-x:auto">
           <table class="sw-table">
             <thead>
@@ -517,14 +536,14 @@ function renderLswDetail(lsw) {
 
   return `
     <div class="sop-detail">
-      <button class="btn btn--outline" style="margin-bottom:20px;font-size:0.8rem"
-              onclick="window._swCloseSop()">← Back to library</button>
-
-      <div class="sop-detail__header">
-        <span class="sw-type-badge" style="background:#fce7f3;color:#a2136c;border:1px solid #f9a8d4">LSW</span>
-        <h2 style="margin-top:8px">${escHtml(lsw.title)}</h2>
-        <div class="sop-detail__meta text-muted" style="font-size:0.8rem;margin-top:4px">
-          Source: ${escHtml(lsw.source || '_lsw.json')} · Roles: ${escHtml((lsw.roles || []).join(', '))}
+      <div class="page-head">
+        <div>
+          <span class="running-head page-head__eyebrow">Standard Work · LSW</span>
+          <h1 style="max-width:36ch">${escHtml(lsw.title)}</h1>
+          <p class="page-head__sub">Source: ${escHtml(lsw.source || '_lsw.json')} · Roles: ${escHtml((lsw.roles || []).join(', '))}</p>
+        </div>
+        <div class="page-head__side">
+          <button class="btn btn--secondary" onclick="window._swCloseSop()">← Back to Library</button>
         </div>
       </div>
 
@@ -586,12 +605,11 @@ async function doRender() {
 
   // ── Library + embedded SOPs view ──
   const headerHtml = `
-    <div class="sw-view-header">
+    <div class="page-head">
       <div>
-        <h2 class="sw-view-title">Standard Work · <span style="color:var(--accent)">${escHtml(_dept.name)}</span></h2>
-        <p class="text-muted" style="font-size:0.83rem;margin-top:2px">
-          Per-department document library — SharePoint-linked. Embedded SOPs open in-app.
-        </p>
+        <span class="running-head page-head__eyebrow">${escHtml(_dept.name)} · Document Library</span>
+        <h1>Standard Work</h1>
+        <p class="page-head__sub">Per-department document library — SharePoint-linked. Embedded SOPs open in-app.</p>
       </div>
     </div>`;
 
@@ -638,23 +656,12 @@ function attachSwHandlers(sopObjects) {
 const SW_STYLES = `
   .sw-view { max-width: 960px; }
 
-  .sw-view-header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 16px;
-    margin-bottom: 20px;
-    flex-wrap: wrap;
-  }
-
-  .sw-view-title { margin: 0 0 2px; font-size: 1.25rem; }
-
   .sw-section-label {
     font-size: 0.65rem;
     font-weight: 700;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: var(--slate-500);
+    color: var(--text-faint);
     margin-bottom: 10px;
     margin-top: 20px;
   }
@@ -679,32 +686,23 @@ const SW_STYLES = `
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    background: var(--slate-100);
-    border: 1px solid var(--slate-200);
+    background: var(--muted);
+    border: 1px solid var(--border);
     border-radius: 999px;
     padding: 2px 10px;
     font-size: 0.8rem;
     font-weight: 700;
-    color: var(--slate-800);
-    font-family: 'IBM Plex Mono', monospace;
+    color: var(--text);
+    font-family: var(--font-mono);
   }
 
   .sw-count-label {
     font-weight: 400;
-    color: var(--slate-500);
-    font-family: 'IBM Plex Sans', sans-serif;
+    color: var(--text-faint);
+    font-family: var(--font-sans);
   }
 
   .sw-drive-badges { display: flex; flex-wrap: wrap; gap: 6px; }
-
-  .sw-drive-badge {
-    display: inline-block;
-    padding: 3px 9px;
-    border-radius: var(--radius);
-    font-size: 0.72rem;
-    font-weight: 600;
-    cursor: help;
-  }
 
   /* ── Type filter tabs ── */
   .sw-type-tabs {
@@ -745,11 +743,11 @@ const SW_STYLES = `
 
   .sw-lib-search {
     padding: 6px 12px;
-    border: 1px solid var(--slate-200);
+    border: 1px solid var(--border);
     border-radius: var(--radius);
     font-size: 0.83rem;
-    background: #fff;
-    color: var(--slate-800);
+    background: var(--panel);
+    color: var(--text);
     width: 220px;
     outline: none;
     transition: border-color 0.12s;
@@ -817,19 +815,6 @@ const SW_STYLES = `
   .sw-lib-table tr:hover td { background: var(--slate-50); }
   .sw-lib-row--rep td { opacity: 0.75; }
 
-  /* ── Type badge ── */
-  .sw-type-badge {
-    display: inline-block;
-    padding: 2px 7px;
-    border-radius: 3px;
-    font-size: 0.68rem;
-    font-weight: 700;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    font-family: 'IBM Plex Mono', monospace;
-    white-space: nowrap;
-  }
-
   /* ── Column cells ── */
   .sw-lib-title-text { font-weight: 500; color: var(--slate-800); }
 
@@ -847,15 +832,6 @@ const SW_STYLES = `
 
   .sw-lib-owner { font-size: 0.78rem; color: var(--slate-600); }
 
-  .sw-lang-tag {
-    display: inline-block;
-    padding: 1px 6px;
-    border-radius: var(--radius);
-    font-size: 0.68rem;
-    font-weight: 700;
-    font-family: 'IBM Plex Mono', monospace;
-  }
-
   .sw-lib-note {
     display: inline-block;
     cursor: help;
@@ -868,9 +844,9 @@ const SW_STYLES = `
   .sw-sharepoint-link {
     display: inline-block;
     padding: 3px 8px;
-    background: #e8f0ff;
-    color: var(--accent);
-    border: 1px solid #bfcfff;
+    background: hsl(var(--action-1));
+    color: var(--accent-text);
+    border: 1px solid hsl(var(--action-3));
     border-radius: var(--radius);
     font-size: 0.72rem;
     font-weight: 600;
@@ -879,14 +855,14 @@ const SW_STYLES = `
     transition: background 0.12s;
   }
 
-  .sw-sharepoint-link:hover { background: #d0e0ff; }
+  .sw-sharepoint-link:hover { background: hsl(var(--action-2)); }
 
   .sw-link-pending {
     display: inline-block;
     padding: 3px 8px;
-    background: var(--slate-100);
-    color: var(--slate-400);
-    border: 1px solid var(--slate-200);
+    background: var(--muted);
+    color: var(--text-faint);
+    border: 1px solid var(--border-soft);
     border-radius: var(--radius);
     font-size: 0.72rem;
     font-style: italic;
@@ -896,9 +872,9 @@ const SW_STYLES = `
   .sw-inapp-badge {
     display: inline-block;
     padding: 2px 7px;
-    background: #d3f9d8;
-    color: #0ca678;
-    border: 1px solid #63e6be;
+    background: var(--green-bg);
+    color: var(--green-text);
+    border: 1px solid var(--green-border);
     border-radius: var(--radius);
     font-size: 0.68rem;
     font-weight: 600;
@@ -909,9 +885,9 @@ const SW_STYLES = `
   .sw-rep-badge {
     display: inline-block;
     padding: 1px 5px;
-    background: #fff3bf;
-    color: #7c5a00;
-    border: 1px solid #ffe066;
+    background: var(--amber-bg);
+    color: var(--amber-text);
+    border: 1px solid var(--amber-border);
     border-radius: var(--radius);
     font-size: 0.65rem;
     font-weight: 600;
@@ -940,7 +916,7 @@ const SW_STYLES = `
   .sop-list { display: flex; flex-direction: column; gap: 12px; }
 
   .sop-card {
-    background: #fff;
+    background: var(--panel);
     border: 1px solid var(--slate-200);
     border-radius: var(--radius-lg);
     padding: 18px 20px;
@@ -973,37 +949,13 @@ const SW_STYLES = `
     display: inline-block;
     font-size: 0.75rem;
     padding: 3px 8px;
-    background: #e7f5ff;
-    border: 1px solid #a5d8ff;
+    background: var(--info-bg);
+    border: 1px solid var(--info-border);
     border-radius: var(--radius);
-    color: #1971c2;
-  }
-
-  /* ── Badges ── */
-  .badge--outline {
-    background: transparent;
-    border: 1px solid var(--slate-300);
-    color: var(--slate-600);
-    font-size: 0.72rem;
-    padding: 1px 6px;
-    border-radius: var(--radius);
-    font-weight: 500;
-  }
-
-  .badge--illustrative {
-    background: #fff9db;
-    color: #c79a00;
-    font-size: 0.68rem;
-    padding: 1px 6px;
-    border-radius: var(--radius);
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
+    color: var(--info-text);
   }
 
   /* ── SOP detail ── */
-  .sop-detail__header { margin-bottom: 20px; }
-  .sop-detail__meta { font-size: 0.82rem; margin-top: 6px; }
   .sop-detail__purpose { margin-bottom: 20px; }
   .sop-detail__steps { margin-bottom: 24px; }
   .sop-detail__revisions { margin-bottom: 24px; }
@@ -1014,11 +966,11 @@ const SW_STYLES = `
     align-items: center;
     gap: 10px;
     padding: 8px 12px;
-    background: #e7f5ff;
-    border: 1px solid #a5d8ff;
+    background: var(--info-bg);
+    border: 1px solid var(--info-border);
     border-radius: var(--radius);
     font-size: 0.82rem;
-    color: #1971c2;
+    color: var(--info-text);
     margin-bottom: 6px;
   }
 
@@ -1051,7 +1003,7 @@ const SW_STYLES = `
   .sw-table tr:last-child td { border-bottom: none; }
   .sw-table tr:hover td { background: var(--slate-50); }
 
-  .sw-step-n { font-weight: 700; color: var(--accent); font-size: 0.95rem; text-align: center; width: 36px; font-family: 'IBM Plex Mono', monospace; }
+  .sw-step-n { font-weight: 700; color: var(--accent-text); font-size: 0.95rem; text-align: center; width: 36px; font-family: var(--font-mono); }
   .sw-step-main { font-weight: 600; color: var(--slate-800); }
   .sw-step-kp { color: var(--slate-700); font-size: 0.82rem; }
   .sw-step-reason { color: var(--slate-600); font-size: 0.8rem; font-style: italic; }
@@ -1081,10 +1033,10 @@ const SW_STYLES = `
   }
   .lsw-time-bucket {
     display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
-    background: #fff; border: 1px solid var(--slate-200);
+    background: var(--panel); border: 1px solid var(--slate-200);
     border-radius: var(--radius); padding: 12px 16px; min-width: 160px;
   }
-  .lsw-time-pct { font-size: 1.6rem; font-weight: 700; color: var(--accent); letter-spacing: -0.02em; }
+  .lsw-time-pct { font-family: var(--font-serif); font-size: 1.6rem; font-weight: 600; color: var(--text); letter-spacing: -0.02em; }
   .lsw-time-label { font-size: 0.8rem; color: var(--slate-600); }
 `;
 

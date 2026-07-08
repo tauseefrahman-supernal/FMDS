@@ -45,8 +45,15 @@ function esc(s) {
 }
 
 function ragChip(status) {
-  const label = { green: '● On Track', amber: '▲ At Risk', red: '● Off Track', nodata: '— No Data' }[status] || status;
-  return `<span class="rag-chip rag-chip--${status}">${label}</span>`;
+  const label = { green: 'On Track', amber: 'At Risk', red: 'Off Track', nodata: 'No Data' }[status] || status;
+  return `<span class="status-cell status-cell--${status}"><span class="dot"></span>${label}</span>`;
+}
+
+// RAG → the correctly-calibrated "-text" tier token for inline prose (never
+// the base --green/--amber/--red token as a text color — see design-system
+// spec §1's AA rule).
+function ragTextVar(status) {
+  return { green: 'var(--green-text)', amber: 'var(--amber-text)', red: 'var(--red-text)', nodata: 'var(--text-faint)' }[status] || 'var(--text)';
 }
 
 function formatVal(v, unit) {
@@ -62,10 +69,6 @@ function formatVal(v, unit) {
   return v.toLocaleString(undefined, { maximumFractionDigits: 2 });
 }
 
-function pdcaColor(pdca) {
-  return { PLAN: '#1864ab', DO: '#2f9e44', CHECK: '#e8590c', ACT: '#7048e8' }[pdca] || '#6c757d';
-}
-
 // KZs that carry full completed A3 content (rendered as read-view).
 function isCompletedA3(kz) {
   return !!(kz && kz.content && kz.closed);
@@ -78,46 +81,65 @@ const AI_STEPS = [1, 2, 3, 4, 5, 6];
 
 function stepDotStrip(kz, clickable = false, activeStep = null) {
   const steps = kz.steps || {};
-  return Array.from({ length: 8 }, (_, i) => {
+  const dots = Array.from({ length: 8 }, (_, i) => {
     const n    = i + 1;
     const done = !!steps[String(n)];
     const isActive = activeStep === n;
-    const cls  = done ? 'step-dot step-dot--done' : (isActive ? 'step-dot step-dot--active' : 'step-dot');
-    const onclick = clickable
-      ? `onclick="window._psGotoStep(${n})" title="Step ${n}"`
-      : `title="Step ${n}: ${done ? 'done' : 'not done'}"`;
-    return `<span class="${cls}" ${onclick}>${n}</span>`;
+    const cls  = ['step-track__dot', done ? 'is-done' : '', isActive ? 'is-next' : ''].filter(Boolean).join(' ');
+    return clickable
+      ? `<button type="button" class="${cls}" onclick="window._psGotoStep(${n})" title="Step ${n}">${n}</button>`
+      : `<span class="${cls}" title="Step ${n}: ${done ? 'done' : 'not done'}">${n}</span>`;
+  }).join('');
+  return `<span class="step-track">${dots}</span>`;
+}
+
+// Horizontal 8-step wizard nav (artifact §3.8's .step-bar/.step-tab) — each
+// tab shows its PDCA phase + name + done/active state, and is the single
+// step-navigation surface for the wizard (the tracker table and read-only A3
+// keep the compact stepDotStrip() above).
+function renderStepBar(template, kz, activeStep) {
+  const steps = (template && template.steps) || [];
+  return steps.map(st => {
+    const done = !!(kz && kz.steps && kz.steps[String(st.n)]);
+    const active = activeStep === st.n;
+    const cls = ['step-tab', active ? 'is-active' : '', done ? 'is-done' : ''].filter(Boolean).join(' ');
+    return `
+      <button type="button" class="${cls}" onclick="window._psGotoStep(${st.n})" aria-current="${active ? 'step' : 'false'}">
+        <span class="step-tab__n">${done ? '✓' : st.n}</span>
+        <span class="step-tab__name">${esc(st.name)}</span>
+        <span class="step-tab__pdca">${esc(st.pdca)}</span>
+      </button>`;
   }).join('');
 }
 
-// ─── Golden-thread header (main → sub) ────────────────────────────────────────
+// ─── Golden-thread — inline prose fragment (main → sub) ───────────────────────
+// Rendered inline inside the wizard's page-head__sub sentence — "OTP 86.3% ▸
+// OTP — Mexico 75.0% vs 98.5% opens this 8-step" — per the artifact's editorial
+// pattern: the roll-up chain is running text with the failing number(s) bolded
+// and RAG-colored directly, not a separate boxed component (design-system
+// spec §3.8/§4.2).
 
-function renderGoldenThread(dept, kpi) {
+function goldenThreadInline(dept, kpi) {
   if (!kpi || !dept.kpis) return '';
 
-  const chainItems = [`<span class="gt-node gt-node--l1">L3 Leadership OS</span>`];
+  const parts = [];
 
   // Dept main (parent of this sub-KPI if one exists, else first main)
   const parent = kpi.parentId ? byId(dept, kpi.parentId) : null;
   const mainKpi = parent || mains(dept)[0];
   if (mainKpi) {
     const rag = ragStatus(mainKpi.actual, mainKpi.target, mainKpi.direction || 'higher_better');
-    chainItems.push(`<span class="gt-node gt-node--l2">${esc(dept.name)} — ${esc(mainKpi.name)} ${ragChip(rag)}</span>`);
+    parts.push(`${esc(mainKpi.name)} <b style="color:${ragTextVar(rag)}">${formatVal(mainKpi.actual, mainKpi.unit)}</b>`);
   }
 
   // The specific (sub) KPI that triggered the 8-step
   if (kpi && kpi !== mainKpi) {
     const rag = ragStatus(kpi.actual, kpi.target, kpi.direction || 'higher_better');
-    chainItems.push(`<span class="gt-node gt-node--l4">${esc(kpi.name)} ${formatVal(kpi.actual, kpi.unit)} vs ${formatVal(kpi.target, kpi.unit)} ${ragChip(rag)}</span>`);
+    parts.push(`${esc(kpi.name)} <b style="color:${ragTextVar(rag)}">${formatVal(kpi.actual, kpi.unit)} vs ${formatVal(kpi.target, kpi.unit)}</b>`);
   }
 
-  return `
-    <div class="golden-thread">
-      <div class="gt-label">Golden Thread — main red ▸ drill ▸ sub red opens this 8-step</div>
-      <div class="gt-chain">
-        ${chainItems.join('<span class="gt-arrow">▸</span>')}
-      </div>
-    </div>`;
+  if (!parts.length) return '';
+  return `Golden Thread: ${parts.join(' ▸ ')} opens this 8-step`;
 }
 
 // ─── Tracker table ────────────────────────────────────────────────────────────
@@ -149,7 +171,7 @@ function linkedKpiCell(kz, dept) {
   if (!kpi) return '<span class="text-muted" style="font-size:0.78rem">—</span>';
   const rag = ragStatus(kpi.actual, kpi.target, kpi.direction || 'higher_better');
   const chip = (kz.closed && rag === 'green')
-    ? `<span class="rag-chip rag-chip--green">✓ Resolved</span>`
+    ? `<span class="status-cell status-cell--green"><span class="dot"></span>✓ Resolved</span>`
     : ragChip(rag);
   return `
     <div style="font-size:0.8rem;font-weight:500;line-height:1.3;margin-bottom:2px">${esc(kpi.name)}</div>
@@ -192,9 +214,7 @@ function renderTrackerTable(records, dept) {
         <td>${odgBadge}</td>
         <td class="text-muted" style="font-size:0.8rem">${esc(kz.start || '—')}</td>
         <td>
-          <div class="step-dots" style="display:flex;gap:3px;align-items:center">
-            ${stepDotStrip(kz)}
-          </div>
+          ${stepDotStrip(kz)}
           <div class="text-muted" style="font-size:0.7rem;margin-top:3px">${p.done}/8</div>
         </td>
         <td>${statusBadge}${stallFlag}</td>
@@ -243,13 +263,13 @@ function renderTrackerHeaderMeta(records) {
 
   return `
     <div class="ps-funnel">
-      <div class="ps-funnel__label">Step reach — where KZs drop off</div>
+      <span class="running-head">Step reach — where KZs drop off</span>
       <div class="ps-funnel__svg">${svg}</div>
-      <div class="ps-funnel__counts">
-        <span><b>${total}</b> total</span>
-        <span><b>${open}</b> open</span>
-        <span><b>${closed}</b> closed</span>
-        <span${flagged ? ' class="ps-funnel__counts--flagged"' : ''}><b>${flagged}</b> flagged</span>
+      <div class="ps-summary">
+        <span class="ps-summary__stat"><b>${total}</b>total</span>
+        <span class="ps-summary__stat"><b>${open}</b>open</span>
+        <span class="ps-summary__stat"><b>${closed}</b>closed</span>
+        <span class="ps-summary__stat${flagged ? ' ps-summary__stat--flag' : ''}"><b>${flagged}</b>flagged</span>
       </div>
     </div>`;
 }
@@ -283,7 +303,7 @@ function renderRedKpiSelector(dept) {
 
   return `
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-      <select id="ps-kpi-select" style="padding:7px 10px;border:1px solid var(--slate-300);border-radius:var(--radius);font-size:0.85rem;background:#fff;max-width:340px">
+      <select id="ps-kpi-select" style="max-width:340px">
         <option value="">— Select a red sub-KPI —</option>
         ${options}
       </select>
@@ -311,16 +331,19 @@ function govSop(dept) {
 // ─── AI-draft block (shown atop steps 1–6) ────────────────────────────────────
 
 function draftBlock(draft, deptId, stepN) {
-  const solved = AI_STEPS.filter(n => n <= stepN).length; // cosmetic per-step
   const srcLine = draft && draft.source ? draft.source.line : '';
-  const note = draft && draft.note ? `<div style="margin-top:8px;font-size:0.78rem;color:var(--slate-600);font-style:italic">${esc(draft.note)}</div>` : '';
+  const note = draft && draft.note
+    ? `<div style="margin-top:6px;font-size:12.5px;color:var(--text-dim);font-style:italic">${esc(draft.note)}</div>`
+    : '';
   return `
-    <div class="ai-draft">
-      <div class="ai-draft__head">
-        <span class="ai-draft__badge">AI draft — review &amp; edit</span>
-        <span class="ai-draft__src text-mono">${esc(srcLine)}</span>
+    <div class="ai-draft-banner">
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <span class="badge badge--info"><span class="dot"></span>AI draft — review &amp; edit</span>
+          ${srcLine ? `<span class="chip">${esc(srcLine)}</span>` : ''}
+        </div>
+        ${note}
       </div>
-      ${note}
     </div>`;
 }
 
@@ -608,7 +631,7 @@ function renderScoringMatrix(draft) {
 // ─── Action register + ODG gate (Step 6) ──────────────────────────────────────
 
 function renderActionRegister(draft) {
-  const statusColors = { R: 'var(--red)', Y: 'var(--amber)', G: 'var(--green)', C: 'var(--accent)' };
+  const statusColors = { R: 'var(--red-text)', Y: 'var(--amber-text)', G: 'var(--green-text)', C: 'var(--accent-text)' };
   const statusLabels = { R: 'Behind', Y: 'At Risk', G: 'On Track', C: 'Completed' };
 
   const savedRows = (_stepData[6] && _stepData[6].actionRows)
@@ -631,7 +654,7 @@ function renderActionRegister(draft) {
     </tr>`).join('');
 
   const legend = Object.entries(statusLabels).map(([k, v]) =>
-    `<span style="color:${statusColors[k]};font-weight:600">${k}</span>=<span style="color:var(--slate-600)">${v}</span>`).join(' · ');
+    `<span style="color:${statusColors[k]};font-weight:600">${k}</span>=<span style="color:var(--text-dim)">${v}</span>`).join(' · ');
 
   const gate = (_stepData[6] && _stepData[6].odgGate) || (draft && draft.odgGate) || { status: 'pending', reviewer: 'Eric / Allison (ODG)' };
   const gateBadge = {
@@ -639,6 +662,8 @@ function renderActionRegister(draft) {
     submitted:'<span class="gate-badge gate-badge--submitted">Submitted — awaiting ODG</span>',
     approved: '<span class="gate-badge gate-badge--approved">✓ ODG approved</span>'
   }[gate.status] || '';
+  const gateBtnLabel = gate.status === 'approved' ? '✓ Approved' : gate.status === 'submitted' ? 'Mark ODG-approved' : 'Submit to ODG for gate review';
+  const gateBtnClass = gate.status === 'approved' ? 'btn btn--outline' : 'btn btn--primary';
 
   return `
     <div>
@@ -652,17 +677,17 @@ function renderActionRegister(draft) {
           <tbody id="action-register-body">${rows}</tbody>
         </table>
       </div>
-      <div style="font-size:0.75rem;color:var(--slate-500);margin-top:8px">Status: ${legend}</div>
+      <div style="font-size:0.75rem;color:var(--text-dim);margin-top:8px">Status: ${legend}</div>
       <button class="btn btn--outline" style="margin-top:8px;font-size:0.8rem" onclick="window._psAddActionRow()">+ Add Row</button>
 
-      <div class="odg-gate">
+      <div class="a3-callout a3-callout--accent odg-gate">
         <div class="odg-gate__left">
-          <div class="odg-gate__label">ODG Gate — Step 6</div>
+          <span class="running-head" style="color:var(--accent-text)">ODG Gate — Step 6</span>
           <div class="odg-gate__desc">Countermeasure plan must be reviewed by ${esc(gate.reviewer)} before implementation. ${gateBadge}</div>
         </div>
-        <button class="btn ${gate.status === 'approved' ? 'btn--success' : 'btn--primary'}"
+        <button class="${gateBtnClass}"
           onclick="window._psSubmitOdg()" ${gate.status === 'approved' ? 'disabled' : ''}>
-          ${gate.status === 'approved' ? 'Approved' : gate.status === 'submitted' ? 'Mark ODG-approved' : 'Submit to ODG for gate review'}
+          ${gateBtnLabel}
         </button>
       </div>
     </div>`;
@@ -729,9 +754,6 @@ function renderWizardStep(dept, kpi, stepN, template) {
   const stepDef = template.steps[stepN - 1];
   if (!stepDef) return `<p class="text-muted">Step ${stepN} not found in template.</p>`;
 
-  const kzNum = _activeKZ.kzNumber;
-  const pdca  = stepDef.pdca;
-
   // Build the structured draft for this step (steps 1–6 only).
   const prior = _activeKZ._prior || null;
   const sop   = _activeKZ._sop || null;
@@ -741,27 +763,6 @@ function renderWizardStep(dept, kpi, stepN, template) {
         kpiUnit: kpi?.unit, priorKZ: prior, sop
       })
     : null;
-
-  const thread = renderGoldenThread(dept, kpi);
-  const pdcaBadge = `<span class="pdca-badge" style="background:${pdcaColor(pdca)}">${pdca}</span>`;
-
-  // AI pre-solve progress indicator (separate surface from the docked drawer).
-  const solvedCount = AI_STEPS.filter(n => !!_activeKZ.steps[String(n)] || (draft && draft.prefilled && n === stepN)).length;
-  const aiConfirmed = AI_STEPS.filter(n => !!_activeKZ.steps[String(n)]).length;
-  const presolveBar = `
-    <div class="presolve">
-      <div class="presolve__text">
-        <span class="presolve__dot">◆</span>
-        AI pre-solved <b>${AI_STEPS.length} of 6</b> planning steps — you review &amp; finish.
-        <span class="text-muted">${aiConfirmed}/6 confirmed so far.</span>
-      </div>
-      <div class="presolve__track">
-        ${AI_STEPS.map(n => {
-          const done = !!_activeKZ.steps[String(n)];
-          return `<span class="presolve__seg ${done ? 'presolve__seg--done' : 'presolve__seg--ai'}" title="Step ${n}"></span>`;
-        }).join('')}
-      </div>
-    </div>`;
 
   // Step-specific body
   let bodyContent = '';
@@ -778,29 +779,17 @@ function renderWizardStep(dept, kpi, stepN, template) {
     ? `<button class="btn btn--outline" onclick="window._psGotoStep(${stepN - 1})">← Previous</button>` : '<span></span>';
   const nextBtn = stepN < 8
     ? `<button class="btn btn--primary" onclick="window._psConfirmStep(${stepN})">Confirm &amp; Next →</button>`
-    : `<button class="btn btn--success" onclick="window._psConfirmStep(${stepN})">Confirm Step 8 — Close KZ</button>`;
+    : `<button class="btn btn--primary" onclick="window._psConfirmStep(${stepN})">Confirm Step 8 — Close KZ</button>`;
 
+  // Per-step head: PDCA + "Step N of 8" running-head, the (Lora) step title,
+  // and its description — the KZ number, golden thread and AI-draft summary
+  // now live once in the wizard's page-head (see doRender()'s wizard branch),
+  // not repeated per step.
   return `
-    <div class="wizard-panel" data-step="${stepN}">
-      ${presolveBar}
-      ${thread}
-
-      <div class="wizard-header">
-        <div>
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-            ${pdcaBadge}
-            <span class="text-muted" style="font-size:0.8rem">Step ${stepN} of 8${stepDef.highLeverage ? ' · highest-leverage' : ''}</span>
-          </div>
-          <h3 style="margin:0;font-size:1.1rem">Step ${stepN}: ${esc(stepDef.name)}</h3>
-          <p class="text-muted" style="margin:4px 0 0;font-size:0.85rem">${esc(stepDef.description)}</p>
-        </div>
-        <div style="text-align:right;flex-shrink:0">
-          <div class="text-mono text-muted" style="font-size:0.75rem">${esc(kzNum)}</div>
-          <div class="step-dots" style="display:flex;gap:4px;margin-top:6px">
-            ${stepDotStrip(_activeKZ, true, stepN)}
-          </div>
-        </div>
-      </div>
+    <div class="wizard-panel card" data-step="${stepN}">
+      <span class="running-head">${esc(stepDef.pdca)} · Step ${stepN} of 8${stepDef.highLeverage ? ' · highest-leverage' : ''}</span>
+      <h2 style="margin-top:6px">Step ${stepN}: ${esc(stepDef.name)}</h2>
+      <p style="margin:8px 0 0;font-size:13px;color:var(--text-dim);max-width:80ch">${esc(stepDef.description)}</p>
 
       ${draftHeader}
 
@@ -939,7 +928,7 @@ function renderReadA3(kz, dept, template) {
   const stepCard = (n, pdca, title, inner) => `
     <div class="ro-step">
       <div class="ro-step__head">
-        <span class="pdca-badge" style="background:${pdcaColor(pdca)}">${pdca}</span>
+        <span class="pdca-badge">${pdca}</span>
         <span class="ro-step__n">Step ${n}</span>
         <span class="ro-step__title">${esc(title)}</span>
       </div>
@@ -966,17 +955,17 @@ function renderReadA3(kz, dept, template) {
           ${kv('Rev Date', h.revDate || '—')}
         </div>
       </div>
-      <div class="step-dots" style="display:flex;gap:4px;margin:12px 0 18px">${stepDotStrip(kz)}</div>
+      <div style="margin:12px 0 18px">${stepDotStrip(kz)}</div>
 
       ${stepCard(1, 'PLAN', 'Clarify the Problem', `
         ${kv('Ultimate Goal', c.step1?.ultimateGoal)}
         ${kv('Standard', c.step1?.standard)}
         ${kv('Current Situation', c.step1?.current)}
-        <div class="ro-gap">Gap = Problem: <b>${esc(c.step1?.gap)}</b></div>`)}
+        <div class="a3-callout a3-callout--red ro-gap">Gap = Problem: <b>${esc(c.step1?.gap)}</b></div>`)}
 
       ${stepCard(2, 'PLAN', 'Break Down the Problem', `
         ${c.step2?.note ? `<p class="text-muted" style="font-size:0.8rem;margin:0 0 6px">${esc(c.step2.note)}</p>` : ''}
-        <div class="ro-prio">Prioritized problem: <b>${esc(c.step2?.prioritizedProblem)}</b></div>`)}
+        <div class="a3-callout a3-callout--red ro-prio">Prioritized problem: <b>${esc(c.step2?.prioritizedProblem)}</b></div>`)}
 
       ${stepCard(3, 'PLAN', 'Objective', `
         ${kv('Do What', c.step3?.doWhat)}
@@ -985,7 +974,7 @@ function renderReadA3(kz, dept, template) {
 
       ${stepCard(4, 'PLAN', 'Root Cause (5-Whys + 6M)', `
         <div class="ro-whys">${whysHtml}</div>
-        <div class="ro-rootcause">Root Cause: <b>${esc(c.step4?.rootCause)}</b></div>
+        <div class="a3-callout a3-callout--accent ro-rootcause">Root Cause: <b>${esc(c.step4?.rootCause)}</b></div>
         ${altChains ? `<div class="ro-altchains"><div class="text-muted" style="font-size:0.72rem;margin:8px 0 4px">Additional 5-Why chains iterated by the team:</div>${altChains}</div>` : ''}`)}
 
       ${stepCard(5, 'PLAN', 'Countermeasures (scored)', `
@@ -1064,7 +1053,7 @@ async function doRender() {
           </div>
           ${_kzRecords.length ? renderTrackerHeaderMeta(_kzRecords) : ''}
           <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
-            <span style="font-size:0.78rem;color:var(--slate-500)">Trigger a new 8-step from a red sub-KPI:</span>
+            <span style="font-size:0.78rem;color:var(--text-faint)">Trigger a new 8-step from a red sub-KPI:</span>
             ${renderRedKpiSelector(_dept)}
           </div>
         </div>
@@ -1095,15 +1084,34 @@ async function doRender() {
       kz: _activeKZ
     });
 
+    // Wizard subheader — one flowing sentence (owner · golden thread · "opens
+    // this 8-step" · AI-draft freshness badge), replacing the old stack of
+    // separate boxes (presolve bar + golden-thread card + KZ-number/step-dot
+    // corner block). See design-system spec §3.8 — this is the targeted fix.
+    const kzTitle = esc(_activeKZ.title || _activeKZ.item || _activeKZ.kzNumber);
+    const threadLine = goldenThreadInline(_dept, kpi);
+    const aiConfirmed = AI_STEPS.filter(n => !!_activeKZ.steps[String(n)]).length;
+    const subParts = [`Owner ${_activeKZ.who ? esc(_activeKZ.who) : '—'}`];
+    if (threadLine) subParts.push(threadLine);
+
     content = `
-      <div>
-        <div style="margin-bottom:16px">
-          <button class="btn btn--outline" onclick="window._psCloseWizard()" style="font-size:0.8rem">← Back to tracker</button>
+      <div class="page-head" style="margin-bottom:8px">
+        <div>
+          <span class="running-head page-head__eyebrow">8-Step Problem Solving A3 · ${esc(_dept.name)}</span>
+          <h1>${esc(_activeKZ.kzNumber)} · ${kzTitle}</h1>
+          <p class="page-head__sub">${subParts.join(' · ')}
+            · <span class="badge badge--info"><span class="dot"></span>AI draft — steps 1–6 pre-solved · ${aiConfirmed} confirmed</span></p>
         </div>
-        <div class="wizard-layout">
-          ${renderWizardStep(_dept, kpi, _currentStep, tmpl)}
-          ${renderMarkDock(_currentStep, _markStepHelp)}
+        <div class="page-head__side">
+          <button class="btn btn--secondary" onclick="window._psCloseWizard()">Back to Tracker</button>
         </div>
+      </div>
+
+      <nav class="step-bar" aria-label="8-step progress">${renderStepBar(tmpl, _activeKZ, _currentStep)}</nav>
+
+      <div class="wizard-layout">
+        ${renderWizardStep(_dept, kpi, _currentStep, tmpl)}
+        ${renderMarkDock(_currentStep, _markStepHelp)}
       </div>`;
   }
 
@@ -1372,60 +1380,22 @@ const PS_STYLES = `
   .ps-view--wizard { max-width: 1320px; }
   .ps-tophead { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:16px; flex-wrap:wrap; gap:12px; }
 
-  /* Step-reach funnel + counts (tracker header) */
-  .ps-funnel { display:flex; flex-direction:column; align-items:center; gap:2px; }
-  .ps-funnel__label { font-size:0.63rem; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; color:var(--slate-500); }
+  /* Step-reach funnel (tracker header) — counts render via the shared .ps-summary strip */
+  .ps-funnel { display:flex; flex-direction:column; align-items:center; gap:4px; }
   .ps-funnel__svg svg { display:block; }
-  .ps-funnel__counts { display:flex; gap:10px; font-size:0.72rem; color:var(--slate-600); }
-  .ps-funnel__counts b { color:var(--slate-900); }
-  .ps-funnel__counts--flagged, .ps-funnel__counts--flagged b { color:var(--amber); }
 
   /* Stall / age flag (tracker rows — real start-date age only, no fabricated per-step timing) */
-  .stall-flag { margin-top:4px; font-size:0.68rem; font-weight:600; color:var(--amber); white-space:nowrap; }
+  .stall-flag { margin-top:4px; font-size:0.68rem; font-weight:600; color:var(--amber-text); white-space:nowrap; }
 
-  /* Golden thread */
-  .golden-thread { background: var(--slate-50); border: 1px solid var(--slate-200); border-radius: var(--radius); padding: 10px 14px; }
-  .gt-label { font-size: 0.63rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--slate-500); margin-bottom: 6px; }
-  .gt-chain { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; font-size: 0.82rem; }
-  .gt-node { padding: 3px 8px; border-radius: var(--radius); background: #fff; border: 1px solid var(--slate-200); white-space: nowrap; }
-  .gt-node--l1 { color: var(--slate-500); font-size: 0.75rem; }
-  .gt-node--l2 { font-weight: 500; }
-  .gt-node--l4 { border-color: #ffc9c9; background: #fff5f5; font-weight: 600; }
-  .gt-arrow { color: var(--slate-400); font-size: 0.75rem; }
+  /* PDCA badge — plain neutral label (phase is identity, not status) */
+  .pdca-badge { background:var(--muted); color:var(--text-dim); border:1px solid var(--border); padding:2px 8px; border-radius:var(--radius-sm); font-size:0.68rem; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; }
 
-  /* AI pre-solve indicator */
-  .presolve { display:flex; align-items:center; justify-content:space-between; gap:12px;
-    background: linear-gradient(90deg, var(--accent-light,#eaf0ff), #fff);
-    border:1px solid var(--accent, #2f6bff); border-radius: var(--radius); padding:10px 14px; margin-bottom:14px; }
-  .presolve__text { font-size:0.85rem; color: var(--slate-800); }
-  .presolve__dot { color: var(--accent,#2f6bff); margin-right:4px; }
-  .presolve__track { display:flex; gap:4px; }
-  .presolve__seg { width:26px; height:6px; border-radius:3px; }
-  .presolve__seg--ai { background: var(--accent-light,#c9d8ff); border:1px solid var(--accent,#2f6bff); }
-  .presolve__seg--done { background: var(--green,#2f9e44); }
-
-  /* AI draft block */
-  .ai-draft { background: var(--accent-light,#eaf0ff); border-left:3px solid var(--accent,#2f6bff); border-radius: 0 var(--radius) var(--radius) 0; padding:10px 14px; margin:16px 0; }
-  .ai-draft__head { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
-  .ai-draft__badge { font-size:0.68rem; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; color: var(--accent,#2f6bff); }
-  .ai-draft__src { font-size:0.72rem; color: var(--slate-600); }
-  .drafted-tag { font-size:0.6rem; font-weight:700; letter-spacing:0.04em; text-transform:uppercase; color: var(--accent,#2f6bff); background:#fff; border:1px solid var(--accent-light,#c9d8ff); border-radius:3px; padding:1px 5px; margin-left:4px; }
-
-  /* PDCA badge */
-  .pdca-badge { color:#fff; padding:2px 8px; border-radius:3px; font-size:0.68rem; font-weight:700; letter-spacing:0.05em; }
-
-  /* Step dots */
-  .step-dot { display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; border-radius:50%; border:2px solid var(--slate-300); font-size:0.7rem; font-weight:600; color:var(--slate-400); cursor:default; transition:all .15s; }
-  .step-dot--done { background: var(--green); border-color: var(--green); color:#fff; }
-  .step-dot--active { background: var(--accent); border-color: var(--accent); color:#fff; }
-  [onclick].step-dot { cursor:pointer; }
-  [onclick].step-dot:hover { opacity:.8; transform:scale(1.1); }
+  /* "drafted" / "high-leverage" inline tag next to a field label */
+  .drafted-tag { font-size:0.6rem; font-weight:700; letter-spacing:0.04em; text-transform:uppercase; color:var(--accent-text); background:var(--panel); border:1px solid hsl(var(--action-3)); border-radius:3px; padding:1px 5px; margin-left:4px; }
 
   /* Wizard */
-  .wizard-panel { background:#fff; border:1px solid var(--slate-200); border-radius: var(--radius-lg); padding:24px; box-shadow: var(--shadow-sm); }
-  .wizard-header { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-top:4px; }
   .wizard-fields { margin-top:16px; }
-  .wizard-nav { display:flex; justify-content:space-between; align-items:center; margin-top:24px; padding-top:16px; border-top:1px solid var(--slate-200); }
+  .wizard-nav { display:flex; justify-content:space-between; align-items:center; margin-top:24px; padding-top:16px; border-top:1px solid var(--border-soft); }
 
   /* Docked Mark co-pilot (wizard only) */
   .wizard-layout { display:flex; align-items:flex-start; gap:20px; }
@@ -1433,78 +1403,78 @@ const PS_STYLES = `
   @media (max-width: 980px) { .wizard-layout { flex-direction:column; } .mark-dock { width:100%; position:static; } }
 
   .mark-dock { width:280px; flex-shrink:0; position:sticky; top:16px; }
-  .mark-dock__pill { display:none; align-items:center; justify-content:center; width:40px; height:40px; border-radius:50%; border:1px solid var(--slate-200); background:#fff; cursor:pointer; box-shadow: var(--shadow-sm); padding:0; }
+  .mark-dock__pill { display:none; align-items:center; justify-content:center; width:40px; height:40px; border-radius:50%; border:1px solid var(--border); background:var(--panel); cursor:pointer; box-shadow: var(--shadow-sm); padding:0; }
   .mark-dock--collapsed .mark-dock__panel { display:none; }
   .mark-dock--collapsed .mark-dock__pill { display:flex; }
 
-  .mark-dock__panel { background:#fff; border:1px solid var(--slate-200); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); overflow:hidden; display:flex; flex-direction:column; max-height: calc(100vh - 140px); }
-  .mark-dock__head { display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border-bottom:1px solid var(--slate-200); background: var(--slate-50); flex-shrink:0; }
+  .mark-dock__panel { background:var(--panel); border:1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); overflow:hidden; display:flex; flex-direction:column; max-height: calc(100vh - 140px); }
+  .mark-dock__head { display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border-bottom:1px solid var(--border-soft); background: var(--bg-subtle); flex-shrink:0; }
   .mark-dock__ident { display:flex; align-items:center; gap:8px; }
-  .mark-dock__avatar { width:28px; height:28px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-family: var(--font-mono, monospace); font-weight:700; font-size:0.78rem; color:#fff; background: linear-gradient(140deg, var(--accent), #6f4bff); box-shadow: 0 0 0 3px var(--accent-light, #eaf0ff); }
+  .mark-dock__avatar { width:28px; height:28px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-family: var(--font-mono); font-weight:700; font-size:0.78rem; color:var(--accent-fg); background: hsl(var(--viz-single)); box-shadow: 0 0 0 3px var(--viz-single-bg); }
   .mark-dock__avatar--sm { width:24px; height:24px; font-size:0.7rem; box-shadow:none; }
-  .mark-dock__name { font-size:0.85rem; font-weight:700; color: var(--slate-800); line-height:1.1; }
-  .mark-dock__meta { font-size:0.62rem; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color: var(--accent); margin-top:2px; }
-  .mark-dock__close { background:none; border:none; font-size:1.15rem; line-height:1; color: var(--slate-400); cursor:pointer; padding:0 2px; }
-  .mark-dock__close:hover { color: var(--slate-700); }
+  .mark-dock__name { font-size:0.85rem; font-weight:700; color: var(--text); line-height:1.1; }
+  .mark-dock__meta { font-size:0.62rem; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color: var(--accent-text); margin-top:2px; }
+  .mark-dock__close { background:none; border:none; font-size:1.15rem; line-height:1; color: var(--text-faint); cursor:pointer; padding:0 2px; }
+  .mark-dock__close:hover { color: var(--text-dim); }
 
-  .mark-dock__headline { padding:10px 14px 0; font-size:0.8rem; font-weight:600; color: var(--slate-800); }
-  .mark-dock__note { padding:4px 14px 0; font-size:0.7rem; font-style:italic; color: var(--slate-500); }
+  .mark-dock__headline { padding:10px 14px 0; font-size:0.8rem; font-weight:600; color: var(--text); }
+  .mark-dock__note { padding:4px 14px 0; font-size:0.7rem; font-style:italic; color: var(--text-faint); }
 
   .mark-dock__body { padding:10px 14px; overflow-y:auto; display:flex; flex-direction:column; gap:10px; }
-  .mark-item { border:1px solid var(--slate-200); border-radius: var(--radius); padding:8px 10px; background: var(--slate-50); }
-  .mark-item--added { border-color: var(--green); background: var(--green-bg); }
+  .mark-item { border:1px solid var(--border-soft); border-radius: var(--radius); padding:8px 10px; background: var(--bg-subtle); }
+  .mark-item--added { border-color: var(--green-border); background: var(--green-bg); }
   .mark-item--skipped { opacity:0.5; }
-  .mark-item__text { font-size:0.78rem; color: var(--slate-700); line-height:1.4; }
-  .mark-item__tag { font-size:0.6rem; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; color: var(--accent); background:#fff; border:1px solid var(--accent-light,#c9d8ff); border-radius:3px; padding:1px 5px; margin-right:5px; }
+  .mark-item__text { font-size:0.78rem; color: var(--text-secondary); line-height:1.4; }
+  .mark-item__tag { font-size:0.6rem; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; color: var(--accent-text); background:var(--panel); border:1px solid hsl(var(--action-3)); border-radius:3px; padding:1px 5px; margin-right:5px; }
   .mark-item__chain { display:flex; flex-direction:column; gap:3px; }
-  .mark-item__why { font-size:0.76rem; color: var(--slate-700); line-height:1.4; }
-  .mark-item__why b { color: var(--accent); font-family: var(--font-mono, monospace); font-size:0.72rem; margin-right:4px; }
-  .mark-item__cat { font-size:0.58rem; font-weight:700; text-transform:uppercase; color: var(--slate-500); background: var(--slate-100); border-radius:3px; padding:0 4px; margin:0 5px 0 2px; }
-  .mark-item__root { margin-top:4px; font-size:0.76rem; font-weight:600; color: var(--slate-800); }
-  .mark-item__scores { margin-top:4px; font-family: var(--font-mono, monospace); font-size:0.68rem; color: var(--slate-500); }
+  .mark-item__why { font-size:0.76rem; color: var(--text-secondary); line-height:1.4; }
+  .mark-item__why b { color: var(--accent-text); font-family: var(--font-mono); font-size:0.72rem; margin-right:4px; }
+  .mark-item__cat { font-size:0.58rem; font-weight:700; text-transform:uppercase; color: var(--text-faint); background: var(--muted); border-radius:3px; padding:0 4px; margin:0 5px 0 2px; }
+  .mark-item__root { margin-top:4px; font-size:0.76rem; font-weight:600; color: var(--text); }
+  .mark-item__scores { margin-top:4px; font-family: var(--font-mono); font-size:0.68rem; color: var(--text-faint); }
   .mark-item__actions { display:flex; gap:6px; margin-top:8px; }
   .mark-item__btn { flex:1; font-size:0.7rem; font-weight:600; padding:4px 8px; border-radius: var(--radius-sm); cursor:pointer; border:1px solid transparent; }
   .mark-item__btn:disabled { cursor:default; opacity:.6; }
-  .mark-item__btn--add { background: var(--accent); color:#fff; }
-  .mark-item__btn--add:hover:not(:disabled) { opacity:.88; }
-  .mark-item__btn--skip { background:transparent; border-color: var(--slate-300); color: var(--slate-600); }
-  .mark-item__btn--skip:hover:not(:disabled) { background: var(--slate-100); }
-  .mark-item__done { margin-top:6px; font-size:0.68rem; font-weight:700; color: var(--green); }
+  .mark-item__btn--add { background: var(--accent); color:var(--accent-fg); }
+  .mark-item__btn--add:hover:not(:disabled) { background: var(--accent-hover); }
+  .mark-item__btn--skip { background:transparent; border-color: var(--border-strong); color: var(--text-dim); }
+  .mark-item__btn--skip:hover:not(:disabled) { background: var(--muted); }
+  .mark-item__done { margin-top:6px; font-size:0.68rem; font-weight:700; color: var(--green-text); }
 
   .mark-dock__answers { padding: 0 14px; display:flex; flex-direction:column; gap:8px; }
   .mark-answer { font-size:0.75rem; }
-  .mark-answer__q { font-weight:700; color: var(--slate-700); }
-  .mark-answer__a { color: var(--slate-600); margin-top:2px; white-space:pre-wrap; }
+  .mark-answer__q { font-weight:700; color: var(--text-secondary); }
+  .mark-answer__a { color: var(--text-dim); margin-top:2px; white-space:pre-wrap; }
 
-  .mark-dock__composer { padding:10px 14px 14px; border-top:1px solid var(--slate-200); flex-shrink:0; }
-  .mark-dock__composer textarea { width:100%; resize:none; font-size:0.78rem; padding:7px 9px; border:1px solid var(--slate-300); border-radius: var(--radius); box-sizing:border-box; font-family:inherit; }
-  .mark-dock__composer textarea:focus { outline:none; border-color: var(--accent); box-shadow:0 0 0 2px var(--accent-light); }
+  .mark-dock__composer { padding:10px 14px 14px; border-top:1px solid var(--border-soft); flex-shrink:0; }
+  .mark-dock__composer textarea { width:100%; resize:none; font-size:0.78rem; padding:7px 9px; border:1px solid var(--border-input); border-radius: var(--radius); box-sizing:border-box; font-family:inherit; }
+  .mark-dock__composer textarea:focus { outline:none; border-color: var(--accent); box-shadow:0 0 0 2px var(--accent-soft); }
 
   /* Forms */
   .form-group { margin-bottom:14px; }
-  .form-label { display:block; font-size:0.8rem; font-weight:600; color:var(--slate-700); margin-bottom:5px; }
-  .form-input { width:100%; padding:7px 10px; border:1px solid var(--slate-300); border-radius: var(--radius); font-size:0.875rem; font-family:inherit; color:var(--slate-900); background:#fff; transition:border-color .15s; box-sizing:border-box; }
-  .form-input:focus { outline:none; border-color: var(--accent); box-shadow:0 0 0 2px var(--accent-light); }
+  .form-label { display:block; font-size:0.8rem; font-weight:600; color:var(--text-secondary); margin-bottom:5px; }
+  .form-input { width:100%; padding:7px 10px; border:1px solid var(--border-input); border-radius: var(--radius); font-size:0.875rem; font-family:inherit; color:var(--text); background:var(--panel); transition:border-color var(--duration-fast); box-sizing:border-box; }
+  .form-input:focus { outline:none; border-color: var(--accent); box-shadow:0 0 0 2px var(--accent-soft); }
   textarea.form-input { resize:vertical; }
-  .chart-placeholder { border:1px dashed var(--slate-300); border-radius: var(--radius); padding:16px; text-align:center; color:var(--slate-400); font-size:0.8rem; background: var(--slate-50); }
+  .chart-placeholder { border:1px dashed var(--border-strong); border-radius: var(--radius); padding:16px; text-align:center; color:var(--text-faint); font-size:0.8rem; background: var(--bg-subtle); }
 
   /* Charts (Steps 1,2,3,7 — real actual-vs-target / breakdown SVGs) */
-  .chart-block { border:1px solid var(--slate-200); border-radius: var(--radius); padding:10px 12px 8px; background:#fff; }
+  .chart-block { border:1px solid var(--border-soft); border-radius: var(--radius); padding:10px 12px 8px; background:var(--panel); }
   .chart-block__svg { overflow-x:auto; }
   .chart-block__svg svg { display:block; }
-  .chart-block__caption { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-top:6px; font-size:0.72rem; color:var(--slate-500); }
+  .chart-block__caption { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-top:6px; font-size:0.72rem; color:var(--text-faint); }
 
   /* Root cause grid (step 4) */
   .rootcause-grid { display:grid; grid-template-columns: 1.15fr 0.85fr; gap:24px; }
   @media (max-width: 820px) { .rootcause-grid { grid-template-columns: 1fr; } }
-  .rc-head { font-size:0.85rem; font-weight:700; margin:0 0 12px; color:var(--slate-700); }
+  .rc-head { font-size:0.85rem; font-weight:700; margin:0 0 12px; color:var(--text-secondary); }
   .why-row { position:relative; margin-bottom:10px; }
   .why-rail { display:flex; align-items:center; gap:8px; margin-bottom:4px; }
-  .why-num { font-size:0.72rem; font-weight:700; color:var(--accent,#2f6bff); font-family: var(--mono, monospace); }
-  .why-cat { font-size:0.62rem; font-weight:700; letter-spacing:0.04em; text-transform:uppercase; color:var(--slate-500); background:var(--slate-100); border-radius:3px; padding:1px 6px; }
-  .why-input { border-left:3px solid var(--accent-light,#c9d8ff); }
-  .why-row--root .why-input { border-left:3px solid var(--accent,#2f6bff); background:#fbfcff; }
-  .why-connector { text-align:left; color:var(--slate-300); font-size:0.9rem; line-height:1; margin:2px 0 0 6px; }
+  .why-num { font-size:0.72rem; font-weight:700; color:var(--accent-text); font-family: var(--font-mono); }
+  .why-cat { font-size:0.62rem; font-weight:700; letter-spacing:0.04em; text-transform:uppercase; color:var(--text-faint); background:var(--muted); border-radius:3px; padding:1px 6px; }
+  .why-input { border-left:3px solid hsl(var(--action-3)); }
+  .why-row--root .why-input { border-left:3px solid var(--accent); background:hsl(var(--action-1)); }
+  .why-connector { text-align:left; color:var(--text-disabled); font-size:0.9rem; line-height:1; margin:2px 0 0 6px; }
   .fishbone-tbl { width:100%; border-collapse:collapse; font-size:0.85rem; }
   .fishbone-tbl td { padding:4px 0 4px 4px; }
 
@@ -1513,68 +1483,60 @@ const PS_STYLES = `
   .cm-matrix .cm-text { min-width:200px; }
   .score-th { text-align:center; }
   .score-cell { text-align:center; }
-  .score-sel { padding:3px 4px; border:1px solid var(--slate-300); border-radius:4px; font-family: var(--mono, monospace); font-size:0.8rem; }
-  .sc { display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; border-radius:4px; font-family: var(--mono, monospace); font-weight:700; font-size:0.78rem; }
-  .sc--0 { background:#ffe3e3; color:#c92a2a; } .sc--1 { background:#fff3bf; color:#e67700; } .sc--2 { background:#d3f9d8; color:#2b8a3e; } .sc--na { background:var(--slate-100); color:var(--slate-400); }
+  .score-sel { padding:3px 4px; border:1px solid var(--border-input); border-radius:4px; font-family: var(--font-mono); font-size:0.8rem; }
+  .sc { display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; border-radius:4px; font-family: var(--font-mono); font-weight:700; font-size:0.78rem; }
+  .sc--0 { background:var(--red-bg);   color:var(--red-text); }
+  .sc--1 { background:var(--amber-bg); color:var(--amber-text); }
+  .sc--2 { background:var(--green-bg); color:var(--green-text); }
+  .sc--na { background:var(--muted); color:var(--text-faint); }
 
-  /* ODG gate */
-  .odg-gate { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-top:18px; padding:14px 16px; border:1px solid #d0bfff; background:#f5f0ff; border-radius: var(--radius); flex-wrap:wrap; }
-  .odg-gate__label { font-size:0.68rem; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; color:#7048e8; margin-bottom:3px; }
-  .odg-gate__desc { font-size:0.82rem; color:var(--slate-700); }
+  /* ODG gate — layout only; the tint/border comes from the shared .a3-callout--accent */
+  .odg-gate { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-top:18px; flex-wrap:wrap; }
+  .odg-gate__desc { font-size:0.82rem; color:var(--text-secondary); }
   .gate-badge { font-size:0.72rem; font-weight:700; padding:2px 8px; border-radius:3px; margin-left:4px; }
-  .gate-badge--pending { background:var(--slate-100); color:var(--slate-500); }
-  .gate-badge--submitted { background:#fff3bf; color:#e67700; }
-  .gate-badge--approved { background:#d3f9d8; color:#2b8a3e; }
+  .gate-badge--pending { background:var(--muted); color:var(--text-faint); }
+  .gate-badge--submitted { background:var(--amber-bg); color:var(--amber-text); }
+  .gate-badge--approved { background:var(--green-bg); color:var(--green-text); }
 
   /* SOP write-back */
-  .sop-writeback { margin-top:20px; border:1px solid var(--slate-200); border-radius: var(--radius); padding:16px; background: var(--slate-50); }
-  .sop-writeback__label { font-size:0.68rem; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; color:var(--slate-500); margin-bottom:4px; }
+  .sop-writeback { margin-top:20px; border:1px solid var(--border-soft); border-radius: var(--radius); padding:16px; background: var(--bg-subtle); }
+  .sop-writeback__label { font-size:0.68rem; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; color:var(--text-faint); margin-bottom:4px; }
 
   /* Tracker */
   .kpi-table th, .kpi-table td { font-size:0.85rem; }
-  .a3-tag { font-size:0.58rem; font-weight:800; letter-spacing:0.04em; color:#fff; background: var(--accent,#2f6bff); border-radius:3px; padding:1px 5px; vertical-align:middle; }
-  .tr--a3 { background: #fbfcff; }
-  .ps-about { margin-top:24px; padding:14px 16px; background: var(--slate-50); border:1px solid var(--slate-200); border-radius: var(--radius); }
-  .ps-about__label { font-size:0.68rem; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; color:var(--slate-500); margin-bottom:4px; }
+  .a3-tag { font-size:0.58rem; font-weight:800; letter-spacing:0.04em; color:var(--accent-fg); background: var(--accent); border-radius:3px; padding:1px 5px; vertical-align:middle; }
+  .tr--a3 { background: var(--bg-subtle); }
+  .ps-about { margin-top:24px; padding:14px 16px; background: var(--bg-subtle); border:1px solid var(--border-soft); border-radius: var(--radius); }
+  .ps-about__label { font-size:0.68rem; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; color:var(--text-faint); margin-bottom:4px; }
 
   /* Read-only A3 */
-  .ro-a3 { }
-  .ro-header { display:flex; align-items:flex-start; justify-content:space-between; gap:20px; flex-wrap:wrap; padding-bottom:12px; border-bottom:2px solid var(--slate-200); }
-  .ro-header__title { font-size:1.25rem; font-weight:700; }
+  .ro-header { display:flex; align-items:flex-start; justify-content:space-between; gap:20px; flex-wrap:wrap; padding-bottom:12px; border-bottom:2px solid var(--border); }
+  .ro-header__title { font-family: var(--font-serif); font-size:1.35rem; font-weight:600; }
   .ro-header__meta { display:grid; grid-template-columns: 1fr 1fr; gap:2px 18px; }
   .ro-kv { display:flex; gap:8px; padding:2px 0; font-size:0.83rem; }
-  .ro-kv__k { color:var(--slate-500); font-weight:600; min-width:120px; }
-  .ro-kv__v { color:var(--slate-800); }
-  .ro-step { border:1px solid var(--slate-200); border-radius: var(--radius); margin-bottom:12px; overflow:hidden; }
-  .ro-step__head { display:flex; align-items:center; gap:10px; padding:8px 14px; background: var(--slate-50); border-bottom:1px solid var(--slate-200); }
-  .ro-step__n { font-family: var(--mono, monospace); font-size:0.75rem; color:var(--slate-500); font-weight:700; }
+  .ro-kv__k { color:var(--text-faint); font-weight:600; min-width:120px; }
+  .ro-kv__v { color:var(--text-secondary); }
+  .ro-step { border:1px solid var(--border); border-radius: var(--radius); margin-bottom:12px; overflow:hidden; }
+  .ro-step__head { display:flex; align-items:center; gap:10px; padding:8px 14px; background: var(--bg-subtle); border-bottom:1px solid var(--border-soft); }
+  .ro-step__n { font-family: var(--font-mono); font-size:0.75rem; color:var(--text-faint); font-weight:700; }
   .ro-step__title { font-weight:600; font-size:0.92rem; }
   .ro-step__body { padding:12px 14px; }
-  .ro-gap, .ro-prio { margin-top:6px; padding:6px 10px; background:#fff5f5; border-left:3px solid #ffc9c9; border-radius:0 4px 4px 0; font-size:0.85rem; }
+  .ro-gap, .ro-prio { margin-top:6px; font-size:0.85rem; }
   .ro-why { display:flex; gap:10px; align-items:baseline; padding:3px 0; font-size:0.84rem; }
-  .ro-why__n { font-family: var(--mono, monospace); font-weight:700; color:var(--accent,#2f6bff); min-width:46px; }
-  .ro-why__cat { font-size:0.6rem; font-weight:700; text-transform:uppercase; color:var(--slate-500); background:var(--slate-100); border-radius:3px; padding:1px 6px; min-width:70px; text-align:center; }
-  .ro-rootcause { margin-top:10px; padding:8px 12px; background:#fbfcff; border-left:3px solid var(--accent,#2f6bff); border-radius:0 4px 4px 0; font-size:0.86rem; }
+  .ro-why__n { font-family: var(--font-mono); font-weight:700; color:var(--accent-text); min-width:46px; }
+  .ro-why__cat { font-size:0.6rem; font-weight:700; text-transform:uppercase; color:var(--text-faint); background:var(--muted); border-radius:3px; padding:1px 6px; min-width:70px; text-align:center; }
+  .ro-rootcause { margin-top:10px; font-size:0.86rem; }
   .ro-altchains { margin-top:8px; }
-  .ro-altchain { border:1px dashed var(--slate-300); border-radius:4px; padding:8px 10px; margin-bottom:6px; }
-  .ro-alt-why { font-size:0.78rem; color:var(--slate-600); }
-  .ro-alt-root { font-size:0.78rem; color:var(--slate-800); font-weight:600; margin-top:3px; }
-  .ro-narr { margin-top:8px; font-size:0.83rem; line-height:1.5; color:var(--slate-700); background:var(--slate-50); border-radius:4px; padding:8px 10px; }
+  .ro-altchain { border:1px dashed var(--border-strong); border-radius:4px; padding:8px 10px; margin-bottom:6px; }
+  .ro-alt-why { font-size:0.78rem; color:var(--text-dim); }
+  .ro-alt-root { font-size:0.78rem; color:var(--text); font-weight:600; margin-top:3px; }
+  .ro-narr { margin-top:8px; font-size:0.83rem; line-height:1.5; color:var(--text-secondary); background:var(--bg-subtle); border-radius:4px; padding:8px 10px; }
   .ro-gate { margin-top:10px; font-size:0.85rem; }
-  .ar-status { display:inline-block; width:22px; text-align:center; font-family: var(--mono, monospace); font-weight:700; border-radius:4px; }
-  .ar-status--C { background:#d3f9d8; color:#2b8a3e; } .ar-status--R { background:#ffe3e3; color:#c92a2a; }
-  .ar-status--Y { background:#fff3bf; color:#e67700; } .ar-status--G { background:#e7f5ff; color:#1971c2; }
-
-  /* Badges / buttons */
-  .badge--success { background: var(--green-bg); color: var(--green); }
-  .badge--info { background: var(--accent-tint); color: var(--accent); }
-  .badge--accent { background: var(--accent-light); color: var(--accent); }
-  .btn--success { background: var(--green) !important; border:none; color:#fff; padding:7px 14px; border-radius: var(--radius); font-size:0.875rem; cursor:pointer; }
-  .btn--outline { background:transparent; border:1px solid var(--slate-300); color:var(--slate-700); padding:7px 14px; border-radius: var(--radius); font-size:0.875rem; cursor:pointer; transition:background .1s; }
-  .btn--outline:hover { background: var(--slate-100); }
-  .btn--primary { background: var(--accent); border:none; color:#fff; padding:7px 14px; border-radius: var(--radius); font-size:0.875rem; cursor:pointer; transition:opacity .1s; }
-  .btn--primary:hover { opacity:.88; }
-  .btn--primary:disabled { opacity:.5; cursor:default; }
+  .ar-status { display:inline-block; width:22px; text-align:center; font-family: var(--font-mono); font-weight:700; border-radius:4px; }
+  .ar-status--R { background:var(--red-bg);   color:var(--red-text); }
+  .ar-status--Y { background:var(--amber-bg); color:var(--amber-text); }
+  .ar-status--G { background:var(--green-bg); color:var(--green-text); }
+  .ar-status--C { background:hsl(var(--action-1)); color:var(--accent-text); }
 `;
 
 (function injectStyles() {

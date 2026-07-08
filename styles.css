@@ -371,6 +371,7 @@ tbody tr:hover { background: var(--bg-subtle); }
 .badge {
   display: inline-flex;
   align-items: center;
+  gap: 5px;
   padding: 2px 7px;
   border-radius: var(--radius-sm);
   font-size: 0.7rem;
@@ -1553,3 +1554,118 @@ input[type="text"]:focus, input[type="search"]:focus, select:focus {
   transition: background var(--t-fast);
 }
 .cmt-post:hover { background: var(--accent-hover); }
+
+/* ============================================================================
+   PROBLEM-SOLVING + STANDARD WORK — Supernal component patterns (Task 6)
+   Shared primitives lifted from the Leadership OS artifact reference: a prose
+   page-header (owner / golden-thread / freshness in one flowing sentence),
+   running-head kickers, inline RAG status cells, mono metadata chips, and the
+   two step-progress components (compact track for tables/read-views, full
+   step-bar for the wizard nav). RAG stays status-only everywhere below; PDCA
+   phases and doc-type identity ride a neutral badge or the viz palette, never
+   a status hue. See docs/superpowers/specs/2026-07-08-artifact-design-system.md §3.8.
+   ========================================================================== */
+
+/* ── Badge status dot (small filled circle inside a .badge — artifact §3.5;
+   our .badge--* names predate the artifact's green/amber/red/neutral set, so
+   these map onto the existing success/warning/info/accent/outline vocabulary
+   instead of renaming every call site across the app) ─────────────────────── */
+.badge .dot { width: 6px; height: 6px; border-radius: var(--radius-full); flex-shrink: 0; }
+.badge--success .dot { background: var(--green); }
+.badge--warning .dot { background: var(--amber); }
+.badge--info .dot { background: var(--info); }
+.badge--accent .dot { background: var(--accent); }
+.badge--outline .dot, .badge--doc .dot { background: currentColor; }
+
+/* ── Secondary button (neutral, non-accent CTA — e.g. "Back to Tracker") ── */
+.btn--secondary { background: var(--secondary); color: var(--text-secondary); border-color: transparent; }
+.btn--secondary:hover { background: var(--secondary-hover); border-color: transparent; }
+
+/* ── Page header — prose subheader pattern ───────────────────────────────── */
+.page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--sp-5); margin: 4px 0 var(--sp-6); flex-wrap: wrap; }
+.page-head__eyebrow { display: block; margin-bottom: var(--sp-2); }
+.page-head__sub { margin: var(--sp-2) 0 0; font-size: 13.5px; line-height: 1.6; color: var(--text-dim); max-width: 78ch; }
+.page-head__side { display: flex; align-items: center; gap: var(--sp-3); flex-shrink: 0; }
+
+.running-head {
+  display: inline-block;
+  font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.section-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-4); margin: var(--sp-6) 0 var(--sp-4); }
+.section-head:first-child { margin-top: 0; }
+.section-head .running-head { margin: 0; }
+
+/* ── Summary stat strip (e.g. tracker header counts) ─────────────────────── */
+.ps-summary { display: flex; gap: var(--sp-6); align-items: baseline; flex-wrap: wrap; }
+.ps-summary__stat { font-size: 13px; color: var(--text-dim); }
+.ps-summary__stat b { font-size: 22px; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; margin-right: 4px; }
+.ps-summary__stat--flag, .ps-summary__stat--flag b { color: var(--amber-text); }
+
+/* ── Inline RAG status cell — compact dot+text for table cells / prose ───── */
+.status-cell { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; font-weight: 500; white-space: nowrap; }
+.status-cell .dot { width: 7px; height: 7px; border-radius: var(--radius-full); flex-shrink: 0; }
+.status-cell--green  { color: var(--green-text); } .status-cell--green .dot  { background: var(--green); }
+.status-cell--amber  { color: var(--amber-text); } .status-cell--amber .dot  { background: var(--amber); }
+.status-cell--red    { color: var(--red-text); }   .status-cell--red .dot    { background: var(--red); }
+.status-cell--nodata { color: var(--text-faint); } .status-cell--nodata .dot { background: var(--text-disabled); }
+
+/* ── Mono metadata chip (KZ numbers, doc types, categories — never status) ── */
+.chip {
+  display: inline-flex; align-items: center; padding: 1px 7px;
+  border-radius: var(--radius-sm); border: 1px solid var(--border);
+  background: var(--muted); color: hsl(var(--surface-8));
+  font-family: var(--font-mono); font-size: 10.5px; font-weight: 500; letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+/* ── Compact step-progress track (tracker rows, read-only A3 header) ────── */
+.step-track { display: inline-flex; align-items: center; gap: 3px; flex-wrap: wrap; }
+.step-track__dot {
+  width: 18px; height: 18px; border-radius: var(--radius-full); padding: 0; border: 1px solid var(--border);
+  display: grid; place-items: center; font-family: var(--font-sans);
+  font-size: 9.5px; font-weight: 600; line-height: 1;
+  background: var(--muted); color: var(--text-faint);
+}
+.step-track__dot.is-done { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+.step-track__dot.is-next { border-color: var(--accent); color: var(--accent-text); background: var(--panel); }
+button.step-track__dot { cursor: pointer; transition: transform var(--duration-fast) var(--ease-fluid); }
+button.step-track__dot:hover { transform: scale(1.12); }
+
+/* ── Horizontal step bar — full 8-step wizard nav ────────────────────────── */
+.step-bar { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; margin: var(--sp-4) 0; }
+@media (max-width: 1200px) { .step-bar { grid-template-columns: repeat(4, 1fr); } }
+.step-tab {
+  display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto;
+  column-gap: 8px; align-items: center; text-align: left;
+  padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--panel); color: var(--text-dim); font-size: 11.5px; font-family: var(--font-sans);
+  transition: background-color var(--duration-fast) ease-in-out, border-color var(--duration-fast) ease-in-out;
+}
+.step-tab:hover { background: var(--bg-subtle); }
+.step-tab.is-active { border-color: var(--accent); background: hsl(var(--action-1)); box-shadow: inset 0 -2px 0 var(--accent); }
+.step-tab.is-active .step-tab__name { color: var(--text); font-weight: 600; }
+.step-tab__n {
+  grid-row: 1 / 3;
+  width: 22px; height: 22px; border-radius: var(--radius-full);
+  display: grid; place-items: center; font-size: 11px; font-weight: 600;
+  background: var(--muted); color: var(--text-dim); border: 1px solid var(--border);
+}
+.step-tab.is-done .step-tab__n { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+.step-tab__name { font-weight: 500; line-height: 1.25; }
+.step-tab__pdca { font-size: 9.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-faint); }
+
+/* ── AI-draft callout — accent-left-border card for pre-solved content ──── */
+.ai-draft-banner {
+  display: flex; align-items: center; gap: var(--sp-4);
+  padding: var(--sp-3) var(--sp-4); margin: var(--sp-4) 0;
+  border-left: 3px solid var(--accent);
+  background: hsl(var(--action-1));
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+
+/* ── A3 document callouts (problem / root-cause / gate emphasis boxes) ──── */
+.a3-callout { padding: 12px 16px; border-radius: var(--radius); border: 1px solid; }
+.a3-callout--red { background: var(--red-bg); border-color: var(--red-border); }
+.a3-callout--accent { background: hsl(var(--action-1)); border-color: hsl(var(--action-3)); }
