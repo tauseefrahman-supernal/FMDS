@@ -35,15 +35,6 @@
 :root {
   color-scheme: light;
 
-  /* ── Command rail (dark graphite) — unchanged, out of scope this pass ── */
-  --ink-900: #0e1116;
-  --ink-800: #161c24;
-  --ink-700: #212a35;
-  --ink-600: #2c3846;
-  --rail-fg:        #aeb9c7;   /* muted rail text */
-  --rail-fg-bright: #eef3f8;   /* bright rail text */
-  --rail-line:      #232c38;   /* hairline on dark */
-
   /* ══════════════════════════════════════════════════════════════════════
      SUPERNAL PRIMITIVES — action + surface scales (exact palette values)
      ══════════════════════════════════════════════════════════════════════ */
@@ -76,8 +67,7 @@
   /* ── Semantic — surfaces ── */
   --bg: hsl(var(--surface-1));
   --bg-subtle: hsl(var(--surface-2));
-  --panel: #ffffff;                 /* surface-card: pure white lifts off warm page */
-  --surface-card: var(--panel);
+  --panel: #ffffff;                 /* pure white lifts off warm page */
   --muted: hsl(var(--surface-3));
   --surface-hover: hsl(var(--surface-4));
   --table-header-bg: hsl(var(--surface-2));
@@ -141,7 +131,7 @@
   --we-sky-bg: 197 9% 93%;
 
   /* ── Sidebar (10 tokens; light spec — surface-3 fill, sage active state).
-     Not yet wired to .rail — the rail keeps its dark --ink-* look this pass. ── */
+     Already consumed by .rail/.rail-link (see component CSS below). ── */
   --sidebar-bg: hsl(var(--surface-3));
   --sidebar-fg: hsl(var(--surface-7a));
   --sidebar-border: hsl(var(--surface-11) / 0.08);
@@ -173,7 +163,10 @@
   /* ── Work canvas (light) ──────────────────────────────────────── */
   --canvas:  var(--bg);
   --surface: var(--panel);
-  --surface-2: var(--bg-subtle);
+  /* --surface-2 is the primitive declared above (Supernal surface scale) —
+     do NOT redeclare it here as var(--bg-subtle); --bg-subtle is itself
+     defined as hsl(var(--surface-2)), so redeclaring would create a
+     circular var() reference that resolves to an invalid value. */
   --line:    var(--border);          /* hairline border */
   --line-strong: var(--border-strong);
   --text:       hsl(var(--surface-11));
@@ -224,11 +217,13 @@
 
   /* ── Typography (legacy names → new families) ──────────────────── */
   --font: var(--font-sans);
-  --font-mono: "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+  --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
 
-  /* ── Spacing scale (unchanged this pass) ─────────────────────────── */
+  /* ── Spacing scale — sp-1..sp-8 reconciled to match reference/tokens.css
+     exactly (sp-5/6/8 corrected, sp-7 added); sp-10/sp-12 are extra legacy
+     stops beyond the reference scale, kept since other rules still use them ── */
   --sp-1: 4px;  --sp-2: 8px;  --sp-3: 12px; --sp-4: 16px;
-  --sp-5: 20px; --sp-6: 24px; --sp-8: 32px; --sp-10: 40px; --sp-12: 48px;
+  --sp-5: 24px; --sp-6: 32px; --sp-7: 48px; --sp-8: 64px; --sp-10: 40px; --sp-12: 48px;
 
   /* ── Radius — "Balanced" posture, new values ─────────────────────── */
   --radius-sm: 4px;
@@ -246,6 +241,7 @@
   --shadow-md: 0 4px 6px -1px hsl(var(--shadow-color) / 0.10), 0 2px 4px -2px hsl(var(--shadow-color) / 0.08);
   --shadow-lg: 0 10px 15px -3px hsl(var(--shadow-color) / 0.10), 0 4px 6px -4px hsl(var(--shadow-color) / 0.08);
   --shadow-ring: inset 0 0 0 1px hsl(var(--surface-11) / 0.07);
+  --ring: 0 0 0 2px var(--bg), 0 0 0 4px hsl(var(--action-7) / 0.55);
   --shadow-rail: 2px 0 16px rgba(6,10,16,0.28);
 
   /* Motion (legacy shorthand names → new duration scale) */
