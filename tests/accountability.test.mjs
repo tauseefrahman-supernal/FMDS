@@ -293,11 +293,14 @@ test('rollupSignal summarizes redCount/answered/beingActioned/stalled for a dept
 
 // ─── seedDemoAccountability ─────────────────────────────────────────────────
 
-test('seedDemoAccountability seeds the OTP/Mexico entry (Jim Kozel) once, idempotently', () => {
+test('seedDemoAccountability seeds the OTP-Mexico entry (Jim Kozel) once, idempotently', () => {
   localStorage.removeItem('fmds_accountability_seeded');
   const before = getResponsesByDept('operations').length;
   seedDemoAccountability();
-  const seeded = getResponse({ deptId: 'operations', kpiId: 'otp' });
+  // Seeded against 'otp_mexico', not the main 'otp' — that's the sub-KPI
+  // KZ-346 is actually linked to (Fix 1: queue card + escalation land
+  // coherently on the same red sub-KPI the KZ is scoped to).
+  const seeded = getResponse({ deptId: 'operations', kpiId: 'otp_mexico' });
   assert.ok(seeded, 'seed entry exists');
   assert.equal(seeded.owner, 'Jim Kozel');
   assert.equal(seeded.needs8Step, true);

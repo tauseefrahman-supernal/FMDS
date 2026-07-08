@@ -78,6 +78,39 @@ test('svgRecoveryTrend: lower_better series that meets target → GREEN dots', (
   assert.ok(!fills.includes(RED), 'no dot should be red when lower_better actuals beat target');
 });
 
+test('svgRecoveryTrend: in-band shading flips below target for direction=lower_better (Fix 5)', () => {
+  // Same points/target, direction flipped — the light-green "good zone" band
+  // must move from above the target line (higher_better) to below it
+  // (lower_better), matching where the dots actually turn green.
+  const base = { target: 2, width: 280, height: 90 };
+  const higher = svgRecoveryTrend([1, 2, 3], { ...base, direction: 'higher_better' });
+  const lower  = svgRecoveryTrend([1, 2, 3], { ...base, direction: 'lower_better' });
+
+  const bandRe = /<rect x="([\d.]+)" y="([\d.]+)" width="([\d.]+)" height="([\d.]+)" fill="#1f9d57" opacity="0.12"\/>/;
+  const targetLineRe = /<line x1="[\d.]+" y1="([\d.]+)"/;
+
+  const hBand = bandRe.exec(higher);
+  const lBand = bandRe.exec(lower);
+  assert.ok(hBand, 'higher_better renders a green band rect');
+  assert.ok(lBand, 'lower_better renders a green band rect');
+
+  const hTargetY = parseFloat(targetLineRe.exec(higher)[1]);
+  const lTargetY = parseFloat(targetLineRe.exec(lower)[1]);
+  const PAD_T = 8;
+  const chartBottom = base.height - 24; // PAD_B = 24
+
+  const hTop = parseFloat(hBand[2]); // group 2 = y
+  // higher_better: band spans from the top of the plot down to the target line.
+  assert.equal(hTop.toFixed(1), PAD_T.toFixed(1), 'higher_better band starts at the top of the plot');
+  assert.ok(Math.abs(hTop + parseFloat(hBand[4]) - hTargetY) < 0.2, 'higher_better band ends at the target line');
+
+  const lTop = parseFloat(lBand[2]); // group 2 = y
+  // lower_better: band spans from the target line down to the bottom of the plot.
+  assert.ok(Math.abs(lTop - lTargetY) < 0.2, 'lower_better band starts at the target line, not the top');
+  assert.ok(Math.abs(lTop + parseFloat(lBand[4]) - chartBottom) < 0.2, 'lower_better band ends at the bottom of the plot');
+  assert.ok(lTop > hTop + 1, 'band top moved down for lower_better vs higher_better');
+});
+
 test('svgRecoveryTrend: empty array returns no-data svg', () => {
   const svg = svgRecoveryTrend([], { target: 0.985, cmIndex: 0 });
   assert.ok(svg.startsWith('<svg'));

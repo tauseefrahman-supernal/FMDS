@@ -1062,7 +1062,7 @@ async function doRender() {
               ${_kzRecords.length} total · ${openItems} open · ${closedItems} closed · ${a3Count} full A3${a3Count === 1 ? '' : 's'} — ${esc(_dept.name)}
             </p>
           </div>
-          ${renderTrackerHeaderMeta(_kzRecords)}
+          ${_kzRecords.length ? renderTrackerHeaderMeta(_kzRecords) : ''}
           <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
             <span style="font-size:0.78rem;color:var(--slate-500)">Trigger a new 8-step from a red sub-KPI:</span>
             ${renderRedKpiSelector(_dept)}
@@ -1148,7 +1148,12 @@ function attachHandlers() {
     if (_activeKZ) _activeKZ.steps[String(n)] = true;
     if (n === 8) {
       if (_activeKZ) { _activeKZ.closed = true; _activeKZ.active = false; }
-      _kzRecords = [_activeKZ, ..._kzRecords];
+      // _activeKZ is usually a brand-new record (from newKZ(), via the
+      // red-sub-KPI selector or the ?kpi= handoff) that isn't in _kzRecords
+      // yet — prepend it. But Fix 1's ?kz= handoff can open the wizard on an
+      // EXISTING record already IN _kzRecords (same reference); guard so
+      // closing that one doesn't duplicate its row in the tracker.
+      _kzRecords = _kzRecords.includes(_activeKZ) ? _kzRecords : [_activeKZ, ..._kzRecords];
       _activeKZ = null; _currentStep = 1; _stepData = {}; _sopWrittenBack = false; _markStepHelp = null;
     } else {
       _currentStep = n + 1;
@@ -1599,12 +1604,46 @@ export async function renderProblemSolving(dept, mount) {
   _sopWrittenBack = false;
   _markStepHelp = null;
 
-  // R3 handoff: hash ?kpi=<id> pre-opens the wizard for that sub-KPI.
+  // R3 handoff: hash ?kpi=<id> pre-opens the wizard for that sub-KPI. Ask
+  // Mark's escalation read-back (Fix 1) additionally carries &kz=<kzNumber>
+  // so the handoff can open the REAL linked KZ record instead of always
+  // minting a fresh blank one for the KPI.
   const hashQuery = location.hash.includes('?') ? location.hash.split('?')[1] : '';
-  const preselectKpiId = new URLSearchParams(hashQuery).get('kpi') || null;
+  const hashParams = new URLSearchParams(hashQuery);
+  const preselectKpiId = hashParams.get('kpi') || null;
+  const preselectKzNumber = hashParams.get('kz') || null;
 
   mount.innerHTML = `<p class="text-muted" style="padding:24px 0">Loading problem-solving data…</p>`;
-  await doRender();
+  await doRender(); // populates _kzRecords, needed for the kz-param lookup below
+
+  // Prefer a REAL linked KZ when the deep-link resolves to an actual record
+  // on file (e.g. KZ-346, linked via linkedKpiId to otp_mexico). A freshly
+  // minted kzNumber not yet in the data file (KZ-NEW-…), or no kz param at
+  // all, falls through unchanged to the existing ?kpi= mint-a-blank-wizard
+  // handoff below.
+  const realKz = preselectKzNumber
+    ? _kzRecords.find((k) => k.kzNumber === preselectKzNumber)
+    : null;
+
+  if (realKz) {
+    if (isCompletedA3(realKz)) {
+      _readKZ = realKz;
+    } else {
+      _activeKZ = realKz;
+      _activeKZ._kpiId = realKz.linkedKpiId || preselectKpiId;
+      _activeKZ._prior = priorSimilarKZ(_dept);
+      _activeKZ._sop   = govSop(_dept);
+      let firstOpenStep = 1;
+      const steps = realKz.steps || {};
+      for (let n = 1; n <= 8; n++) {
+        if (!steps[String(n)]) { firstOpenStep = n; break; }
+      }
+      _currentStep = firstOpenStep;
+      _stepData = {};
+    }
+    await doRender();
+    return;
+  }
 
   if (preselectKpiId && _dept && _dept.kpis) {
     const kpi = _dept.kpis.find(k => k.id === preselectKpiId);

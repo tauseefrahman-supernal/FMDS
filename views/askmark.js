@@ -50,11 +50,14 @@
  * lib/accountability.js linkEightStep() to store the kzNumber and advance
  * the lifecycle to 'eightStepOpened'. The same linkEightStep() path also
  * backs an "Open 8-step" action on an already-ANSWERED card whose
- * needs8Step is Yes but hasn't escalated yet (e.g. the seeded OTP entry,
- * which deliberately ships with a kzNumber but eightStepOpened left
+ * needs8Step is Yes but hasn't escalated yet (e.g. the seeded OTP-Mexico
+ * entry, which deliberately ships with a kzNumber but eightStepOpened left
  * pending). Once opened, the card renders a real deep-link to
- * #/dept/:id/solve?kpi=<id> — the existing R3 handoff route
- * (renderProblemSolving) that pre-opens the 8-step wizard for that KPI.
+ * #/dept/:id/solve?kpi=<id>&kz=<kzNumber> — the R3 handoff route
+ * (renderProblemSolving) extended to also carry the resolved KZ number, so
+ * the handoff opens the REAL linked KZ record (read-view if it's a
+ * completed A3, the wizard pre-positioned on its next open step otherwise)
+ * instead of always minting a fresh blank 8-step for the KPI.
  */
 
 import {
@@ -74,6 +77,11 @@ let _queue         = [];
 let _selectedKpiId = null;
 let _thread        = [];    // in-view chat history: [{ role: 'me'|'mark', text }]
 let _sending       = false; // guards double-send while a reply is in flight
+let _submitting    = false; // guards double-submit on the response card (mirrors _sending) —
+                             // addResponse() + the needs8 escalation path both run before the
+                             // re-render that removes the Submit button, so a fast double-click
+                             // could otherwise persist two entries (double-counting
+                             // rollupSignal.redCount)
 let _kzRecordsCache = null; // lazy-loaded data/kz-records.json, shared across sends
 let _drafts        = {};    // in-progress (unsubmitted) response-card edits, keyed by
                              // `${deptId}:${kpiId}` (draftKey) — NOT bare kpiId: KPI ids
@@ -310,7 +318,7 @@ function renderReadBack(resp) {
   if (!resp.needs8Step) {
     eightStep = 'No — one-off / data artifact';
   } else if (opened && resp.kzNumber) {
-    eightStep = `Yes — <a class="mk-rc__kz-link" href="#/dept/${esc(resp.deptId)}/solve?kpi=${esc(resp.kpiId)}">`
+    eightStep = `Yes — <a class="mk-rc__kz-link" href="#/dept/${esc(resp.deptId)}/solve?kpi=${esc(resp.kpiId)}&kz=${esc(resp.kzNumber)}">`
       + `▸ Open ${esc(resp.kzNumber)} in Problem-Solving →</a>`;
   } else {
     eightStep = 'Yes — <button type="button" class="btn btn--outline btn--sm mk-rc__open8step" '
@@ -500,6 +508,7 @@ function resolveKzNumber(kpiId, owner) {
 // then a full re-render so the queue card flips to ✓, the header pills
 // re-split, and the card swaps to its read-back + advanced track.
 async function submitResponse(kpiId) {
+  if (_submitting) return; // ignore re-entrant clicks until doRender() repaints the card
   const wrap = document.getElementById('askmark-response-card');
   const item = _queue.find((q) => q.kpiId === kpiId);
   if (!wrap || !item) return;
@@ -518,6 +527,14 @@ async function submitResponse(kpiId) {
   // response; report-back is nudged but optional.
   if (!cause)  { if (causeEl)  causeEl.focus();  return; }
   if (!action) { if (actionEl) actionEl.focus(); return; }
+
+  // Set BEFORE the (possibly async, see needs8 below) work starts — the
+  // needs8 branch awaits loadKzRecords(), which leaves a window before
+  // doRender() swaps the form out for the read-back where a second click on
+  // the still-visible Submit button would otherwise re-run this whole path.
+  _submitting = true;
+  const submitBtn = wrap.querySelector('#mk-rc-submit');
+  if (submitBtn) submitBtn.disabled = true;
 
   addResponse({
     deptId: _dept.id,
@@ -547,6 +564,7 @@ async function submitResponse(kpiId) {
       : `Logged your response on ${item.kpi}. I'll roll "being actioned" up to the Leadership OS so the Chief of Staff sees this red is being worked.`,
   });
 
+  _submitting = false;
   doRender();
 }
 
@@ -933,6 +951,7 @@ export function renderAskMark(dept, mount, session) {
   _selectedKpiId = null;
   _thread = [];
   _sending = false;
+  _submitting = false;
   _drafts = {};   // reset unsubmitted drafts per render (also guards against
                   // any stale cross-dept draft surviving a dept switch)
   doRender();
