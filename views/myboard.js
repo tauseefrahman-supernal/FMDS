@@ -130,12 +130,11 @@ function renderRepCard(kpi, dept) {
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
         <div>
           <h3>${kpi.name}</h3>
+          <div style="font-family:var(--font-serif);font-size:2.3rem;font-weight:600;letter-spacing:-0.02em;font-variant-numeric:tabular-nums;line-height:1.05;color:var(--text);margin-top:6px">${formatVal(act, kpi.unit)}</div>
           <p class="text-muted text-small mt-1">
-            Target: <span class="text-mono">${formatVal(kpi.target, kpi.unit)}</span>
+            Target <span class="text-mono">${formatVal(kpi.target, kpi.unit)}</span>
             &nbsp;·&nbsp;
-            Actual: <span class="text-mono">${formatVal(act, kpi.unit)}</span>
-            &nbsp;·&nbsp;
-            Source: <span class="badge">${kpi.source || '—'}</span>
+            Source <span class="badge">${kpi.source || '—'}</span>
           </p>
           ${flagBlock}
         </div>
@@ -153,8 +152,8 @@ function renderRepCard(kpi, dept) {
 
       <hr class="divider" style="margin:16px 0">
 
-      <div class="text-muted text-small" style="margin-bottom:4px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;font-size:0.65rem">
-        Activity Drivers
+      <div style="margin-bottom:8px">
+        <span class="running-head">Activity Drivers</span>
       </div>
       ${renderRepSubs(kpi)}
 
