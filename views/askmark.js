@@ -21,8 +21,11 @@
  *     lifecycleView (the 6-stage lifecycle track), linkEightStep (8-step
  *     escalation), rollupSignal (header "N stalled · M responses logged").
  *   - lib/agent.js liveReply() — every chat send still gathers the same live
- *     context (reasons, per-KPI comments, kz-records.json) and calls it
- *     unchanged.
+ *     context (reasons, per-KPI comments, kz-records.json), now also the
+ *     dept's accountability responses (getResponsesByDept) and the active
+ *     thread's message history, and calls it unchanged; liveReply itself
+ *     decides whether to hit the real backend agent or fall back to the
+ *     scripted reply.
  *   - The header's "N action required" / "M being actioned" pill math is
  *     still computed off the LIVE queue split by whether each red already
  *     has a submitted response (not off rollupSignal — see the split-queue
@@ -52,7 +55,7 @@
 
 import {
   redKpisNeedingResponse, rollupSignal, getResponse, addResponse,
-  advanceLifecycle, lifecycleView, linkEightStep,
+  advanceLifecycle, lifecycleView, linkEightStep, getResponsesByDept,
 } from '../lib/accountability.js';
 import { liveReply }                       from '../lib/agent.js';
 import { getReasonsByDept }                from '../lib/reasons.js';
@@ -698,6 +701,26 @@ function gatherDeptComments(dept) {
 
 // ─── Chat: send + repaint ────────────────────────────────────────────────────
 
+// Shapes an in-view thread's msgs ({role:'me'|'mark', text, system?}) into the
+// backend's conversation-history contract ({role:'user'|'assistant', content}).
+// Drops the locally-injected "system confirmation" bubbles (submitResponse /
+// openEightStepForKpi push these with system:true — they never came from the
+// model, so replaying them as assistant turns would misrepresent the
+// conversation to Claude) and drops any messages before the first real user
+// turn (a greeted new thread opens with a scripted Mark intro; the Anthropic
+// Messages API requires the first turn to be 'user', so a leading assistant
+// turn would make every send on that thread fail server-side and silently
+// fall back to the scripted reply instead of actually reaching Mark).
+function toApiMessages(msgs) {
+  const real = (msgs || []).filter((m) => !m.system);
+  const firstUser = real.findIndex((m) => m.role === 'me');
+  if (firstUser === -1) return [];
+  return real.slice(firstUser).map((m) => ({
+    role: m.role === 'me' ? 'user' : 'assistant',
+    content: m.text,
+  }));
+}
+
 function scrollThreadToBottom() {
   const el = document.getElementById('askmark-thread');
   if (el) el.scrollTop = el.scrollHeight;
@@ -754,7 +777,9 @@ async function sendMessage() {
     const reasons   = getReasonsByDept(_dept.id);
     const comments  = gatherDeptComments(_dept);
     const kzRecords = await loadKzRecords();
-    const reply = await liveReply(_dept.id, 'ask', { dept: _dept, question, reasons, comments, kzRecords });
+    const responses = getResponsesByDept(_dept.id);
+    const messages  = toApiMessages(thread.msgs);
+    const reply = await liveReply(_dept.id, 'ask', { dept: _dept, question, reasons, comments, kzRecords, responses, messages });
     thread.msgs.push({ role: 'mark', text: reply });
   } catch (e) {
     console.warn('Ask Mark: liveReply failed', e);

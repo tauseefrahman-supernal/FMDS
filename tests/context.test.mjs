@@ -50,19 +50,22 @@ test('ownerFor: sub with kpi.who wins over dept.lead', () => {
   assert.equal(ownerFor(operationsFixture, kpi), 'Rep Name');
 });
 
-test('reasons/comments/kzRecords default to [] when not passed via opts', () => {
+test('reasons/comments/responses/kzRecords default to [] when not passed via opts', () => {
   const ctx = buildDeptContext(operationsFixture);
   assert.deepEqual(ctx.reasons, []);
   assert.deepEqual(ctx.comments, []);
+  assert.deepEqual(ctx.responses, []);
   assert.deepEqual(ctx.kzRecords, []);
 });
 
-test('reasons/comments pass through from opts untouched', () => {
+test('reasons/comments/responses pass through from opts untouched', () => {
   const reasons = [{ id: 'r1', deptId: 'operations', kpiId: 'otp' }];
   const comments = [{ id: 'c1', deptId: 'operations', kpiId: 'otp' }];
-  const ctx = buildDeptContext(operationsFixture, { reasons, comments });
+  const responses = [{ id: 'resp1', deptId: 'operations', kpiId: 'otp', answered: true }];
+  const ctx = buildDeptContext(operationsFixture, { reasons, comments, responses });
   assert.deepEqual(ctx.reasons, reasons);
   assert.deepEqual(ctx.comments, comments);
+  assert.deepEqual(ctx.responses, responses);
 });
 
 test('kzRecords maps to {kzNumber,item,who,linkedKpiId,done,closed}, filtered to this dept', () => {
