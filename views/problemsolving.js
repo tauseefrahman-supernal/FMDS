@@ -22,7 +22,7 @@ import { byDept, newKZ, progress } from '../lib/eightstep.js';
 import { contributorsOf, mains, byId } from '../lib/registry.js';
 import { ragStatus }               from '../lib/rag.js';
 import { draftStep, liveReply }    from '../lib/agent.js';
-import { svgRecoveryTrend, svgPareto, svgFunnel } from '../lib/charts.js';
+import { svgFunnel, stepChart, paretoBars } from '../lib/charts.js';
 
 // ─── State (module-level, reset each render) ─────────────────────────────────
 let _activeKZ     = null;   // the KZ being solved in the wizard
@@ -112,34 +112,68 @@ function renderStepBar(template, kz, activeStep) {
   }).join('');
 }
 
-// ─── Golden-thread — inline prose fragment (main → sub) ───────────────────────
-// Rendered inline inside the wizard's page-head__sub sentence — "OTP 86.3% ▸
-// OTP — Mexico 75.0% vs 98.5% opens this 8-step" — per the artifact's editorial
-// pattern: the roll-up chain is running text with the failing number(s) bolded
-// and RAG-colored directly, not a separate boxed component (design-system
-// spec §3.8/§4.2).
+// ─── Golden-thread — `.kz-meta` header row (main → sub) ───────────────────────
+// Rendered once, atop the wizard, as the artifact's `.kz-meta` row — pill
+// chips + divider ticks, tabular nums, nothing wraps mid-value. Replaces the
+// old inline page-head__sub sentence AND the old separate AI-draft/golden-
+// thread boxes: per design-system spec §5.5, this row (plus a right-aligned
+// source-note inside the step body) is the ONLY place that info lives — no
+// banner box restating it.
 
-function goldenThreadInline(dept, kpi) {
-  if (!kpi || !dept.kpis) return '';
-
-  const parts = [];
+function goldenThreadChips(dept, kpi) {
+  if (!kpi || !dept.kpis) return [];
+  const chips = [];
 
   // Dept main (parent of this sub-KPI if one exists, else first main)
   const parent = kpi.parentId ? byId(dept, kpi.parentId) : null;
   const mainKpi = parent || mains(dept)[0];
   if (mainKpi) {
     const rag = ragStatus(mainKpi.actual, mainKpi.target, mainKpi.direction || 'higher_better');
-    parts.push(`${esc(mainKpi.name)} <b style="color:${ragTextVar(rag)}">${formatVal(mainKpi.actual, mainKpi.unit)}</b>`);
+    chips.push(`<span class="kz-meta__item kz-meta__chip">${esc(mainKpi.name)} <b style="color:${ragTextVar(rag)}">${formatVal(mainKpi.actual, mainKpi.unit)}</b></span>`);
   }
 
   // The specific (sub) KPI that triggered the 8-step
   if (kpi && kpi !== mainKpi) {
     const rag = ragStatus(kpi.actual, kpi.target, kpi.direction || 'higher_better');
-    parts.push(`${esc(kpi.name)} <b style="color:${ragTextVar(rag)}">${formatVal(kpi.actual, kpi.unit)} vs ${formatVal(kpi.target, kpi.unit)}</b>`);
+    chips.push(`<span class="kz-meta__item kz-meta__chip">${esc(kpi.name)} <b style="color:${ragTextVar(rag)}">${formatVal(kpi.actual, kpi.unit)}</b> <span class="faint">vs ${formatVal(kpi.target, kpi.unit)}</span></span>`);
   }
 
+  return chips;
+}
+
+function renderKzMeta(dept, kz, kpi) {
+  const segs = [`<span class="kz-meta__item">Owner <b>${kz.who ? esc(kz.who) : '—'}</b></span>`];
+
+  const chips = goldenThreadChips(dept, kpi);
+  if (chips.length) {
+    segs.push('<span class="kz-meta__sep"></span>');
+    segs.push('<span class="kz-meta__item">Golden Thread</span>');
+    chips.forEach((chip) => {
+      segs.push(chip);
+      segs.push('<span class="kz-meta__arrow">▸</span>');
+    });
+    segs.push('<span class="kz-meta__item">opens this 8-step</span>');
+  }
+
+  segs.push('<span class="kz-meta__sep"></span>');
+  const aiConfirmed = AI_STEPS.filter((n) => !!(kz.steps && kz.steps[String(n)])).length;
+  segs.push(`<span class="badge badge--info"><span class="dot"></span>AI draft · steps 1–6 pre-solved · ${aiConfirmed} confirmed</span>`);
+
+  return `<div class="kz-meta">${segs.join('')}</div>`;
+}
+
+// Grounded, per-step provenance line (right-aligned inside the step head) —
+// replaces the old per-step "AI draft — review & edit" banner box. Only
+// shown on the steps the agent actually pre-solves (AI_STEPS); steps 7/8
+// are captured after implementation, never drafted, so no note is fabricated
+// for them.
+function stepSourceNote(kpi, prior, sop, currentKzNumber) {
+  const parts = [];
+  if (kpi && kpi.name) parts.push(`red KPI "${esc(kpi.name)}"`);
+  if (prior && prior.kzNumber && prior.kzNumber !== currentKzNumber) parts.push(`prior similar ${esc(prior.kzNumber)}`);
+  if (sop && sop.title) parts.push(`SOP "${esc(sop.title)}"`);
   if (!parts.length) return '';
-  return `Golden Thread: ${parts.join(' ▸ ')} opens this 8-step`;
+  return `Drafted from ${parts.join(' · ')}`;
 }
 
 // ─── Tracker table ────────────────────────────────────────────────────────────
@@ -386,28 +420,10 @@ function govSop(dept) {
   return { id: null, title: null };
 }
 
-// ─── AI-draft block (shown atop steps 1–6) ────────────────────────────────────
-
-function draftBlock(draft, deptId, stepN) {
-  const srcLine = draft && draft.source ? draft.source.line : '';
-  const note = draft && draft.note
-    ? `<div style="margin-top:6px;font-size:12.5px;color:var(--text-dim);font-style:italic">${esc(draft.note)}</div>`
-    : '';
-  return `
-    <div class="ai-draft-banner">
-      <div style="flex:1;min-width:0">
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-          <span class="badge badge--info"><span class="dot"></span>AI draft — review &amp; edit</span>
-          ${srcLine ? `<span class="chip">${esc(srcLine)}</span>` : ''}
-        </div>
-        ${note}
-      </div>
-    </div>`;
-}
-
 // ─── Chart helpers (Steps 1, 2, 3, 7) ─────────────────────────────────────────
 // Real actual-vs-target / breakdown charts drawn from the active KPI's own
-// `series` (data/*.json) via lib/charts.js's svgRecoveryTrend/svgPareto.
+// `series` (data/*.json) via lib/charts.js's stepChart/paretoBars (the A3
+// gap/recovery + largest-first breakdown spec helpers — §4 of the guide).
 // Zero-invented-data rule: anything we have to synthesize — no real series on
 // file, or the "did it get back to green" future that hasn't happened yet for
 // a still-open KZ — is visibly badged "illustrative", never blended in as if
@@ -437,18 +453,23 @@ function synthIllustrativeSeries(target, actual) {
 // Illustrative "what recovery could look like" tail appended after a real
 // (or synthesized) baseline. Step 7 asks "did it get back to green?" — for a
 // KZ still open in the wizard that answer genuinely isn't measured yet, so
-// this is always rendered badged illustrative at the call site.
-function synthRecoveryTail(lastVal, target) {
+// this is always rendered badged illustrative at the call site. Direction-
+// aware: for a lower_better KPI (e.g. DART incidents) the projected path
+// must land BELOW target to read green (ragStatus's target/actual ratio),
+// not above it — mirroring the higher_better climb-through-amber-into-green
+// shape on the other side of the target line.
+function synthRecoveryTail(lastVal, target, direction = 'higher_better') {
   if (typeof target !== 'number' || typeof lastVal !== 'number') return [];
   if (target === 0) return [lastVal * 0.5, lastVal * 0.15, 0].map(v => +v.toFixed(4));
-  // Climbing toward target, then deliberately through the amber band
+  // Climbing/falling toward target, then deliberately through the amber band
   // (ragStatus green needs ratio>=1.0, amber needs ratio>=0.95) before
-  // landing above target — so the projection visibly crosses red→amber→green
-  // rather than skipping straight from red to green.
+  // landing solidly in-target — so the projection visibly crosses
+  // red→amber→green rather than skipping straight from red to green.
   const step1 = lastVal + (target - lastVal) * 0.5;
-  const step2 = target * 0.965;
-  const step3 = target * 1.02;
-  return [step1, step2, step3].map(v => +v.toFixed(4));
+  const overshoot = direction === 'lower_better'
+    ? [target * 1.035, target * 0.97]   // just above target (amber) → below target (green)
+    : [target * 0.965, target * 1.02];  // just below target (amber) → above target (green)
+  return [step1, ...overshoot].map(v => +v.toFixed(4));
 }
 
 function hasRealSeries(kpi) {
@@ -456,53 +477,80 @@ function hasRealSeries(kpi) {
     && kpi.series.filter(v => typeof v === 'number' && !Number.isNaN(v)).length >= 2);
 }
 
-function chartBlock(svg, { illustrative = false, caption = '' } = {}) {
-  return `
-    <div class="chart-block">
-      <div class="chart-block__svg">${svg}</div>
-      <div class="chart-block__caption">
-        ${caption ? `<span>${esc(caption)}</span>` : ''}
-        ${illustrative ? '<span class="badge badge--illustrative">illustrative</span>' : ''}
-      </div>
-    </div>`;
+// ─── A3 chart figures (Steps 1, 2, 3, 7) — lib/charts.js's spec helpers ───────
+// `stepChart` (gap + recovery, solid actual vs dashed target, optional
+// dashed hollow-dot projected tail + countermeasure-in marker) and
+// `paretoBars` (largest-first breakdown) draw the SVG; `chartFig` wraps it in
+// the ported `.chart-fig`/`.chart-fig__cap` figure + an `illustrative` badge
+// exactly per reference view-solve.js's `chartFig`/`kzGapChart`/
+// `kzParetoChart`/`kzRecoveryChart` — grounded here in OUR kpi.series/target/
+// direction instead of the reference's hardcoded DATA.kpis.otp.
+
+function chartFig(svg, opts = {}) {
+  return `<figure class="chart-fig">
+    ${svg}
+    <figcaption class="chart-fig__cap">
+      ${opts.illustrative ? '<span class="badge badge--outline" style="font-size:10px">illustrative</span>' : ''}
+      ${opts.caption ? `<span>${esc(opts.caption)}</span>` : ''}
+    </figcaption>
+  </figure>`;
+}
+
+function noKpiChartFig() {
+  return chartFig('<div class="muted" style="font-size:12.5px;padding:12px 0">No KPI selected yet — pick a red sub-KPI to see its trend.</div>', {});
+}
+
+// y-axis label formatter honoring the KPI's own unit — stepChart's default
+// (`Math.round(v*100)+'%'`) only suits ratio/percent KPIs.
+function stepChartFmtY(kpi) {
+  const u = kpi && kpi.unit;
+  if (u === 'ratio' || u === 'percent' || u === '%' || u === 'pct') return (v) => (v * 100).toFixed(1) + '%';
+  return (v) => formatVal(v, u);
+}
+
+function chartXLabels(n, extra) {
+  const base = Array.from({ length: n }, (_, i) => `P${i + 1}`);
+  for (let i = 0; i < (extra || 0); i++) base.push(`P${n + i + 1}*`);
+  return base;
 }
 
 // Steps 1 & 3 — gap / objective trend: actual vs target from the KPI's own series.
-function gapChartBlock(kpi) {
-  if (!kpi) {
-    return chartBlock(svgRecoveryTrend([], { width: 340, height: 100 }), { illustrative: true, caption: 'No KPI selected yet.' });
-  }
+function gapChartFig(kpi) {
+  if (!kpi) return noKpiChartFig();
   const real = hasRealSeries(kpi);
-  const direction = kpi.direction || 'higher_better';
-  const points = real ? kpi.series : synthIllustrativeSeries(kpi.target, kpi.actual);
-  const svg = svgRecoveryTrend(points, { target: kpi.target, direction, width: 340, height: 100 });
+  const series = real ? kpi.series.slice() : synthIllustrativeSeries(kpi.target, kpi.actual);
+  if (!series.length) return noKpiChartFig();
+  const target = typeof kpi.target === 'number' ? kpi.target : undefined;
   const illustrative = !real || !!kpi.illustrative;
-  const caption = real
-    ? `${kpi.name} — actual vs target, ${points.length} periods on file`
-    : `${kpi.name} — no weekly series on file; gap trend shown is illustrative`;
-  return chartBlock(svg, { illustrative, caption });
+  const svg = stepChart(series, {
+    target, xLabels: chartXLabels(series.length),
+    label: `${kpi.name} actual vs target`, fmtY: stepChartFmtY(kpi),
+  });
+  const caption = illustrative
+    ? `${kpi.name} — no weekly series on file; gap trend shown is illustrative`
+    : `${kpi.name} — actual vs target, ${series.length} periods on file`;
+  return chartFig(svg, { illustrative, caption });
 }
 
 // Step 7 — recovery trend: real baseline + countermeasure-in marker + an
 // illustrative projected recovery tail (an open KZ has no real "back to
 // green" measurement yet — confirming that is what Step 7 asks the human to
-// go do).
-function recoveryChartBlock(kpi) {
-  if (!kpi) {
-    return chartBlock(svgRecoveryTrend([], { width: 340, height: 110 }), { illustrative: true, caption: 'No KPI selected yet.' });
-  }
+// go do). Direction-correct via synthRecoveryTail(..., kpi.direction).
+function recoveryChartFig(kpi) {
+  if (!kpi) return noKpiChartFig();
   const real = hasRealSeries(kpi);
-  const direction = kpi.direction || 'higher_better';
   const baseline = real ? kpi.series.slice() : synthIllustrativeSeries(kpi.target, kpi.actual);
+  if (!baseline.length) return noKpiChartFig();
   const target = typeof kpi.target === 'number' ? kpi.target : null;
-  const tail = target != null ? synthRecoveryTail(baseline[baseline.length - 1], target) : [];
+  const direction = kpi.direction || 'higher_better';
+  const tail = target != null ? synthRecoveryTail(baseline[baseline.length - 1], target, direction) : [];
   const hasTail = tail.length > 0;
-  const points = baseline.concat(tail);
-  // Only mark the countermeasure-in boundary when a projected recovery tail
-  // was actually appended; without a numeric target this is a plain
-  // actual-vs-target trend, so no marker and no projected-range caption.
-  const cmIndex = hasTail ? baseline.length - 1 : null;
-  const svg = svgRecoveryTrend(points, { target, cmIndex, direction, width: 340, height: 110 });
+  const svg = stepChart(baseline, {
+    target: target != null ? target : undefined,
+    projected: hasTail ? tail : undefined,
+    xLabels: chartXLabels(baseline.length, tail.length),
+    label: `${kpi.name} recovery trend`, fmtY: stepChartFmtY(kpi),
+  });
   // Badge illustrative only when the chart actually contains synthesized data:
   // a projected recovery tail, or a fully synthesized baseline (no real series).
   const illustrative = !real || hasTail || !!kpi.illustrative;
@@ -510,11 +558,11 @@ function recoveryChartBlock(kpi) {
   if (!real) {
     caption = `${kpi.name} — no weekly series on file; recovery trend shown is illustrative`;
   } else if (hasTail) {
-    caption = `${kpi.name} — periods 1–${baseline.length} actual · marker = countermeasure-in · periods ${baseline.length + 1}–${points.length} projected recovery (not yet measured)`;
+    caption = `${kpi.name} — periods 1–${baseline.length} actual · marker = countermeasure-in · periods ${baseline.length + 1}–${baseline.length + tail.length} projected recovery (not yet measured)`;
   } else {
     caption = `${kpi.name} — actual vs target, ${baseline.length} periods on file`;
   }
-  return chartBlock(svg, { illustrative, caption });
+  return chartFig(svg, { illustrative, caption });
 }
 
 // Step 2 — breakdown/Pareto: stratify the gap by the KPI's own family
@@ -548,44 +596,116 @@ function paretoRowsFor(dept, kpi) {
   return { rows: labels.map((label, i) => ({ label, value: +(totalGap * shares[i]).toFixed(4) })), illustrative: true };
 }
 
-function paretoChartBlock(dept, kpi) {
+// Sort largest-first + drop rows with no computable gap — `paretoBars`
+// expects the caller to pre-sort (see lib/charts.js doc comment) and can't
+// plot a null value.
+function paretoChartFig(dept, kpi) {
   if (!kpi) return '';
   const { rows, illustrative } = paretoRowsFor(dept, kpi);
-  if (!rows.length) return '';
-  const svg = svgPareto(rows, { width: 340 });
+  const clean = rows.filter((r) => typeof r.value === 'number').sort((a, b) => b.value - a.value);
+  if (!clean.length) return '';
+  const ratioLike = kpi.unit === 'ratio' || kpi.unit === 'percent' || kpi.unit === '%' || kpi.unit === 'pct';
+  const svg = paretoBars(clean, {
+    label: `${kpi.name} gap by location, largest contributor first`,
+    ...(ratioLike ? {} : { fmt: (v) => formatVal(v, kpi.unit) }),
+  });
   const caption = illustrative
     ? `Illustrative breakdown — no location/rep-level sub-KPI family on file for ${kpi.name}.`
     : `Where the gap is coming from — ${kpi.name}'s family, largest contributor first.`;
-  return `
-    <div class="form-group">
-      <label class="form-label">Breakdown — Where Is It Coming From?</label>
-      ${chartBlock(svg, { illustrative, caption })}
-    </div>`;
+  return chartFig(svg, { illustrative, caption });
 }
 
-// ─── Generic prefilled fields (steps 1,2,3) ───────────────────────────────────
+// ─── Shared field helpers (steps 1–3, 7, 8 — plain A3 grid fields) ────────────
 
-function renderPrefillFields(stepDef, stepN, draft, kpi, dept) {
-  const saved = _stepData[stepN] || {};
+// A field wrapped in a tinted callout (Step 1's red Gap, Step 2's sage
+// Prioritized Problem, Step 4's sage Root Cause) — the callout chrome lives
+// on the wrapping div; the textarea itself renders borderless/transparent so
+// it reads as "editable text inside the callout" rather than a nested input
+// box inside a box.
+function calloutTextarea(key, hint, value, rows) {
+  return `<textarea class="input" data-field="${key}" rows="${rows || 2}" placeholder="${esc(hint)}"
+    style="background:transparent;border:none;padding:0;box-shadow:none;font-weight:500;resize:vertical">${esc(value)}</textarea>`;
+}
+
+function attachSlot(label) {
+  return `<div class="drop-zone">
+    <span>${esc(label || 'Attach an image or chart — floor photos, before/after, source screenshots')}</span>
+    <button class="btn btn--ghost btn--sm" type="button">Add Image</button>
+  </div>`;
+}
+
+function fieldDefsOf(stepDef) {
+  return Object.fromEntries((stepDef.fields || []).map((f) => [f.key, f]));
+}
+
+// ─── Step 1 — Clarify the Problem ──────────────────────────────────────────────
+
+function renderStep1(stepDef, draft, kpi) {
+  const saved = _stepData[1] || {};
   const draftFields = (draft && draft.fields) || {};
-  const fieldsHtml = stepDef.fields.map(f => {
-    if (f.columns) return ''; // handled elsewhere
-    if (f.key === 'chart') {
-      return `<div class="form-group"><label class="form-label">${esc(f.label)}</label>${gapChartBlock(kpi)}</div>`;
-    }
-    const val = saved[f.key] != null ? saved[f.key] : (draftFields[f.key] || '');
-    const isLong = (f.hint && f.hint.length > 70) || String(val).length > 60;
-    const input = isLong
-      ? `<textarea class="form-input" data-field="${f.key}" rows="3" placeholder="${esc(f.hint)}">${esc(val)}</textarea>`
-      : `<input type="text" class="form-input" data-field="${f.key}" placeholder="${esc(f.hint)}" value="${esc(val)}">`;
-    return `
-      <div class="form-group">
-        <label class="form-label">${esc(f.label)}${draftFields[f.key] ? ' <span class="drafted-tag">drafted</span>' : ''}</label>
-        ${input}
-      </div>`;
-  }).join('');
-  const extra = stepN === 2 ? paretoChartBlock(dept, kpi) : '';
-  return fieldsHtml + extra;
+  const F = fieldDefsOf(stepDef);
+  const val = (k) => (saved[k] != null ? saved[k] : (draftFields[k] || ''));
+  const plainField = (key) => `
+    <div class="field">
+      <span class="field__label">${esc(F[key].label)}</span>
+      <textarea class="input" data-field="${key}" rows="2" placeholder="${esc(F[key].hint)}">${esc(val(key))}</textarea>
+    </div>`;
+
+  return `
+    <div class="a3-grid a3-grid--2">
+      ${plainField('ultimateGoal')}
+      ${plainField('standard')}
+      ${plainField('current')}
+      <div class="field">
+        <span class="field__label">${esc(F.gap.label)}</span>
+        <div class="a3-callout a3-callout--red">${calloutTextarea('gap', F.gap.hint, val('gap'), 2)}</div>
+      </div>
+    </div>
+    <div class="field" style="margin-top:24px"><span class="field__label">Chart — the gap over time</span>${gapChartFig(kpi)}</div>
+    ${attachSlot()}`;
+}
+
+// ─── Step 2 — Break Down the Problem (stratification + Pareto) ────────────────
+
+function renderStep2(stepDef, draft, dept, kpi) {
+  const saved = _stepData[2] || {};
+  const draftFields = (draft && draft.fields) || {};
+  const F = fieldDefsOf(stepDef);
+  const val = (k) => (saved[k] != null ? saved[k] : (draftFields[k] || ''));
+  const pareto = paretoChartFig(dept, kpi);
+
+  return `
+    <span class="running-head">Stratification — what · where · when · who (not why) · Genchi Genbutsu to the point of occurrence</span>
+    <div class="field" style="margin-top:12px">
+      <textarea class="input" data-field="stratification" rows="3" placeholder="${esc(F.stratification.hint)}">${esc(val('stratification'))}</textarea>
+    </div>
+    <div class="field" style="margin-top:20px">
+      <span class="field__label">${esc(F.prioritizedProblem.label)}</span>
+      <div class="a3-callout a3-callout--accent">${calloutTextarea('prioritizedProblem', F.prioritizedProblem.hint, val('prioritizedProblem'), 2)}</div>
+    </div>
+    ${pareto ? `<div class="field" style="margin-top:24px"><span class="field__label">Breakdown — Where Is It Coming From?</span>${pareto}</div>` : ''}`;
+}
+
+// ─── Step 3 — Target Setting (Objective) ───────────────────────────────────────
+
+function renderStep3(stepDef, draft, kpi) {
+  const saved = _stepData[3] || {};
+  const draftFields = (draft && draft.fields) || {};
+  const F = fieldDefsOf(stepDef);
+  const val = (k) => (saved[k] != null ? saved[k] : (draftFields[k] || ''));
+  const plainField = (key) => `
+    <div class="field">
+      <span class="field__label">${esc(F[key].label)}</span>
+      <textarea class="input" data-field="${key}" rows="2" placeholder="${esc(F[key].hint)}">${esc(val(key))}</textarea>
+    </div>`;
+
+  return `
+    <div class="a3-grid a3-grid--3">
+      ${plainField('doWhat')}
+      ${plainField('toWhat')}
+      ${plainField('byWhen')}
+    </div>
+    <div class="field" style="margin-top:24px"><span class="field__label">Chart — eliminating the prioritized problem inside the big-problem gap</span>${gapChartFig(kpi)}</div>`;
 }
 
 // ─── 5-Whys ladder + 6M fishbone (Step 4) ─────────────────────────────────────
@@ -594,52 +714,52 @@ function render5Whys6M(stepDef, draft) {
   const saved = _stepData[4] || {};
   const draftWhys = (draft && draft.whys) || [];
   const cats = (_template && _template.fishboneCategories) || ['Man', 'Method', 'Machine', 'Material', 'Environment', 'Measurement'];
+  const F = fieldDefsOf(stepDef);
 
+  // 5-Whys ladder — one `.a3-why` row per rung: Why-N label · 6M category chip
+  // · editable text on a subtle bg (design-system spec §5.5 step 4), replacing
+  // the old two-column ladder+fishbone-table layout.
   const ladder = [1, 2, 3, 4, 5].map((n, i) => {
     const key = `why${n}`;
     const dw = draftWhys.find(w => w.n === n);
     const val = saved[key] != null ? saved[key] : (dw ? dw.text : '');
-    const cat = dw ? dw.category : cats[i];
-    const isLast = n === 5;
+    const cat = dw ? dw.category : ((F[key] && F[key].fishbone) || cats[i]);
+    const hint = (F[key] && F[key].hint) || 'Why did the level above occur? (fact-based, no blame)';
     return `
-      <div class="why-row ${isLast ? 'why-row--root' : ''}">
-        <div class="why-rail">
-          <span class="why-num">Why ${n}</span>
-          <span class="why-cat" title="6M category">${esc(cat)}</span>
-        </div>
-        <textarea class="form-input why-input" data-field="${key}" rows="2"
-          placeholder="${isLast ? 'Root systemic cause — the bone to treat' : 'Why did the level above occur? (fact-based, no blame)'}">${esc(val)}</textarea>
-        ${!isLast ? '<div class="why-connector">↓</div>' : ''}
+      <div class="a3-why">
+        <span class="field__label" style="white-space:nowrap">Why ${n}</span>
+        <span class="chip">${esc(cat)}</span>
+        <textarea class="input" data-field="${key}" rows="1" placeholder="${esc(hint)}"
+          style="background:transparent;border:none;padding:0;box-shadow:none;resize:vertical">${esc(val)}</textarea>
       </div>`;
   }).join('');
 
   const rootVal = saved.rootCause != null ? saved.rootCause : (draft ? draft.rootCause : '');
 
+  // Secondary 6M contributing-factor notes — independent of a specific why
+  // rung; also the target Mark's per-category "altbranch" step-help
+  // suggestions write into (see window._psMarkAdd's 'altbranch' handler).
   const fishboneRows = cats.map(cat => {
     const fk = `fishbone_${cat.toLowerCase()}`;
     const dw = draftWhys.find(w => w.category === cat);
     const val = saved[fk] != null ? saved[fk] : (dw ? dw.text.replace(/\s+←.*$/, '') : '');
     return `
       <tr>
-        <td style="font-weight:600;width:110px;color:var(--slate-600)">${esc(cat)}</td>
-        <td><input type="text" class="form-input" data-field="${fk}" placeholder="How does ${esc(cat)} contribute?" value="${esc(val)}"></td>
+        <td style="font-weight:600;width:110px;color:var(--text-dim)">${esc(cat)}</td>
+        <td><input type="text" class="input" data-field="${fk}" placeholder="How does ${esc(cat)} contribute?" value="${esc(val)}"></td>
       </tr>`;
   }).join('');
 
   return `
-    <div class="rootcause-grid">
-      <div class="rc-whys">
-        <h4 class="rc-head">5-Whys Ladder <span class="text-muted" style="font-weight:400">(Genchi Genbutsu — confirm each at the point of occurrence)</span></h4>
-        ${ladder}
-        <div class="form-group" style="margin-top:14px">
-          <label class="form-label">Root Cause (confirmed) <span class="drafted-tag">high-leverage</span></label>
-          <textarea class="form-input" data-field="rootCause" rows="3" placeholder="The single systemic root cause the 5-Whys converge on">${esc(rootVal)}</textarea>
-        </div>
-      </div>
-      <div class="rc-fishbone">
-        <h4 class="rc-head">6M Fishbone</h4>
-        <table class="fishbone-tbl">${fishboneRows}</table>
-      </div>
+    <span class="running-head">5-Whys ladder — Genchi Genbutsu: confirm each at the point of occurrence</span>
+    <div class="a3-whys" style="margin-top:12px">${ladder}</div>
+    <div class="field" style="margin-top:20px">
+      <span class="field__label">Root Cause (confirmed) <span class="chip" style="margin-left:6px">high-leverage</span></span>
+      <div class="a3-callout a3-callout--accent">${calloutTextarea('rootCause', F.rootCause.hint, rootVal, 2)}</div>
+    </div>
+    <div style="margin-top:20px">
+      <span class="running-head">Additional 6M factors (optional — not on the 5-Whys ladder)</span>
+      <table class="fishbone-tbl" style="margin-top:8px">${fishboneRows}</table>
     </div>`;
 }
 
@@ -650,103 +770,113 @@ function renderScoringMatrix(draft) {
     { key: 'S', label: 'Safety' }, { key: 'Q', label: 'Quality' }, { key: 'C', label: 'Cost' },
     { key: 'T', label: 'Time' }, { key: 'Cu', label: 'Customer' }, { key: 'Ef', label: 'Effective' }, { key: 'OA', label: 'Overall' }
   ];
+  const dims = cols.filter((c) => c.key !== 'OA');
+  const oaCol = cols.find((c) => c.key === 'OA') || { key: 'OA', label: 'Overall' };
   const saved = (_stepData[5] && _stepData[5].countermeasures) || null;
   const rows = saved || (draft && draft.countermeasures) || [];
 
-  const scoreCell = (row, ck, i) => {
+  // Dimension columns score 0 (worst) · 1 · 2 (best); Overall (OA) is a bold
+  // 1–5 ranked-priority select — not a sum of the dimension scores.
+  const scoreCell = (row, ck, i, isOA) => {
     const v = row[ck];
-    const opts = ['', 0, 1, 2].map(o =>
+    const options = isOA ? ['', 1, 2, 3, 4, 5] : ['', 0, 1, 2];
+    const opts = options.map((o) =>
       `<option value="${o}" ${String(v) === String(o) ? 'selected' : ''}>${o === '' ? '–' : o}</option>`).join('');
-    return `<td class="score-cell"><select class="score-sel" data-cm-field="${ck}" data-cm-row="${i}">${opts}</select></td>`;
+    return `<td class="num score-cell"><select class="score-sel ${isOA ? 'score-sel--oa' : ''}" data-cm-field="${ck}" data-cm-row="${i}" aria-label="${esc(ck)} score, row ${i + 1}">${opts}</select></td>`;
   };
 
   const body = rows.map((row, i) => `
     <tr>
-      <td class="cm-text"><input type="text" class="form-input" data-cm-field="text" data-cm-row="${i}" value="${esc(row.text)}" placeholder="Countermeasure candidate"></td>
-      ${cols.map(c => scoreCell(row, c.key, i)).join('')}
+      <td><input type="text" class="input cm-text" data-cm-field="text" data-cm-row="${i}" value="${esc(row.text)}" placeholder="Countermeasure candidate" aria-label="Countermeasure ${i + 1}"></td>
+      ${dims.map((c) => scoreCell(row, c.key, i, false)).join('')}
+      ${scoreCell(row, oaCol.key, i, true)}
     </tr>`).join('');
 
   return `
-    <div>
-      <div style="overflow-x:auto">
-        <table class="kpi-table cm-matrix">
-          <thead>
-            <tr>
-              <th style="min-width:220px">Countermeasure</th>
-              ${cols.map(c => `<th title="0 worst · 2 best" class="score-th">${esc(c.label)}</th>`).join('')}
-            </tr>
-          </thead>
-          <tbody id="cm-matrix-body">${body}</tbody>
-        </table>
-      </div>
-      <div style="font-size:0.75rem;color:var(--slate-500);margin-top:8px">
-        Score each 0 (worst) · 1 · 2 (best). <b>Overall</b> = ranked priority, not a sum. Build consensus first (Nemawashi).
-      </div>
-      <button class="btn btn--outline" style="margin-top:8px;font-size:0.8rem" onclick="window._psAddCmRow()">+ Add Countermeasure</button>
+    <span class="running-head">Countermeasure scoring matrix — score each 0 (worst) · 1 · 2 (best) per dimension</span>
+    <div class="table-wrap" style="margin-top:12px;box-shadow:none">
+      <table class="dt">
+        <thead>
+          <tr>
+            <th style="min-width:260px">Countermeasure</th>
+            ${dims.map((c) => `<th class="num" title="${esc(c.label)}">${esc(c.key)}</th>`).join('')}
+            <th class="num" title="Overall — ranked priority">${esc(oaCol.key)}</th>
+          </tr>
+        </thead>
+        <tbody id="cm-matrix-body">${body}</tbody>
+      </table>
+    </div>
+    <div style="display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin-top:12px;flex-wrap:wrap">
+      <p style="margin:0;font-size:12.5px;color:var(--text-dim);max-width:80ch"><b>Overall</b> is the ranked priority, not a sum. Build consensus first (Nemawashi) — reviewed with cross-functional leads.</p>
+      <button class="btn btn--outline btn--sm" onclick="window._psAddCmRow()">Add Countermeasure</button>
     </div>`;
 }
 
 // ─── Action register + ODG gate (Step 6) ──────────────────────────────────────
 
 function renderActionRegister(draft) {
-  const statusColors = { R: 'var(--red-text)', Y: 'var(--amber-text)', G: 'var(--green-text)', C: 'var(--accent-text)' };
+  const statusTone = { R: 'red', Y: 'amber', G: 'green', C: 'accent' };
   const statusLabels = { R: 'Behind', Y: 'At Risk', G: 'On Track', C: 'Completed' };
 
   const savedRows = (_stepData[6] && _stepData[6].actionRows)
     || (draft && draft.actionRows)
     || Array.from({ length: 3 }, (_, i) => ({ no: i + 1, plan: '', startDate: '', dueDate: '', responsible: '', status: 'R' }));
 
+  // Status select is styled with the same tone tokens as `.badge--{tone}` —
+  // an at-a-glance R/Y/G/C color signal that stays a live, editable control
+  // (the reference's own action register is a static read-only demo; ours is
+  // the live wizard, so it can't be a plain badge).
+  const statusStyle = (status) => {
+    if (status === 'C') return 'color:var(--accent-text);background:hsl(var(--action-1));border-color:hsl(var(--action-3))';
+    const tone = statusTone[status];
+    return tone ? `color:var(--${tone}-text);background:var(--${tone}-bg);border-color:var(--${tone}-border)` : '';
+  };
+
   const rows = savedRows.map((row, i) => `
     <tr>
-      <td class="text-center text-mono" style="width:40px">${row.no || i + 1}</td>
-      <td><input type="text" class="form-input" data-ar-field="plan" data-ar-row="${i}" value="${esc(row.plan)}" placeholder="What needs to be done"></td>
-      <td><input type="date" class="form-input" data-ar-field="startDate" data-ar-row="${i}" value="${esc(row.startDate)}" style="min-width:120px"></td>
-      <td><input type="date" class="form-input" data-ar-field="dueDate" data-ar-row="${i}" value="${esc(row.dueDate)}" style="min-width:120px"></td>
-      <td><input type="text" class="form-input" data-ar-field="responsible" data-ar-row="${i}" value="${esc(row.responsible)}" placeholder="Name"></td>
+      <td class="tnum" style="width:40px">${row.no || i + 1}</td>
+      <td><input type="text" class="input" data-ar-field="plan" data-ar-row="${i}" value="${esc(row.plan)}" placeholder="What needs to be done" aria-label="Plan, row ${i + 1}"></td>
+      <td><input type="date" class="input" data-ar-field="startDate" data-ar-row="${i}" value="${esc(row.startDate)}" style="min-width:130px" aria-label="Start date, row ${i + 1}"></td>
+      <td><input type="date" class="input" data-ar-field="dueDate" data-ar-row="${i}" value="${esc(row.dueDate)}" style="min-width:130px" aria-label="Due date, row ${i + 1}"></td>
+      <td><input type="text" class="input" data-ar-field="responsible" data-ar-row="${i}" value="${esc(row.responsible)}" placeholder="Name" style="min-width:110px" aria-label="Responsible, row ${i + 1}"></td>
       <td>
-        <select class="form-input" data-ar-field="status" data-ar-row="${i}" style="min-width:90px">
-          ${Object.keys(statusColors).map(s =>
+        <select class="input" data-ar-field="status" data-ar-row="${i}" style="min-width:120px;font-weight:600;${statusStyle(row.status)}" aria-label="Status, row ${i + 1}">
+          ${Object.keys(statusLabels).map((s) =>
             `<option value="${s}" ${row.status === s ? 'selected' : ''}>${s} — ${statusLabels[s]}</option>`).join('')}
         </select>
       </td>
     </tr>`).join('');
 
-  const legend = Object.entries(statusLabels).map(([k, v]) =>
-    `<span style="color:${statusColors[k]};font-weight:600">${k}</span>=<span style="color:var(--text-dim)">${v}</span>`).join(' · ');
-
   const gate = (_stepData[6] && _stepData[6].odgGate) || (draft && draft.odgGate) || { status: 'pending', reviewer: 'Eric / Allison (ODG)' };
-  const gateBadge = {
-    pending:  '<span class="gate-badge gate-badge--pending">Not yet submitted</span>',
-    submitted:'<span class="gate-badge gate-badge--submitted">Submitted — awaiting ODG</span>',
-    approved: '<span class="gate-badge gate-badge--approved">✓ ODG approved</span>'
+  const gateStatusBadge = {
+    pending:   '<span class="badge badge--neutral">Not yet submitted</span>',
+    submitted: '<span class="badge badge--amber"><span class="dot"></span>Submitted — awaiting ODG</span>',
+    approved:  '<span class="badge badge--green"><span class="dot"></span>✓ ODG approved</span>',
   }[gate.status] || '';
-  const gateBtnLabel = gate.status === 'approved' ? '✓ Approved' : gate.status === 'submitted' ? 'Mark ODG-approved' : 'Submit to ODG for gate review';
-  const gateBtnClass = gate.status === 'approved' ? 'btn btn--outline' : 'btn btn--primary';
+  const gateBtn = gate.status === 'approved'
+    ? ''
+    : `<button class="btn btn--secondary btn--sm" onclick="window._psSubmitOdg()">${gate.status === 'submitted' ? 'Mark ODG-Approved' : 'Submit to ODG for gate review'}</button>`;
 
   return `
-    <div>
-      <div style="overflow-x:auto">
-        <table class="kpi-table" style="width:100%;font-size:0.85rem">
-          <thead>
-            <tr>
-              <th style="width:40px">No.</th><th>Implementation Plan</th><th>Start</th><th>Due</th><th>Responsible</th><th>Status</th>
-            </tr>
-          </thead>
-          <tbody id="action-register-body">${rows}</tbody>
-        </table>
-      </div>
-      <div style="font-size:0.75rem;color:var(--text-dim);margin-top:8px">Status: ${legend}</div>
-      <button class="btn btn--outline" style="margin-top:8px;font-size:0.8rem" onclick="window._psAddActionRow()">+ Add Row</button>
+    <span class="running-head">Action register — R Behind · Y At Risk · G On Track · C Completed</span>
+    <div class="table-wrap" style="margin-top:12px;box-shadow:none">
+      <table class="dt">
+        <thead>
+          <tr><th style="width:40px">No.</th><th style="min-width:220px">Implementation Plan</th><th>Start</th><th>Due</th><th>Responsible</th><th>Status</th></tr>
+        </thead>
+        <tbody id="action-register-body">${rows}</tbody>
+      </table>
+    </div>
+    <button class="btn btn--ghost btn--sm" style="margin-top:8px" onclick="window._psAddActionRow()">Add Row</button>
 
-      <div class="a3-callout a3-callout--accent odg-gate">
-        <div class="odg-gate__left">
-          <span class="running-head" style="color:var(--accent-text)">ODG Gate — Step 6</span>
-          <div class="odg-gate__desc">Countermeasure plan must be reviewed by ${esc(gate.reviewer)} before implementation. ${gateBadge}</div>
-        </div>
-        <button class="${gateBtnClass}"
-          onclick="window._psSubmitOdg()" ${gate.status === 'approved' ? 'disabled' : ''}>
-          ${gateBtnLabel}
-        </button>
+    <div class="card card--pad" style="margin-top:16px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;box-shadow:none;background:var(--bg-subtle)">
+      <div>
+        <h4>ODG Gate — Step 6</h4>
+        <p style="margin:4px 0 0;font-size:12.5px;color:var(--text-dim)">Reviewer: ${esc(gate.reviewer)}. The countermeasure plan is reviewed before implementation proceeds.</p>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px">
+        ${gateStatusBadge}
+        ${gateBtn}
       </div>
     </div>`;
 }
@@ -755,66 +885,78 @@ function renderActionRegister(draft) {
 
 function renderResults(stepDef, kpi) {
   const saved = _stepData[7] || {};
+  const F = fieldDefsOf(stepDef);
   const seed = {
     kpi: kpi ? kpi.name : '',
     measurementStart: kpi ? `${formatVal(kpi.actual, kpi.unit)} (baseline)` : '',
     newTarget: kpi ? `${formatVal(kpi.target, kpi.unit)}` : ''
   };
-  return stepDef.fields.map(f => {
-    if (f.key === 'chart') {
-      return `<div class="form-group"><label class="form-label">${esc(f.label)}</label>${recoveryChartBlock(kpi)}</div>`;
-    }
-    const val = saved[f.key] != null ? saved[f.key] : (seed[f.key] || '');
-    const isLong = f.key === 'narrative';
-    const input = isLong
-      ? `<textarea class="form-input" data-field="${f.key}" rows="4" placeholder="${esc(f.hint)}">${esc(val)}</textarea>`
-      : `<input type="text" class="form-input" data-field="${f.key}" placeholder="${esc(f.hint)}" value="${esc(val)}">`;
-    return `<div class="form-group"><label class="form-label">${esc(f.label)}</label>${input}</div>`;
-  }).join('');
+  const val = (k) => (saved[k] != null ? saved[k] : (seed[k] || ''));
+  const plainField = (key) => `
+    <div class="field">
+      <span class="field__label">${esc(F[key].label)}</span>
+      <input type="text" class="input" data-field="${key}" placeholder="${esc(F[key].hint)}" value="${esc(val(key))}">
+    </div>`;
+
+  return `
+    <div class="a3-grid a3-grid--2">
+      ${plainField('kpi')}
+      ${plainField('measurementStart')}
+      ${plainField('measurementEnd')}
+      ${plainField('newTarget')}
+    </div>
+    <div class="field" style="margin-top:20px">
+      <span class="field__label">${esc(F.narrative.label)}</span>
+      <textarea class="input" data-field="narrative" rows="4" placeholder="${esc(F.narrative.hint)}">${esc(val('narrative'))}</textarea>
+    </div>
+    <div class="field" style="margin-top:24px"><span class="field__label">${esc(F.chart.label)}</span>${recoveryChartFig(kpi)}</div>
+    ${attachSlot('Attach the confirmed measurement chart on close — the weekly series is pulled automatically when you confirm')}`;
 }
 
 // ─── Standardize + SOP write-back (Step 8) ─────────────────────────────────────
 
 function renderStandardize(stepDef, dept) {
   const saved = _stepData[8] || {};
-  const fields = stepDef.fields.map(f => {
-    if (f.key === 'improvementImage') {
-      return `<div class="form-group"><label class="form-label">${esc(f.label)}</label>
-        <div class="chart-placeholder">Before/after visual — attach.</div></div>`;
-    }
-    const val = saved[f.key] || '';
-    return `<div class="form-group"><label class="form-label">${esc(f.label)}</label>
-      <textarea class="form-input" data-field="${f.key}" rows="2" placeholder="${esc(f.hint)}">${esc(val)}</textarea></div>`;
-  }).join('');
+  const F = fieldDefsOf(stepDef);
+  const val = (k) => saved[k] || '';
+  const plainField = (key) => `
+    <div class="field">
+      <span class="field__label">${esc(F[key].label)}</span>
+      <textarea class="input" data-field="${key}" rows="2" placeholder="${esc(F[key].hint)}">${esc(val(key))}</textarea>
+    </div>`;
 
   const sop = govSop(dept);
   const sopTitle = sop.title || 'the governing Standard Work';
-  const writeBackBtn = _sopWrittenBack
-    ? `<span class="badge badge--success" style="font-size:0.8rem">✓ Standard Work updated — written back to SOP library</span>`
-    : `<button class="btn btn--primary" onclick="window._psWriteBackSop()">Update Standard Work → write back to SOP library</button>`;
+  const writeBackAction = _sopWrittenBack
+    ? `<span class="badge badge--green"><span class="dot"></span>Standard Work updated</span>`
+    : `<button class="btn btn--primary btn--sm" onclick="window._psWriteBackSop()">Update Standard Work</button>`;
 
   return `
-    ${fields}
-    <div class="sop-writeback">
-      <div class="sop-writeback__label">SOP Write-Back (Yokoten)</div>
-      <div style="font-weight:600;font-size:0.95rem;margin:2px 0 4px">${esc(sopTitle)}</div>
-      <p class="text-muted" style="margin:0 0 10px;font-size:0.8rem">
-        SOPs are the <b>input</b> to Steps 1–5 and the <b>output</b> of Step 8. Locking in the countermeasure updates the standard work so the problem does not recur, and Yokoten shares it to other locations.
-      </p>
-      ${writeBackBtn}
-      <a href="#/dept/${esc(dept.id)}/sop" style="display:inline-block;margin-left:12px;font-size:0.85rem;color:var(--accent)">Open Standard Work view →</a>
+    <div class="a3-grid a3-grid--2">
+      ${plainField('processDocuments')}
+      ${plainField('training')}
+      ${plainField('yokoten')}
+      ${plainField('improvementImage')}
+    </div>
+    ${attachSlot('Attach the before/after improvement image — the metric before and after the countermeasure')}
+    <div class="card card--pad" style="margin-top:20px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;box-shadow:none;background:hsl(var(--action-1));border-color:hsl(var(--action-3))">
+      <div>
+        <h4>SOP Write-Back (Yokoten)</h4>
+        <p style="margin:4px 0 0;font-size:12.5px;color:var(--text-dim)">${esc(sopTitle)} — SOPs are the input to Steps 1–5 and the output of Step 8. <a href="#/dept/${esc(dept.id)}/sop" style="color:var(--accent-text)">Open Standard Work →</a></p>
+      </div>
+      ${writeBackAction}
     </div>`;
 }
 
 // ─── Wizard step page ─────────────────────────────────────────────────────────
 
-function renderWizardStep(dept, kpi, stepN, template) {
+function renderWizardStep(dept, kpi, stepN, template, kz) {
   const stepDef = template.steps[stepN - 1];
-  if (!stepDef) return `<p class="text-muted">Step ${stepN} not found in template.</p>`;
+  if (!stepDef) return `<div class="eightstep__body" data-step="${stepN}"><p class="muted">Step ${stepN} not found in template.</p></div>`;
 
   // Build the structured draft for this step (steps 1–6 only).
-  const prior = _activeKZ._prior || null;
-  const sop   = _activeKZ._sop || null;
+  const prior = kz._prior || null;
+  const sop   = kz._sop || null;
   const draft = AI_STEPS.includes(stepN)
     ? draftStep(dept.id, stepN, {
         kpi: kpi?.name, kpiActual: kpi?.actual ?? null, kpiTarget: kpi?.target ?? null,
@@ -822,40 +964,45 @@ function renderWizardStep(dept, kpi, stepN, template) {
       })
     : null;
 
-  // Step-specific body
+  // Step-specific body — real, editable A3 fields per stepBody (design-
+  // system spec §5.5), not a generic stand-in card.
   let bodyContent = '';
-  if (stepN === 4)      bodyContent = render5Whys6M(stepDef, draft);
+  if (stepN === 1)      bodyContent = renderStep1(stepDef, draft, kpi);
+  else if (stepN === 2) bodyContent = renderStep2(stepDef, draft, dept, kpi);
+  else if (stepN === 3) bodyContent = renderStep3(stepDef, draft, kpi);
+  else if (stepN === 4) bodyContent = render5Whys6M(stepDef, draft);
   else if (stepN === 5) bodyContent = renderScoringMatrix(draft);
   else if (stepN === 6) bodyContent = renderActionRegister(draft);
   else if (stepN === 7) bodyContent = renderResults(stepDef, kpi);
-  else if (stepN === 8) bodyContent = renderStandardize(stepDef, dept);
-  else                  bodyContent = renderPrefillFields(stepDef, stepN, draft, kpi, dept);
+  else                  bodyContent = renderStandardize(stepDef, dept);
 
-  const draftHeader = AI_STEPS.includes(stepN) ? draftBlock(draft, dept.id, stepN) : '';
+  // Grounded provenance — right-aligned inside the step head, only on the
+  // steps the agent actually pre-solves. Replaces the old per-step
+  // "AI draft — review & edit" banner box (that info now lives in the
+  // `.kz-meta` row once, plus this one-line citation per step).
+  const sourceNote = AI_STEPS.includes(stepN) ? stepSourceNote(kpi, prior, sop, kz.kzNumber) : '';
 
-  const prevBtn = stepN > 1
-    ? `<button class="btn btn--outline" onclick="window._psGotoStep(${stepN - 1})">← Previous</button>` : '<span></span>';
+  const prevBtn = `<button class="btn btn--ghost" onclick="window._psGotoStep(${stepN - 1})" ${stepN === 1 ? 'disabled' : ''}>Previous</button>`;
   const nextBtn = stepN < 8
-    ? `<button class="btn btn--primary" onclick="window._psConfirmStep(${stepN})">Confirm &amp; Next →</button>`
+    ? `<button class="btn btn--primary" onclick="window._psConfirmStep(${stepN})">Confirm &amp; Next</button>`
     : `<button class="btn btn--primary" onclick="window._psConfirmStep(${stepN})">Confirm Step 8 — Close KZ</button>`;
 
-  // Per-step head: PDCA + "Step N of 8" running-head, the (Lora) step title,
-  // and its description — the KZ number, golden thread and AI-draft summary
-  // now live once in the wizard's page-head (see doRender()'s wizard branch),
-  // not repeated per step.
   return `
-    <div class="wizard-panel card" data-step="${stepN}">
-      <span class="running-head">${esc(stepDef.pdca)} · Step ${stepN} of 8${stepDef.highLeverage ? ' · highest-leverage' : ''}</span>
-      <h2 style="margin-top:6px">Step ${stepN}: ${esc(stepDef.name)}</h2>
-      <p style="margin:8px 0 0;font-size:13px;color:var(--text-dim);max-width:80ch">${esc(stepDef.description)}</p>
+    <div class="eightstep__body" data-step="${stepN}" style="padding:32px 40px">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:16px;flex-wrap:wrap">
+        <div>
+          <span class="running-head">${esc(stepDef.pdca)} · Step ${stepN} of 8${stepDef.highLeverage ? ' · highest-leverage' : ''}</span>
+          <h2 style="margin-top:6px;font-size:20px">Step ${stepN}: ${esc(stepDef.name)}</h2>
+        </div>
+        ${sourceNote ? `<span class="source-note" style="max-width:44ch;text-align:right">${sourceNote}</span>` : ''}
+      </div>
+      <p style="margin:8px 0 24px;font-size:13px;color:var(--text-dim);max-width:90ch">${esc(stepDef.description)}</p>
 
-      ${draftHeader}
+      ${bodyContent}
 
-      <div class="wizard-fields">${bodyContent}</div>
-
-      <div class="wizard-nav">
+      <div style="display:flex;justify-content:space-between;margin-top:40px">
         ${prevBtn}
-        <div style="display:flex;gap:8px">${nextBtn}</div>
+        ${nextBtn}
       </div>
     </div>`;
 }
@@ -896,40 +1043,40 @@ function renderMarkItem(it, i) {
     </div>`;
 }
 
-function renderMarkDock(stepN, stepHelp) {
+// Docked in the wizard canvas's right column (`.eightstep__assist`, ported
+// from reference/view-solve.js's `assistPanel()`): header, per-step note
+// card, our own proactive suggestion items (Add/Dismiss — a real feature the
+// static reference doesn't have), a running Q&A thread, and the "Ask Mark
+// about this step" composer. Always visible (no collapse pill) — the grid
+// itself hides the column under 1100px (`.eightstep-wide` media query).
+function renderAssistPanel(stepN, stepHelp) {
   const items = (stepHelp && stepHelp.items) || [];
-  const itemsHtml = items.length
-    ? items.map((it, i) => renderMarkItem(it, i)).join('')
-    : `<p class="text-muted" style="font-size:0.78rem;margin:0">Nothing scripted for this step yet — ask below.</p>`;
+  const itemsHtml = items.length ? items.map((it, i) => renderMarkItem(it, i)).join('') : '';
+  const headline = stepHelp && stepHelp.headline;
+  const note = stepHelp && stepHelp.note;
 
   return `
-    <aside class="mark-dock" id="mark-dock">
-      <button class="mark-dock__pill" onclick="window._psMarkReopen()" title="Reopen Mark">
-        <span class="mark-dock__avatar mark-dock__avatar--sm">M</span>
-      </button>
-      <div class="mark-dock__panel">
-        <div class="mark-dock__head">
-          <div class="mark-dock__ident">
-            <span class="mark-dock__avatar">M</span>
-            <div>
-              <div class="mark-dock__name">Mark</div>
-              <div class="mark-dock__meta">helping · Step ${stepN}</div>
-            </div>
-          </div>
-          <button class="mark-dock__close" onclick="window._psMarkDismiss()" title="Dismiss panel">×</button>
+    <aside class="eightstep__assist">
+      <div class="assist-head">
+        <span class="ai-note__avatar" style="width:28px;height:28px;font-size:12px">M</span>
+        <div>
+          <b style="font-size:13px">Mark · AI assist</b>
+          <div class="faint" style="font-size:11px">Grounded in the red KPI, the SOP, and prior KZs</div>
         </div>
-
-        ${stepHelp && stepHelp.headline ? `<div class="mark-dock__headline">${esc(stepHelp.headline)}</div>` : ''}
-        ${stepHelp && stepHelp.note ? `<div class="mark-dock__note">${esc(stepHelp.note)}</div>` : ''}
-
-        <div class="mark-dock__body">${itemsHtml}</div>
-
-        <div id="mark-dock-answers" class="mark-dock__answers"></div>
-
-        <div class="mark-dock__composer">
-          <textarea id="mark-dock-input" rows="2" placeholder="Ask Mark about this step…"></textarea>
-          <button class="btn btn--primary" style="width:100%;margin-top:6px;font-size:0.8rem" onclick="window._psMarkAsk()">Ask</button>
-        </div>
+      </div>
+      <div class="assist-note">
+        <span class="running-head" style="font-size:10px">Step ${stepN}</span>
+        ${headline ? `<p style="margin:6px 0 0;font-size:12.5px;font-weight:600;color:var(--text)">${esc(headline)}</p>` : ''}
+        ${note ? `<p style="margin:${headline ? '4px' : '6px'} 0 0;font-size:12.5px;line-height:1.55;color:var(--text-secondary)">${esc(note)}</p>` : ''}
+        ${!headline && !note ? `<p style="margin:6px 0 0;font-size:12.5px;color:var(--text-faint)">Nothing scripted for this step yet — ask below.</p>` : ''}
+      </div>
+      ${itemsHtml ? `<div class="assist-items">${itemsHtml}</div>` : ''}
+      <div class="assist-thread" id="mark-dock-answers"></div>
+      <div class="chat__composer" style="margin-top:auto">
+        <textarea class="input" rows="2" id="mark-dock-input" placeholder="Ask Mark about this step"
+          aria-label="Ask Mark about this step"
+          onkeydown="if(event.key==='Enter'&amp;&amp;!event.shiftKey){event.preventDefault();window._psMarkAsk();}"></textarea>
+        <button class="btn btn--primary btn--sm" style="align-self:flex-end" onclick="window._psMarkAsk()">Send</button>
       </div>
     </aside>`;
 }
@@ -1145,23 +1292,19 @@ async function doRender() {
       kz: _activeKZ
     });
 
-    // Wizard subheader — one flowing sentence (owner · golden thread · "opens
-    // this 8-step" · AI-draft freshness badge), replacing the old stack of
-    // separate boxes (presolve bar + golden-thread card + KZ-number/step-dot
-    // corner block). See design-system spec §3.8 — this is the targeted fix.
+    // Wizard header — eyebrow + h1 + the `.kz-meta` row (owner · golden
+    // thread · AI-draft badge). No banner box: that info lives only in this
+    // row plus the right-aligned source-note inside the step (design-system
+    // spec §5.5).
     const kzTitle = esc(_activeKZ.title || _activeKZ.item || _activeKZ.kzNumber);
-    const threadLine = goldenThreadInline(_dept, kpi);
-    const aiConfirmed = AI_STEPS.filter(n => !!_activeKZ.steps[String(n)]).length;
-    const subParts = [`Owner ${_activeKZ.who ? esc(_activeKZ.who) : '—'}`];
-    if (threadLine) subParts.push(threadLine);
+    const eyebrow = (_template && _template.source) ? _template.source : _dept.name;
 
     content = `
-      <div class="page-head" style="margin-bottom:8px">
+      <div class="page-head" style="margin-bottom:16px">
         <div>
-          <span class="running-head page-head__eyebrow">8-Step Problem Solving A3 · ${esc(_dept.name)}</span>
+          <span class="running-head page-head__eyebrow">8-Step Problem Solving A3 · ${esc(eyebrow)}</span>
           <h1>${esc(_activeKZ.kzNumber)} · ${kzTitle}</h1>
-          <p class="page-head__sub">${subParts.join(' · ')}
-            · <span class="badge badge--info"><span class="dot"></span>AI draft — steps 1–6 pre-solved · ${aiConfirmed} confirmed</span></p>
+          ${renderKzMeta(_dept, _activeKZ, kpi)}
         </div>
         <div class="page-head__side">
           <button class="btn btn--secondary" onclick="window._psCloseWizard()">Back to Tracker</button>
@@ -1170,10 +1313,10 @@ async function doRender() {
 
       <nav class="step-bar" aria-label="8-step progress">${renderStepBar(tmpl, _activeKZ, _currentStep)}</nav>
 
-      <div class="wizard-layout">
-        ${renderWizardStep(_dept, kpi, _currentStep, tmpl)}
-        ${renderMarkDock(_currentStep, _markStepHelp)}
-      </div>`;
+      <section class="card eightstep-wide">
+        ${renderWizardStep(_dept, kpi, _currentStep, tmpl, _activeKZ)}
+        ${renderAssistPanel(_currentStep, _markStepHelp)}
+      </section>`;
   }
 
   const viewClass = _activeKZ ? 'ps-view ps-view--wizard' : 'ps-view';
@@ -1195,6 +1338,25 @@ function attachHandlers() {
       location.hash = `#/dept/${_dept.id}/solve?kpi=${encodeURIComponent(kpiId)}&kz=${encodeURIComponent(kzNumber)}`;
     });
   });
+
+  // Step 6 action register — recolor the status <select> live (R/Y/G/C tone
+  // tokens matching `.badge--{tone}`) on change, without a full doRender()
+  // (which would lose focus/in-progress edits elsewhere in the row). Event
+  // delegation on the tbody so it also covers rows added later by
+  // _psAddActionRow/_addSuggestedActionRow.
+  const arBody = _mount.querySelector('#action-register-body');
+  if (arBody) {
+    arBody.addEventListener('change', (e) => {
+      const sel = e.target.closest('select[data-ar-field="status"]');
+      if (!sel) return;
+      if (sel.value === 'C') {
+        sel.style.cssText += 'color:var(--accent-text);background:hsl(var(--action-1));border-color:hsl(var(--action-3))';
+        return;
+      }
+      const tone = { R: 'red', Y: 'amber', G: 'green' }[sel.value];
+      if (tone) sel.style.cssText += `color:var(--${tone}-text);background:var(--${tone}-bg);border-color:var(--${tone}-border)`;
+    });
+  }
 
   window._psOpenWizard = () => {
     const sel = document.getElementById('ps-kpi-select');
@@ -1263,12 +1425,12 @@ function attachHandlers() {
     if (n > 10) return;
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td class="text-center text-mono" style="width:40px">${n}</td>
-      <td><input type="text" class="form-input" data-ar-field="plan" data-ar-row="${n - 1}" placeholder="What needs to be done"></td>
-      <td><input type="date" class="form-input" data-ar-field="startDate" data-ar-row="${n - 1}" style="min-width:120px"></td>
-      <td><input type="date" class="form-input" data-ar-field="dueDate" data-ar-row="${n - 1}" style="min-width:120px"></td>
-      <td><input type="text" class="form-input" data-ar-field="responsible" data-ar-row="${n - 1}" placeholder="Name"></td>
-      <td><select class="form-input" data-ar-field="status" data-ar-row="${n - 1}" style="min-width:90px">
+      <td class="tnum" style="width:40px">${n}</td>
+      <td><input type="text" class="input" data-ar-field="plan" data-ar-row="${n - 1}" placeholder="What needs to be done" aria-label="Plan, row ${n}"></td>
+      <td><input type="date" class="input" data-ar-field="startDate" data-ar-row="${n - 1}" style="min-width:130px" aria-label="Start date, row ${n}"></td>
+      <td><input type="date" class="input" data-ar-field="dueDate" data-ar-row="${n - 1}" style="min-width:130px" aria-label="Due date, row ${n}"></td>
+      <td><input type="text" class="input" data-ar-field="responsible" data-ar-row="${n - 1}" placeholder="Name" style="min-width:110px" aria-label="Responsible, row ${n}"></td>
+      <td><select class="input" data-ar-field="status" data-ar-row="${n - 1}" style="min-width:120px;font-weight:600;color:var(--red-text);background:var(--red-bg);border-color:var(--red-border)" aria-label="Status, row ${n}">
         <option value="R" selected>R — Behind</option><option value="Y">Y — At Risk</option>
         <option value="G">G — On Track</option><option value="C">C — Completed</option></select></td>`;
     tbody.appendChild(tr);
@@ -1279,18 +1441,22 @@ function attachHandlers() {
     if (!tbody) return;
     const i = tbody.querySelectorAll('tr').length;
     const cols = (_template && _template.scoringMatrix && _template.scoringMatrix.columns) || [];
+    const dims = cols.filter((c) => c.key !== 'OA');
     const tr = document.createElement('tr');
-    const scoreCells = cols.map(c =>
-      `<td class="score-cell"><select class="score-sel" data-cm-field="${c.key}" data-cm-row="${i}"><option value="">–</option><option value="0">0</option><option value="1">1</option><option value="2">2</option></select></td>`).join('');
-    tr.innerHTML = `<td class="cm-text"><input type="text" class="form-input" data-cm-field="text" data-cm-row="${i}" placeholder="Countermeasure candidate"></td>${scoreCells}`;
+    const scoreCells = dims.map((c) =>
+      `<td class="num score-cell"><select class="score-sel" data-cm-field="${c.key}" data-cm-row="${i}" aria-label="${esc(c.key)} score, row ${i + 1}"><option value="">–</option><option value="0">0</option><option value="1">1</option><option value="2">2</option></select></td>`).join('');
+    const oaCell = `<td class="num score-cell"><select class="score-sel score-sel--oa" data-cm-field="OA" data-cm-row="${i}" aria-label="Overall rank, row ${i + 1}"><option value="">–</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option></select></td>`;
+    tr.innerHTML = `<td><input type="text" class="input cm-text" data-cm-field="text" data-cm-row="${i}" placeholder="Countermeasure candidate" aria-label="Countermeasure ${i + 1}"></td>${scoreCells}${oaCell}`;
     tbody.appendChild(tr);
+    const newInput = tr.querySelector('.cm-text');
+    if (newInput) newInput.focus();
   };
 
   // ── Docked Mark co-pilot ────────────────────────────────────────────────
   window._psMarkAdd = (idx) => {
     if (!_markStepHelp || !_markStepHelp.items || !_markStepHelp.items[idx]) return;
     const item = _markStepHelp.items[idx];
-    const panel = document.querySelector('.wizard-panel');
+    const panel = document.querySelector('.eightstep__body');
     if (!panel) return;
 
     if (item.type === 'chain') {
@@ -1322,16 +1488,6 @@ function attachHandlers() {
 
   window._psMarkSkip = (idx) => {
     _markMarkItem(idx, 'skipped', null);
-  };
-
-  window._psMarkDismiss = () => {
-    const dock = document.getElementById('mark-dock');
-    if (dock) dock.classList.add('mark-dock--collapsed');
-  };
-
-  window._psMarkReopen = () => {
-    const dock = document.getElementById('mark-dock');
-    if (dock) dock.classList.remove('mark-dock--collapsed');
   };
 
   window._psMarkAsk = async () => {
@@ -1376,14 +1532,17 @@ function _addSuggestedCmRow(item) {
   if (!tbody) return;
   const i = tbody.querySelectorAll('tr').length;
   const cols = (_template && _template.scoringMatrix && _template.scoringMatrix.columns) || [];
-  const scoreCells = cols.map(c => {
-    const v = item[c.key];
-    const opts = ['', 0, 1, 2].map(o =>
+  const dims = cols.filter((c) => c.key !== 'OA');
+  const scoreCell = (ck, isOA) => {
+    const v = item[ck];
+    const options = isOA ? ['', 1, 2, 3, 4, 5] : ['', 0, 1, 2];
+    const opts = options.map((o) =>
       `<option value="${o}" ${String(v) === String(o) ? 'selected' : ''}>${o === '' ? '–' : o}</option>`).join('');
-    return `<td class="score-cell"><select class="score-sel" data-cm-field="${c.key}" data-cm-row="${i}">${opts}</select></td>`;
-  }).join('');
+    return `<td class="num score-cell"><select class="score-sel ${isOA ? 'score-sel--oa' : ''}" data-cm-field="${ck}" data-cm-row="${i}" aria-label="${esc(ck)} score, row ${i + 1}">${opts}</select></td>`;
+  };
+  const scoreCells = dims.map((c) => scoreCell(c.key, false)).join('') + scoreCell('OA', true);
   const tr = document.createElement('tr');
-  tr.innerHTML = `<td class="cm-text"><input type="text" class="form-input" data-cm-field="text" data-cm-row="${i}" value="${esc(item.text)}" placeholder="Countermeasure candidate"></td>${scoreCells}`;
+  tr.innerHTML = `<td><input type="text" class="input cm-text" data-cm-field="text" data-cm-row="${i}" value="${esc(item.text)}" placeholder="Countermeasure candidate" aria-label="Countermeasure ${i + 1}"></td>${scoreCells}`;
   tbody.appendChild(tr);
 }
 
@@ -1396,12 +1555,12 @@ function _addSuggestedActionRow(item) {
   if (n > 10) return;
   const tr = document.createElement('tr');
   tr.innerHTML = `
-    <td class="text-center text-mono" style="width:40px">${n}</td>
-    <td><input type="text" class="form-input" data-ar-field="plan" data-ar-row="${n - 1}" value="${esc(item.text)}" placeholder="What needs to be done"></td>
-    <td><input type="date" class="form-input" data-ar-field="startDate" data-ar-row="${n - 1}" style="min-width:120px"></td>
-    <td><input type="date" class="form-input" data-ar-field="dueDate" data-ar-row="${n - 1}" style="min-width:120px"></td>
-    <td><input type="text" class="form-input" data-ar-field="responsible" data-ar-row="${n - 1}" placeholder="Name"></td>
-    <td><select class="form-input" data-ar-field="status" data-ar-row="${n - 1}" style="min-width:90px">
+    <td class="tnum" style="width:40px">${n}</td>
+    <td><input type="text" class="input" data-ar-field="plan" data-ar-row="${n - 1}" value="${esc(item.text)}" placeholder="What needs to be done" aria-label="Plan, row ${n}"></td>
+    <td><input type="date" class="input" data-ar-field="startDate" data-ar-row="${n - 1}" style="min-width:130px" aria-label="Start date, row ${n}"></td>
+    <td><input type="date" class="input" data-ar-field="dueDate" data-ar-row="${n - 1}" style="min-width:130px" aria-label="Due date, row ${n}"></td>
+    <td><input type="text" class="input" data-ar-field="responsible" data-ar-row="${n - 1}" placeholder="Name" style="min-width:110px" aria-label="Responsible, row ${n}"></td>
+    <td><select class="input" data-ar-field="status" data-ar-row="${n - 1}" style="min-width:120px;font-weight:600;color:var(--red-text);background:var(--red-bg);border-color:var(--red-border)" aria-label="Status, row ${n}">
       <option value="R" selected>R — Behind</option><option value="Y">Y — At Risk</option>
       <option value="G">G — On Track</option><option value="C">C — Completed</option></select></td>`;
   tbody.appendChild(tr);
@@ -1409,7 +1568,7 @@ function _addSuggestedActionRow(item) {
 
 function _saveCurrentStepInputs() {
   if (!_activeKZ) return;
-  const panel = document.querySelector('.wizard-panel');
+  const panel = document.querySelector('.eightstep__body');
   if (!panel) return;
   const stepN = parseInt(panel.dataset.step, 10);
   const saved = { ...(_stepData[stepN] || {}) };
@@ -1450,7 +1609,7 @@ function _saveCurrentStepInputs() {
 
 const PS_STYLES = `
   .ps-view { max-width: 1000px; }
-  .ps-view--wizard { max-width: 1320px; }
+  .ps-view--wizard { max-width: 1360px; }
 
   /* Step-reach funnel (tracker header card) — counts render via the shared .ps-summary strip */
   .ps-funnel { display:flex; flex-direction:column; align-items:center; gap:4px; }
@@ -1459,40 +1618,15 @@ const PS_STYLES = `
   /* Stall / age flag (tracker rows — real start-date age only, no fabricated per-step timing) */
   .stall-flag { margin-top:4px; font-size:0.68rem; font-weight:600; color:var(--amber-text); white-space:nowrap; }
 
-  /* PDCA badge — plain neutral label (phase is identity, not status) */
+  /* PDCA badge — plain neutral label (phase is identity, not status). Used by
+     the read-only A3 (renderReadA3's stepCard); the wizard's own step head
+     uses the shared .running-head instead. */
   .pdca-badge { background:var(--muted); color:var(--text-dim); border:1px solid var(--border); padding:2px 8px; border-radius:var(--radius-sm); font-size:0.68rem; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; }
 
-  /* "drafted" / "high-leverage" inline tag next to a field label */
-  .drafted-tag { font-size:0.6rem; font-weight:700; letter-spacing:0.04em; text-transform:uppercase; color:var(--accent-text); background:var(--panel); border:1px solid hsl(var(--action-3)); border-radius:3px; padding:1px 5px; margin-left:4px; }
-
-  /* Wizard */
-  .wizard-fields { margin-top:16px; }
-  .wizard-nav { display:flex; justify-content:space-between; align-items:center; margin-top:24px; padding-top:16px; border-top:1px solid var(--border-soft); }
-
-  /* Docked Mark co-pilot (wizard only) */
-  .wizard-layout { display:flex; align-items:flex-start; gap:20px; }
-  .wizard-layout .wizard-panel { flex:1 1 auto; min-width:0; }
-  @media (max-width: 980px) { .wizard-layout { flex-direction:column; } .mark-dock { width:100%; position:static; } }
-
-  .mark-dock { width:280px; flex-shrink:0; position:sticky; top:16px; }
-  .mark-dock__pill { display:none; align-items:center; justify-content:center; width:40px; height:40px; border-radius:50%; border:1px solid var(--border); background:var(--panel); cursor:pointer; box-shadow: var(--shadow-sm); padding:0; }
-  .mark-dock--collapsed .mark-dock__panel { display:none; }
-  .mark-dock--collapsed .mark-dock__pill { display:flex; }
-
-  .mark-dock__panel { background:var(--panel); border:1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); overflow:hidden; display:flex; flex-direction:column; max-height: calc(100vh - 140px); }
-  .mark-dock__head { display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border-bottom:1px solid var(--border-soft); background: var(--bg-subtle); flex-shrink:0; }
-  .mark-dock__ident { display:flex; align-items:center; gap:8px; }
-  .mark-dock__avatar { width:28px; height:28px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-family: var(--font-mono); font-weight:700; font-size:0.78rem; color:var(--accent-fg); background: hsl(var(--viz-single)); box-shadow: 0 0 0 3px var(--viz-single-bg); }
-  .mark-dock__avatar--sm { width:24px; height:24px; font-size:0.7rem; box-shadow:none; }
-  .mark-dock__name { font-size:0.85rem; font-weight:700; color: var(--text); line-height:1.1; }
-  .mark-dock__meta { font-size:0.62rem; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color: var(--accent-text); margin-top:2px; }
-  .mark-dock__close { background:none; border:none; font-size:1.15rem; line-height:1; color: var(--text-faint); cursor:pointer; padding:0 2px; }
-  .mark-dock__close:hover { color: var(--text-dim); }
-
-  .mark-dock__headline { padding:10px 14px 0; font-size:0.8rem; font-weight:600; color: var(--text); }
-  .mark-dock__note { padding:4px 14px 0; font-size:0.7rem; font-style:italic; color: var(--text-faint); }
-
-  .mark-dock__body { padding:10px 14px; overflow-y:auto; display:flex; flex-direction:column; gap:10px; }
+  /* Docked Mark co-pilot's own proactive suggestion cards (Add/Dismiss) — a
+     real feature beyond the static reference's assist panel, nested inside
+     the ported .eightstep__assist column (see renderAssistPanel). */
+  .assist-items { display:grid; gap:8px; overflow-y:auto; max-height:260px; }
   .mark-item { border:1px solid var(--border-soft); border-radius: var(--radius); padding:8px 10px; background: var(--bg-subtle); }
   .mark-item--added { border-color: var(--green-border); background: var(--green-bg); }
   .mark-item--skipped { opacity:0.5; }
@@ -1513,68 +1647,37 @@ const PS_STYLES = `
   .mark-item__btn--skip:hover:not(:disabled) { background: var(--muted); }
   .mark-item__done { margin-top:6px; font-size:0.68rem; font-weight:700; color: var(--green-text); }
 
-  .mark-dock__answers { padding: 0 14px; display:flex; flex-direction:column; gap:8px; }
+  /* Ask-Mark answer entries appended live into .assist-thread (#mark-dock-answers) */
   .mark-answer { font-size:0.75rem; }
   .mark-answer__q { font-weight:700; color: var(--text-secondary); }
   .mark-answer__a { color: var(--text-dim); margin-top:2px; white-space:pre-wrap; }
 
-  .mark-dock__composer { padding:10px 14px 14px; border-top:1px solid var(--border-soft); flex-shrink:0; }
-  .mark-dock__composer textarea { width:100%; resize:none; font-size:0.78rem; padding:7px 9px; border:1px solid var(--border-input); border-radius: var(--radius); box-sizing:border-box; font-family:inherit; }
-  .mark-dock__composer textarea:focus { outline:none; border-color: var(--accent); box-shadow:0 0 0 2px var(--accent-soft); }
-
-  /* Forms */
-  .form-group { margin-bottom:14px; }
-  .form-label { display:block; font-size:0.8rem; font-weight:600; color:var(--text-secondary); margin-bottom:5px; }
-  .form-input { width:100%; padding:7px 10px; border:1px solid var(--border-input); border-radius: var(--radius); font-size:0.875rem; font-family:inherit; color:var(--text); background:var(--panel); transition:border-color var(--duration-fast); box-sizing:border-box; }
-  .form-input:focus { outline:none; border-color: var(--accent); box-shadow:0 0 0 2px var(--accent-soft); }
-  textarea.form-input { resize:vertical; }
-  .chart-placeholder { border:1px dashed var(--border-strong); border-radius: var(--radius); padding:16px; text-align:center; color:var(--text-faint); font-size:0.8rem; background: var(--bg-subtle); }
-
-  /* Charts (Steps 1,2,3,7 — real actual-vs-target / breakdown SVGs) */
-  .chart-block { border:1px solid var(--border-soft); border-radius: var(--radius); padding:10px 12px 8px; background:var(--panel); }
-  .chart-block__svg { overflow-x:auto; }
-  .chart-block__svg svg { display:block; }
-  .chart-block__caption { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-top:6px; font-size:0.72rem; color:var(--text-faint); }
-
-  /* Root cause grid (step 4) */
-  .rootcause-grid { display:grid; grid-template-columns: 1.15fr 0.85fr; gap:24px; }
-  @media (max-width: 820px) { .rootcause-grid { grid-template-columns: 1fr; } }
-  .rc-head { font-size:0.85rem; font-weight:700; margin:0 0 12px; color:var(--text-secondary); }
-  .why-row { position:relative; margin-bottom:10px; }
-  .why-rail { display:flex; align-items:center; gap:8px; margin-bottom:4px; }
-  .why-num { font-size:0.72rem; font-weight:700; color:var(--accent-text); font-family: var(--font-mono); }
-  .why-cat { font-size:0.62rem; font-weight:700; letter-spacing:0.04em; text-transform:uppercase; color:var(--text-faint); background:var(--muted); border-radius:3px; padding:1px 6px; }
-  .why-input { border-left:3px solid hsl(var(--action-3)); }
-  .why-row--root .why-input { border-left:3px solid var(--accent); background:hsl(var(--action-1)); }
-  .why-connector { text-align:left; color:var(--text-disabled); font-size:0.9rem; line-height:1; margin:2px 0 0 6px; }
+  /* Secondary 6M contributing-factor mini-table (Step 4, below the 5-Whys
+     ladder — see render5Whys6M) */
   .fishbone-tbl { width:100%; border-collapse:collapse; font-size:0.85rem; }
   .fishbone-tbl td { padding:4px 0 4px 4px; }
 
-  /* Countermeasure matrix */
+  /* Countermeasure matrix (read-only A3's renderReadA3 only — the live wizard
+     uses the ported global .dt/.score-sel/.score-cell/.cm-text classes) */
   .cm-matrix th, .cm-matrix td { font-size:0.8rem; }
   .cm-matrix .cm-text { min-width:200px; }
   .score-th { text-align:center; }
-  .score-cell { text-align:center; }
-  .score-sel { padding:3px 4px; border:1px solid var(--border-input); border-radius:4px; font-family: var(--font-mono); font-size:0.8rem; }
   .sc { display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; border-radius:4px; font-family: var(--font-mono); font-weight:700; font-size:0.78rem; }
   .sc--0 { background:var(--red-bg);   color:var(--red-text); }
   .sc--1 { background:var(--amber-bg); color:var(--amber-text); }
   .sc--2 { background:var(--green-bg); color:var(--green-text); }
   .sc--na { background:var(--muted); color:var(--text-faint); }
 
-  /* ODG gate — layout only; the tint/border comes from the shared .a3-callout--accent */
-  .odg-gate { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-top:18px; flex-wrap:wrap; }
-  .odg-gate__desc { font-size:0.82rem; color:var(--text-secondary); }
+  /* ODG gate + SOP write-back badges (read-only A3's renderReadA3 only — the
+     live wizard uses the shared .badge--{amber/green/neutral} tones) */
   .gate-badge { font-size:0.72rem; font-weight:700; padding:2px 8px; border-radius:3px; margin-left:4px; }
   .gate-badge--pending { background:var(--muted); color:var(--text-faint); }
   .gate-badge--submitted { background:var(--amber-bg); color:var(--amber-text); }
   .gate-badge--approved { background:var(--green-bg); color:var(--green-text); }
-
-  /* SOP write-back */
   .sop-writeback { margin-top:20px; border:1px solid var(--border-soft); border-radius: var(--radius); padding:16px; background: var(--bg-subtle); }
   .sop-writeback__label { font-size:0.68rem; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; color:var(--text-faint); margin-bottom:4px; }
 
-  /* Wizard / read-only A3 tables (score matrix, action register, read-view) */
+  /* Read-only A3 tables (score matrix, action register) */
   .kpi-table th, .kpi-table td { font-size:0.85rem; }
   /* .a3-tag — the read-only A3 header's "A3" mark (renderReadA3 only; the
      tracker's own A3/AI-draft tags moved to .badge/.chip, see renderTrackerTable) */
