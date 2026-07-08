@@ -37,7 +37,6 @@
  */
 
 import { createStore }            from './lib/store.js';
-import { renderTeamBoard }        from './views/teamboard.js';
 import { renderLocationBoard }    from './views/teamboard-location.js';
 import { renderOverview }         from './views/overview.js';
 import { renderHoshin }           from './views/hoshin.js';
