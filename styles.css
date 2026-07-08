@@ -1131,7 +1131,7 @@ tbody tr:hover { background: var(--bg-subtle); }
 .badge--warning      { background: var(--amber-bg);    color: var(--amber-text);  border-color: var(--amber-border); }
 .badge--success      { background: var(--green-bg);    color: var(--green-text);  border-color: var(--green-border); }
 .badge--doc          { background: var(--bg-subtle);   color: var(--text-dim);    border-color: var(--border); }
-.badge--illustrative { background: var(--accent-soft); color: var(--accent-text); border-color: var(--accent-subtle-bg); font-style: italic; }
+.badge--illustrative { background: var(--accent-soft); color: var(--accent-text); border-color: var(--accent-subtle-bg); }
 
 /* ── Frozen banner (Finance Tier 3) ─────────────────────────────── */
 .frozen-banner {
@@ -1911,7 +1911,6 @@ input[type="text"]:focus, input[type="search"]:focus, select:focus {
   font-size: 12px;
   color: var(--text-muted);
   margin: 4px 0 0;
-  font-style: italic;
 }
 
 /* "Run 8-Step →" button in Why panel — reuses .btn .btn--ghost .btn--sm */
