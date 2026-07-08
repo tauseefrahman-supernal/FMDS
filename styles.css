@@ -14,7 +14,16 @@
    Task 3); the old dark command-rail CSS they superseded has been removed.
    app.js's markup still emits the old rail/app-shell structure until the
    shell rebuild (Task 5) rewires it onto the new light .sidebar/.nav-item
-   classes — see docs/superpowers/plans/2026-07-08-layout-match-redesign.md.
+   classes. View-specific component classes (hero KPI/stat tiles, Mark's
+   ai-note thread, KPI-board tree table, problem-solving tracker + 8-step A3,
+   Standard Work, Sources flow, Ask Mark chat/modal, My Day driver grid,
+   inbox popover, Hoshin disks/strip/chips) are now ported verbatim from
+   docs/redesign/reference/views.css (Task 4), appended directly after the
+   Task-3 base block; the old duplicate rules they superseded were removed in
+   place (see the inline notes left where each used to live). Per-view
+   views/*.js files still emit their pre-redesign markup until Tasks 7–15
+   rebuild each one onto these classes — see
+   docs/superpowers/plans/2026-07-08-layout-match-redesign.md.
 
    Type: Inter (UI/body) + Lora (h1/h2 + hero KPI numerals) + JetBrains Mono
    (every metric / target / KPI value / KZ number / code) — loaded via <link>
@@ -532,6 +541,484 @@ table.dt td.num { color: var(--text-secondary); }
 .flex { display: flex; }
 .hidden { display: none !important; }
 
+/* ============================================================================
+   PORTED VIEW-COMPONENT CSS — verbatim from docs/redesign/reference/views.css
+   (Task 4 of the layout-match redesign). Every per-view class the Phase 2
+   markup-rebuild tasks (7–15) will emit lives here: overview hero/stat tiles,
+   Mark's ai-note thread, the KPI-board tree table (status-cell/chip/caret
+   expander), the problem-solving tracker + 8-step A3 (step-track/step-bar/
+   kz-meta/a3-*/score-entry), Standard Work library/SOP, Sources flow, Ask
+   Mark chat + response modal, My Day driver grid, the inbox popover, and
+   Hoshin disks/strip/chips. Old view-specific rules these supersede (old
+   .inbox-panel/.inbox-item, and the Task-6-era .ps-summary/.status-cell/
+   .chip/.step-track/.step-bar/.step-tab/.ai-draft-banner/.a3-callout/
+   .hoshin-disk/.hoshin-strip duplicates) have been removed above so nothing
+   double-defines — see the inline notes left in their place. Values reference
+   tokens already reconciled in :root (Task 2) — do not add stray hex/gray.
+   ========================================================================== */
+
+/* ═══ Chart text ═══ */
+.chart-axis { font-family: var(--font-sans); font-size: 10.5px; fill: var(--text-faint); font-variant-numeric: tabular-nums; }
+.chart-end-label { font-family: var(--font-sans); font-size: 11px; fill: var(--text-dim); }
+.linechart-wrap { overflow-x: auto; }
+.linechart { width: 100%; height: auto; display: block; }
+.tip-row { display: flex; align-items: center; gap: 6px; padding-top: 2px; }
+.tip-row b { margin-left: auto; padding-left: 12px; }
+.meter { height: 6px; border-radius: var(--radius-full); overflow: hidden; }
+.meter span { display: block; height: 100%; border-radius: var(--radius-full); }
+
+/* ═══ Overview — headline hero + stat tiles ═══ */
+.hero-kpi { display: grid; grid-template-columns: minmax(300px, 5fr) 7fr; }
+@media (max-width: 980px) { .hero-kpi { grid-template-columns: 1fr; } }
+.hero-kpi__main { padding: var(--sp-5); display: flex; flex-direction: column; gap: var(--sp-3); border-right: 1px solid var(--border-soft); }
+@media (max-width: 980px) { .hero-kpi__main { border-right: 0; border-bottom: 1px solid var(--border-soft); } }
+.hero-kpi__label { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
+.hero-kpi__value {
+  font-family: var(--font-serif); font-weight: 600; font-size: 56px; line-height: 1.05;
+  letter-spacing: -0.02em; color: var(--text);
+}
+.hero-kpi__value small { font-size: 24px; color: var(--text-faint); font-family: var(--font-sans); font-weight: 500; margin-left: 2px; }
+.hero-kpi__vs { font-size: 13px; color: var(--text-dim); }
+.hero-kpi__vs b { color: var(--text); font-weight: 600; }
+.hero-kpi__side { padding: var(--sp-5); }
+.hero-kpi__why { font-size: 13.5px; line-height: 1.6; color: var(--text-secondary); }
+.hero-kpi__why p { max-width: none; }
+.hero-kpi__foot { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); margin-top: auto; padding-top: var(--sp-3); }
+.source-note { font-size: 12px; color: var(--text-faint); }
+
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: var(--sp-4); }
+.stat-tile { padding: var(--sp-5); display: flex; flex-direction: column; gap: var(--sp-2); }
+.stat-tile__top { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); }
+.stat-tile__label { font-size: 13px; font-weight: 500; color: var(--text-dim); }
+.stat-tile__value { font-size: 26px; font-weight: 600; letter-spacing: -0.01em; color: var(--text); line-height: 1.1; }
+.stat-tile__value small { font-size: 13px; font-weight: 500; color: var(--text-faint); margin-left: 2px; }
+.stat-tile__vs { font-size: 12px; color: var(--text-faint); }
+.stat-tile__spark { margin-top: var(--sp-2); }
+
+/* AI note thread (Mark) */
+.ai-note { display: flex; gap: var(--sp-3); }
+.ai-note + .ai-note { margin-top: var(--sp-4); }
+.ai-note__avatar {
+  width: 28px; height: 28px; flex-shrink: 0; border-radius: var(--radius-full);
+  background: hsl(var(--viz-single)); color: #fff;
+  display: grid; place-items: center; font-size: 12px; font-weight: 600;
+  font-family: var(--font-serif);
+}
+.ai-note__body { min-width: 0; }
+.ai-note__head { display: flex; align-items: baseline; gap: var(--sp-2); margin-bottom: 4px; font-size: 12.5px; }
+.ai-note__head b { color: var(--text); }
+.ai-note__head .when { color: var(--text-faint); font-size: 11.5px; }
+.ai-note__text { font-size: 13.5px; line-height: 1.6; color: var(--text-secondary); }
+.ai-note__text p { max-width: none; margin-bottom: var(--sp-2); }
+.ai-note__text p:last-child { margin-bottom: 0; }
+
+/* ═══ KPI Boards — location tabs + tree table ═══ */
+.loc-tabs { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; }
+.loc-note {
+  padding: var(--sp-4) var(--sp-5); border-radius: var(--radius);
+  background: var(--panel); border: 1px solid var(--border); box-shadow: var(--shadow-sm);
+  display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-6); align-items: baseline;
+}
+.loc-note__stat { font-size: 13px; color: var(--text-dim); }
+.loc-note__stat b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+.kpi-cat td { background: var(--bg-subtle); padding: 6px var(--sp-4); }
+.kpi-cat span { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-faint); }
+tr.kpi-row td:first-child { font-weight: 500; }
+.kpi-name { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; }
+.kpi-name__caret {
+  width: 22px; height: 22px; display: grid; place-items: center; flex-shrink: 0;
+  border: 0; border-radius: var(--radius-sm); background: none; color: var(--text-faint);
+  transition: transform var(--duration-fast) ease-in-out, background-color var(--duration-fast) ease-in-out;
+}
+.kpi-name__caret:hover { background: var(--muted); color: var(--text); }
+.kpi-name__caret.is-open { transform: rotate(90deg); }
+.kpi-name__caret svg { width: 12px; height: 12px; }
+.kpi-flag-note { margin: 4px 0 0 30px; font-size: 12px; color: var(--text-dim); line-height: 1.5; max-width: 62ch; }
+tr.kpi-sub td { background: hsl(var(--surface-1) / 0.6); }
+tr.kpi-sub td:first-child { padding-left: 48px; font-weight: 400; color: var(--text-secondary); }
+.chip {
+  display: inline-flex; align-items: center; padding: 1px 7px;
+  border-radius: var(--radius-sm); border: 1px solid var(--border);
+  background: var(--muted); color: hsl(var(--surface-8));
+  font-family: var(--font-mono); font-size: 10.5px; font-weight: 500; letter-spacing: 0.02em;
+}
+.status-cell { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; font-weight: 500; white-space: nowrap; }
+.status-cell .dot { width: 7px; height: 7px; border-radius: var(--radius-full); }
+.status-cell--green { color: var(--green-text); } .status-cell--green .dot { background: var(--green); }
+.status-cell--amber { color: var(--amber-text); } .status-cell--amber .dot { background: var(--amber); }
+.status-cell--red { color: var(--red-text); } .status-cell--red .dot { background: var(--red); }
+.status-cell--nodata { color: var(--text-faint); } .status-cell--nodata .dot { background: var(--text-disabled); }
+
+/* ═══ Problem-Solving — 8-step tracker ═══ */
+.ps-summary { display: flex; gap: var(--sp-6); align-items: baseline; }
+.ps-summary__stat { font-size: 13px; color: var(--text-dim); }
+.ps-summary__stat b { font-size: 22px; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; margin-right: 4px; }
+.step-track { display: inline-flex; align-items: center; gap: 3px; }
+.step-track__dot {
+  width: 16px; height: 16px; border-radius: var(--radius-full);
+  display: grid; place-items: center;
+  font-size: 9px; font-weight: 600;
+  background: var(--muted); color: var(--text-faint);
+  border: 1px solid var(--border);
+}
+.step-track__dot.is-done { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+.step-track__dot.is-next { border-color: var(--accent); color: var(--accent-text); background: var(--panel); }
+
+/* 8-step detail */
+.eightstep { display: grid; grid-template-columns: 260px 1fr; }
+@media (max-width: 900px) { .eightstep { grid-template-columns: 1fr; } }
+.eightstep__rail { border-right: 1px solid var(--border-soft); padding: var(--sp-4); display: flex; flex-direction: column; gap: 2px; }
+.step-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px; border: 0; border-radius: var(--radius); background: none;
+  font-size: 13px; color: var(--text-dim); text-align: left; width: 100%;
+  transition: background-color var(--duration-fast) ease-in-out;
+}
+.step-item:hover { background: var(--bg-subtle); }
+.step-item.is-active { background: var(--muted); color: var(--text); font-weight: 600; }
+.step-item__n {
+  width: 22px; height: 22px; flex-shrink: 0; border-radius: var(--radius-full);
+  display: grid; place-items: center; font-size: 11px; font-weight: 600;
+  background: var(--muted); color: var(--text-dim); border: 1px solid var(--border);
+}
+.step-item.is-done .step-item__n { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+.eightstep__body { padding: var(--sp-5); min-width: 0; }
+.eightstep__body h3 { margin-bottom: var(--sp-3); }
+.field-list { display: grid; gap: var(--sp-4); }
+.field { display: grid; gap: 4px; }
+.field__label { font-size: 12px; font-weight: 600; color: var(--text-dim); }
+.field__value { font-size: 13.5px; line-height: 1.6; color: var(--text-secondary); }
+
+/* ═══ Standard Work ═══ */
+.doc-counts { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.count-pill {
+  display: inline-flex; align-items: baseline; gap: 6px;
+  padding: 5px 12px; border-radius: var(--radius-full);
+  background: var(--panel); border: 1px solid var(--border);
+  font-size: 12.5px; color: var(--text-dim);
+}
+.count-pill b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+.doc-type {
+  display: inline-flex; padding: 1px 7px; border-radius: var(--radius-sm);
+  font-family: var(--font-mono); font-size: 10px; font-weight: 500; letter-spacing: 0.04em;
+  background: var(--muted); color: hsl(var(--surface-8)); border: 1px solid var(--border-soft);
+}
+.sop-feature { border-left: 3px solid var(--accent); }
+.sop-feature .running-head { color: var(--accent-text); }
+.sop-steps { counter-reset: sop; display: grid; gap: var(--sp-3); margin-top: var(--sp-4); }
+.sop-step { display: flex; gap: var(--sp-3); font-size: 13.5px; line-height: 1.55; color: var(--text-secondary); }
+.sop-step::before {
+  counter-increment: sop; content: counter(sop);
+  width: 22px; height: 22px; flex-shrink: 0; border-radius: var(--radius-full);
+  display: grid; place-items: center; font-size: 11px; font-weight: 600;
+  background: var(--muted); color: var(--text-dim);
+}
+
+/* ═══ Sources ═══ */
+.flow { display: flex; align-items: stretch; gap: var(--sp-3); }
+@media (max-width: 760px) { .flow { flex-direction: column; } }
+.flow__node { flex: 1; padding: var(--sp-4); border-radius: var(--radius); border: 1px solid var(--border); background: var(--panel); }
+.flow__node--accent { border-color: hsl(var(--action-4)); background: hsl(var(--action-1)); }
+.flow__node h4 { margin-bottom: 4px; }
+.flow__node p { font-size: 12.5px; color: var(--text-dim); margin: 0; }
+.flow__arrow { align-self: center; color: var(--text-disabled); flex-shrink: 0; }
+
+/* ═══ Ask Mark — conversation ═══ */
+.chat { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: var(--sp-5); align-items: start; }
+@media (max-width: 980px) { .chat { grid-template-columns: 1fr; } }
+.chat__thread { display: flex; flex-direction: column; gap: var(--sp-4); }
+.msg { display: flex; gap: var(--sp-3); max-width: 720px; }
+.msg--user { align-self: flex-end; flex-direction: row-reverse; }
+.msg__bubble {
+  padding: var(--sp-3) var(--sp-4); border-radius: var(--radius);
+  background: var(--panel); border: 1px solid var(--border); box-shadow: var(--shadow-xs);
+  font-size: 13.5px; line-height: 1.6; color: var(--text-secondary);
+}
+.msg--user .msg__bubble { background: var(--muted); border-color: transparent; color: var(--text); }
+.msg__bubble p { max-width: none; margin-bottom: var(--sp-2); }
+.msg__bubble p:last-child { margin-bottom: 0; }
+.chat__composer { display: flex; gap: var(--sp-2); margin-top: var(--sp-2); }
+.chat__composer textarea { resize: none; }
+.suggest { display: flex; flex-direction: column; gap: var(--sp-2); }
+.suggest button {
+  text-align: left; padding: 10px var(--sp-4);
+  background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+  font-size: 13px; color: var(--text-secondary);
+  transition: background-color var(--duration-fast) ease-in-out, border-color var(--duration-fast) ease-in-out;
+}
+.suggest button:hover { background: var(--accent-subtle-bg); border-color: hsl(var(--action-4)); color: var(--accent-text); }
+
+/* Ask Mark — compact response queue */
+.q-card {
+  width: 100%; text-align: left; font: inherit;
+  display: grid; gap: 8px;
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+  box-shadow: var(--shadow-sm); cursor: pointer;
+  transition: background-color var(--duration-fast) ease-in-out, border-color var(--duration-fast) ease-in-out;
+}
+.q-card:hover { background: var(--bg-subtle); border-color: var(--border-strong); }
+.q-card.is-selected { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent), var(--shadow-sm); }
+.q-card + .q-card { margin-top: var(--sp-2); }
+.q-card__row { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); }
+.q-card__value { font-size: 18px; font-weight: 600; letter-spacing: -0.01em; }
+.q-card__value small { font-size: 12px; font-weight: 500; color: var(--text-faint); }
+.q-card__meta { font-size: 11.5px; color: var(--text-faint); }
+
+/* Recent threads list */
+.thread-item {
+  width: 100%; text-align: left; font: inherit;
+  display: grid; gap: 3px;
+  padding: 10px var(--sp-4);
+  background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+  cursor: pointer;
+  transition: background-color var(--duration-fast) ease-in-out, border-color var(--duration-fast) ease-in-out;
+}
+.thread-item:hover { background: var(--bg-subtle); }
+.thread-item.is-active { border-color: var(--border-strong); background: var(--bg-subtle); }
+.thread-item__title { font-size: 13px; font-weight: 500; color: var(--text); }
+.thread-item.is-active .thread-item__title { font-weight: 600; }
+.thread-item__meta { font-size: 11.5px; color: var(--text-faint); }
+
+/* Chat surface — thread + composer in one card */
+.chat-surface { display: flex; flex-direction: column; min-height: 520px; max-height: calc(100vh - 220px); }
+.chat-surface__head {
+  display: flex; align-items: baseline; gap: 10px;
+  padding: 14px 20px; border-bottom: 1px solid var(--border-soft); flex-shrink: 0;
+}
+.chat-surface__scroll { flex: 1; overflow-y: auto; padding: 20px; }
+
+/* Modal — Dialog spec: scrim + elevated card, shadow-lg */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 400;
+  background: hsl(var(--surface-11) / 0.5);
+}
+.modal-panel {
+  position: fixed; z-index: 400;
+  top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: min(760px, calc(100vw - 48px)); max-height: min(84vh, 900px);
+  display: flex; flex-direction: column;
+  background: var(--panel); border-radius: var(--radius-lg);
+  border: 1px solid var(--border-soft); box-shadow: var(--shadow-lg);
+}
+.modal-panel__head {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--sp-4);
+  padding: var(--sp-4) var(--sp-5); border-bottom: 1px solid var(--border-soft); flex-shrink: 0;
+}
+.modal-panel__body { padding: var(--sp-5); overflow-y: auto; }
+.modal-panel__foot {
+  display: flex; justify-content: flex-end; gap: var(--sp-3);
+  padding: var(--sp-4) var(--sp-5); border-top: 1px solid var(--border-soft); flex-shrink: 0;
+}
+
+/* Response lifecycle track */
+.life-chip {
+  display: inline-flex; align-items: center;
+  padding: 3px 10px; border-radius: var(--radius-full);
+  font-size: 11.5px; font-weight: 500;
+  background: var(--muted); color: var(--text-faint);
+  border: 1px solid var(--border-soft);
+}
+.life-chip.is-done { background: hsl(var(--action-1)); color: var(--accent-text); border-color: hsl(var(--action-3)); }
+.life-chip.is-now { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); font-weight: 600; }
+
+/* KPI response card inside chat */
+.kpi-card-inline { margin-top: var(--sp-3); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.kpi-card-inline__head { display: flex; align-items: center; justify-content: space-between; padding: var(--sp-3) var(--sp-4); background: var(--bg-subtle); border-bottom: 1px solid var(--border-soft); }
+.kpi-card-inline__body { padding: var(--sp-4); display: flex; align-items: center; gap: var(--sp-5); }
+.kpi-card-inline__value { font-family: var(--font-serif); font-size: 30px; font-weight: 600; letter-spacing: -0.01em; }
+
+/* ═══ My Day (L1) ═══ */
+.myday-head h1 em { font-style: italic; font-weight: 500; }
+.driver-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--sp-4); }
+
+/* ═══ Inbox popover ═══ */
+.inbox-panel { right: 0; top: calc(100% + 8px); width: 360px; }
+.inbox-panel__head { padding: var(--sp-4) var(--sp-4) var(--sp-3); border-bottom: 1px solid var(--border-soft); }
+.inbox-panel__title { font-weight: 600; font-size: 13.5px; }
+.inbox-panel__sub { font-size: 12px; color: var(--text-faint); margin-top: 2px; }
+.inbox-item { display: flex; gap: 10px; padding: var(--sp-3) var(--sp-4); }
+.inbox-item + .inbox-item { border-top: 1px solid var(--border-soft); }
+button.inbox-item--link {
+  width: 100%; border: 0; background: none; text-align: left; font: inherit;
+  transition: background-color var(--duration-fast) ease-in-out;
+}
+button.inbox-item--link:hover { background: var(--bg-subtle); }
+button.inbox-item--link:last-child { border-radius: 0 0 var(--radius) var(--radius); }
+.inbox-item__dot { width: 7px; height: 7px; margin-top: 6px; flex-shrink: 0; border-radius: var(--radius-full); background: var(--amber); }
+.inbox-item__body { font-size: 13px; line-height: 1.5; color: var(--text-secondary); }
+.inbox-item__from { font-size: 11.5px; color: var(--text-faint); margin-top: 3px; }
+
+/* ═══ Hoshin ═══ */
+.hoshin-disk {
+  display: inline-grid; place-items: center; flex-shrink: 0;
+  border-radius: var(--radius-full);
+  background: var(--muted); color: var(--text-faint);
+  font-weight: 600; font-family: var(--font-serif);
+  border: 1px solid var(--border);
+}
+.hoshin-disk--drives { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+.hoshin-disk--supports { background: hsl(var(--we-sky)); border-color: hsl(var(--we-sky)); color: hsl(var(--action-9)); }
+.hoshin-strip {
+  display: flex; align-items: center; gap: var(--sp-5);
+  padding: var(--sp-4) var(--sp-5); margin-bottom: var(--sp-5);
+  cursor: pointer;
+  transition: background-color var(--duration-fast) ease-in-out, border-color var(--duration-fast) ease-in-out;
+}
+.hoshin-strip:hover { background: var(--bg-subtle); border-color: var(--border-strong); }
+.hoshin-strip__disks { display: flex; gap: 6px; flex-shrink: 0; }
+.hoshin-strip__item.is-dim { opacity: 0.45; }
+.hoshin-strip__text { flex: 1; min-width: 0; display: grid; gap: 2px; font-size: 13px; }
+.hoshin-strip__text .muted { font-size: 12.5px; }
+.hoshin-chip {
+  display: inline-flex; align-items: center; padding: 1px 7px;
+  border-radius: var(--radius-full);
+  background: hsl(var(--action-1)); color: var(--accent-text);
+  border: 1px solid hsl(var(--action-3));
+  font-size: 10.5px; font-weight: 600; letter-spacing: 0.02em;
+}
+.hoshin-obj--ops { border-color: hsl(var(--action-4)); }
+.hoshin-act__head {
+  display: flex; align-items: center; gap: var(--sp-4); flex-wrap: wrap;
+  padding: var(--sp-4) var(--sp-5); border-bottom: 1px solid var(--border-soft);
+}
+.hoshin-act__lead { display: grid; text-align: right; }
+.hoshin-act__lead b { font-size: 13px; }
+.hoshin-act__timeline { display: flex; gap: 4px; }
+.q-chip {
+  display: inline-flex; padding: 2px 9px; border-radius: var(--radius-sm);
+  font-size: 11px; font-weight: 500; font-variant-numeric: tabular-nums;
+  background: var(--muted); color: var(--text-faint); border: 1px solid var(--border-soft);
+}
+.q-chip.is-on { background: hsl(var(--we-sky-bg)); color: var(--accent-text); border-color: hsl(var(--we-sky)); }
+.hoshin-act__foot {
+  padding: var(--sp-3) var(--sp-5); border-top: 1px solid var(--border-soft);
+  font-size: 12.5px; color: var(--text-dim); background: var(--bg-subtle);
+}
+
+/* 8-step header meta row — whole segments wrap, values never split */
+.kz-meta {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px;
+  margin-top: 10px; font-size: 13px; color: var(--text-dim);
+}
+.kz-meta__item { white-space: nowrap; }
+.kz-meta__item b { color: var(--text); font-weight: 600; }
+.kz-meta__chip {
+  padding: 2px 10px; border-radius: var(--radius-full);
+  background: var(--panel); border: 1px solid var(--border);
+  font-variant-numeric: tabular-nums;
+}
+.kz-meta__arrow { color: var(--text-disabled); font-size: 11px; }
+.kz-meta__sep { width: 1px; height: 14px; background: var(--border); }
+
+/* ═══ 8-step — horizontal step bar + wide A3 canvas ═══ */
+.step-bar {
+  display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px;
+  margin-bottom: var(--sp-4);
+}
+.step-tab {
+  display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto;
+  column-gap: 8px; align-items: center; text-align: left;
+  padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--panel); color: var(--text-dim); font-size: 12px;
+  transition: background-color var(--duration-fast) ease-in-out, border-color var(--duration-fast) ease-in-out;
+}
+.step-tab:hover { background: var(--bg-subtle); }
+.step-tab.is-active { border-color: var(--accent); background: hsl(var(--action-1)); box-shadow: inset 0 -2px 0 var(--accent); }
+.step-tab.is-active .step-tab__name { color: var(--text); font-weight: 600; }
+.step-tab__n {
+  grid-row: 1 / 3;
+  width: 22px; height: 22px; border-radius: var(--radius-full);
+  display: grid; place-items: center; font-size: 11px; font-weight: 600;
+  background: var(--muted); color: var(--text-dim); border: 1px solid var(--border);
+}
+.step-tab.is-done .step-tab__n { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+.step-tab__name { font-weight: 500; line-height: 1.25; }
+.step-tab__pdca { font-size: 10px; letter-spacing: 0.06em; color: var(--text-faint); }
+@media (max-width: 1200px) { .step-bar { grid-template-columns: repeat(4, 1fr); } }
+
+.eightstep-wide { display: grid; grid-template-columns: 1fr 300px; }
+@media (max-width: 1100px) { .eightstep-wide { grid-template-columns: 1fr; } .eightstep-wide .eightstep__assist { display: none; } }
+
+/* A3 document fields */
+.a3-grid { display: grid; gap: var(--sp-5) var(--sp-6); }
+.a3-grid--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.a3-grid--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 900px) { .a3-grid--2, .a3-grid--3 { grid-template-columns: 1fr; } }
+.a3-callout { padding: 12px 16px; border-radius: var(--radius); border: 1px solid; display: block; }
+.a3-callout--red { background: var(--red-bg); border-color: var(--red-border); }
+.a3-callout--accent { background: hsl(var(--action-1)); border-color: hsl(var(--action-3)); }
+.a3-whys { display: grid; gap: 10px; }
+.a3-why {
+  display: grid; grid-template-columns: 52px 92px 1fr; gap: 12px; align-items: baseline;
+  padding: 10px 14px; border: 1px solid var(--border-soft); border-radius: var(--radius);
+  background: var(--bg-subtle);
+}
+@media (max-width: 720px) { .a3-why { grid-template-columns: 52px 1fr; } .a3-why .chip { display: none; } }
+.a3-chart-slot {
+  margin-top: 20px; padding: 32px 24px; text-align: center;
+  border: 1px dashed var(--border-strong); border-radius: var(--radius);
+  color: var(--text-faint); font-size: 12.5px;
+}
+
+/* Chart figures inside the A3 */
+.chart-fig {
+  margin: 8px 0 0; padding: var(--sp-4);
+  border: 1px solid var(--border-soft); border-radius: var(--radius);
+  background: var(--bg-subtle);
+}
+.chart-fig .linechart { max-width: 720px; }
+.chart-fig__cap {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin-top: 8px; font-size: 12px; color: var(--text-faint);
+}
+
+/* Attachment drop zone */
+.drop-zone {
+  margin-top: 16px;
+  display: flex; align-items: center; justify-content: space-between; gap: var(--sp-4);
+  padding: var(--sp-3) var(--sp-4);
+  border: 1px dashed var(--border-strong); border-radius: var(--radius);
+  color: var(--text-faint); font-size: 12.5px;
+  transition: border-color var(--duration-fast) ease-in-out, background-color var(--duration-fast) ease-in-out;
+}
+.drop-zone:hover { border-color: var(--accent); background: hsl(var(--action-1)); }
+
+/* Step 5 score entry */
+.score-cell { width: 56px; }
+.score-sel {
+  min-height: 30px; padding: 2px 6px;
+  border: 1px solid var(--border-input); border-radius: var(--radius-sm);
+  background: var(--panel); font-family: var(--font-mono); font-size: 12px; color: var(--text);
+  text-align: center;
+}
+.score-sel--oa { font-weight: 600; border-color: var(--border-strong); }
+.cm-text { min-height: 32px; font-size: 13px; }
+
+/* ═══ AI-draft banner + 8-step assist panel ═══ */
+.ai-draft-banner {
+  display: flex; align-items: center; gap: var(--sp-4);
+  padding: var(--sp-4) var(--sp-5); margin-bottom: var(--sp-4);
+  border-left: 3px solid var(--accent);
+}
+.eightstep--assist { grid-template-columns: 240px 1fr 300px; }
+@media (max-width: 1200px) { .eightstep--assist { grid-template-columns: 240px 1fr; } .eightstep__assist { display: none; } }
+.eightstep__assist {
+  border-left: 1px solid var(--border-soft);
+  background: var(--bg-subtle);
+  padding: var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-3);
+  min-height: 0;
+}
+.assist-head { display: flex; align-items: center; gap: 10px; }
+.assist-note { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: var(--sp-3) var(--sp-4); }
+.assist-thread { display: grid; gap: var(--sp-2); overflow-y: auto; max-height: 320px; }
+.assist-thread .msg__bubble { font-size: 12.5px; padding: 8px 12px; }
+
+/* Footer hint under boards */
+.board-hint { margin-top: var(--sp-6); font-size: 12.5px; color: var(--text-faint); line-height: 1.6; max-width: 90ch; }
+.board-hint b { color: var(--text-dim); }
+
 /* ── Reset ──────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { font-size: 16px; }
@@ -789,30 +1276,11 @@ input[type="text"]:focus, input[type="search"]:focus, select:focus {
   text-align: center; font-variant-numeric: tabular-nums;
   box-shadow: 0 0 0 2px var(--surface);
 }
-.inbox-panel {
-  position: absolute; top: 52px; right: 18px; z-index: 60;
-  width: 320px;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
-  overflow: hidden;
-  animation: fms-rise 160ms var(--ease) both;
-}
-.inbox-panel__head {
-  padding: 13px 16px; border-bottom: 1px solid var(--line);
-  background: var(--surface-2);
-}
-.inbox-panel__title { font-size: 0.82rem; font-weight: 600; color: var(--text); }
-.inbox-panel__sub   { font-size: 0.7rem; color: var(--text-muted); margin-top: 2px; }
-.inbox-item {
-  padding: 12px 16px; border-bottom: 1px solid var(--line);
-  display: flex; gap: 10px;
-}
-.inbox-item:last-child { border-bottom: none; }
-.inbox-item__dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); margin-top: 5px; flex-shrink: 0; }
-.inbox-item__body { font-size: 0.78rem; color: var(--slate-700); line-height: 1.45; }
-.inbox-item__from { font-size: 0.68rem; color: var(--text-muted); margin-top: 3px; }
+/* .inbox-panel / .inbox-item* — old absolute-positioned popover removed
+   (Task 4): superseded by the reference's .inbox-panel (a .popover variant,
+   see the ported view-component block below). .inbox-btn/.inbox-btn__count
+   above are NOT reference class names (app.js still emits them pending the
+   Task 5 shell rebuild onto .icon-btn) — kept as-is. */
 
 /* ── Canvas ─────────────────────────────────────────────────────── */
 /* .canvas now comes from the ported base-component block above. */
@@ -1688,98 +2156,44 @@ input[type="text"]:focus, input[type="search"]:focus, select:focus {
    from the ported base-component block above (reference values win). */
 
 /* ── Summary stat strip (e.g. tracker header counts) ─────────────────────── */
-.ps-summary { display: flex; gap: var(--sp-6); align-items: baseline; flex-wrap: wrap; }
-.ps-summary__stat { font-size: 13px; color: var(--text-dim); }
-.ps-summary__stat b { font-size: 22px; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; margin-right: 4px; }
+/* .ps-summary / .ps-summary__stat / .ps-summary__stat b now come from the
+   ported view-component block below (reference values win — exact dupes
+   removed here, Task 4). .ps-summary__stat--flag has no reference
+   counterpart — kept, still in active use. */
 .ps-summary__stat--flag, .ps-summary__stat--flag b { color: var(--amber-text); }
 
-/* ── Inline RAG status cell — compact dot+text for table cells / prose ───── */
-.status-cell { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; font-weight: 500; white-space: nowrap; }
-.status-cell .dot { width: 7px; height: 7px; border-radius: var(--radius-full); flex-shrink: 0; }
-.status-cell--green  { color: var(--green-text); } .status-cell--green .dot  { background: var(--green); }
-.status-cell--amber  { color: var(--amber-text); } .status-cell--amber .dot  { background: var(--amber); }
-.status-cell--red    { color: var(--red-text); }   .status-cell--red .dot    { background: var(--red); }
-.status-cell--nodata { color: var(--text-faint); } .status-cell--nodata .dot { background: var(--text-disabled); }
-
-/* ── Mono metadata chip (KZ numbers, doc types, categories — never status) ── */
-.chip {
-  display: inline-flex; align-items: center; padding: 1px 7px;
-  border-radius: var(--radius-sm); border: 1px solid var(--border);
-  background: var(--muted); color: hsl(var(--surface-8));
-  font-family: var(--font-mono); font-size: 10.5px; font-weight: 500; letter-spacing: 0.02em;
-  white-space: nowrap;
-}
+/* .status-cell(+tones) and .chip now come from the ported view-component
+   block below (reference values win — exact dupes removed here, Task 4). */
 
 /* ── Compact step-progress track (tracker rows, read-only A3 header) ────── */
-.step-track { display: inline-flex; align-items: center; gap: 3px; flex-wrap: wrap; }
-.step-track__dot {
-  width: 18px; height: 18px; border-radius: var(--radius-full); padding: 0; border: 1px solid var(--border);
-  display: grid; place-items: center; font-family: var(--font-sans);
-  font-size: 9.5px; font-weight: 600; line-height: 1;
-  background: var(--muted); color: var(--text-faint);
-}
-.step-track__dot.is-done { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
-.step-track__dot.is-next { border-color: var(--accent); color: var(--accent-text); background: var(--panel); }
+/* .step-track / .step-track__dot(.is-done/.is-next) now come from the ported
+   view-component block below (reference values win — exact dupes removed
+   here, Task 4). The button-specific hover affordance below has no reference
+   counterpart (problemsolving.js renders these dots as <button> elements for
+   the step-bar's clickable tabs) — kept, still in active use. */
 button.step-track__dot { cursor: pointer; transition: transform var(--duration-fast) var(--ease-fluid); }
 button.step-track__dot:hover { transform: scale(1.12); }
 
-/* ── Horizontal step bar — full 8-step wizard nav ────────────────────────── */
-.step-bar { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; margin: var(--sp-4) 0; }
-@media (max-width: 1200px) { .step-bar { grid-template-columns: repeat(4, 1fr); } }
-.step-tab {
-  display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto;
-  column-gap: 8px; align-items: center; text-align: left;
-  padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius);
-  background: var(--panel); color: var(--text-dim); font-size: 11.5px; font-family: var(--font-sans);
-  transition: background-color var(--duration-fast) ease-in-out, border-color var(--duration-fast) ease-in-out;
-}
-.step-tab:hover { background: var(--bg-subtle); }
-.step-tab.is-active { border-color: var(--accent); background: hsl(var(--action-1)); box-shadow: inset 0 -2px 0 var(--accent); }
-.step-tab.is-active .step-tab__name { color: var(--text); font-weight: 600; }
-.step-tab__n {
-  grid-row: 1 / 3;
-  width: 22px; height: 22px; border-radius: var(--radius-full);
-  display: grid; place-items: center; font-size: 11px; font-weight: 600;
-  background: var(--muted); color: var(--text-dim); border: 1px solid var(--border);
-}
-.step-tab.is-done .step-tab__n { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
-.step-tab__name { font-weight: 500; line-height: 1.25; }
-.step-tab__pdca { font-size: 9.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-faint); }
+/* .step-bar / .step-tab* now come from the ported view-component block below
+   (reference values win — exact dupes removed here, Task 4). */
 
-/* ── AI-draft callout — accent-left-border card for pre-solved content ──── */
-.ai-draft-banner {
-  display: flex; align-items: center; gap: var(--sp-4);
-  padding: var(--sp-3) var(--sp-4); margin: var(--sp-4) 0;
-  border-left: 3px solid var(--accent);
-  background: hsl(var(--action-1));
-  border-radius: 0 var(--radius) var(--radius) 0;
-}
+/* .ai-draft-banner now comes from the ported view-component block below
+   (reference values win — exact dupe removed here, Task 4). */
 
-/* ── A3 document callouts (problem / root-cause / gate emphasis boxes) ──── */
-.a3-callout { padding: 12px 16px; border-radius: var(--radius); border: 1px solid; }
-.a3-callout--red { background: var(--red-bg); border-color: var(--red-border); }
-.a3-callout--accent { background: hsl(var(--action-1)); border-color: hsl(var(--action-3)); }
+/* .a3-callout(--red/--accent) now come from the ported view-component block
+   below (reference values win — exact dupes removed here, Task 4). */
 
 /* ── Hoshin strip / disk — per-board WE 2026 alignment (Plan Phase B, Task B3).
      Relation indicator, not status: never RAG-colored. `drives` = filled
-     --accent; `supports` = dim base disk (--muted/--text-faint, .is-dim). ──── */
-.hoshin-disk {
-  display: inline-grid; place-items: center; flex-shrink: 0;
-  border-radius: var(--radius-full);
-  background: var(--muted); color: var(--text-faint);
-  font-weight: 600; font-family: var(--font-serif);
-  border: 1px solid var(--border);
-}
-.hoshin-disk--drives { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
-.hoshin-strip {
-  display: flex; align-items: center; gap: var(--sp-4);
-  padding: var(--sp-3) var(--sp-4); margin: 0 0 var(--sp-4);
-  border: 1px solid var(--border); border-radius: var(--radius);
-  background: var(--panel);
-}
-.hoshin-strip__disks { display: flex; gap: 6px; flex-shrink: 0; }
-.hoshin-strip__item.is-dim { opacity: 0.5; }
-.hoshin-strip__text { flex: 1; min-width: 0; font-size: 0.78rem; color: var(--text-dim); }
+     --accent; `supports` = dim base disk (--muted/--text-faint, .is-dim).
+     .hoshin-disk(--drives)/.hoshin-strip/__disks/__item.is-dim/__text (bare)
+     now come from the ported view-component block below (reference values
+     win — exact dupes removed here, Task 4; reference also adds a
+     `--supports` disk variant). `.hoshin-strip__text b` and
+     `.hoshin-strip__link(:hover)` below have no reference counterpart
+     (overview.js's Hoshin strip still renders a bold driver name + a
+     "Hoshin View →" link inside `.hoshin-strip__text`) — kept, still in
+     active use. ──────────────────────────────────────────────────────── */
 .hoshin-strip__text b { color: var(--text); font-weight: 600; }
 .hoshin-strip__link { font-size: 0.76rem; font-weight: 600; color: var(--accent); flex-shrink: 0; white-space: nowrap; }
 .hoshin-strip__link:hover { text-decoration: underline; }
