@@ -239,3 +239,44 @@ loose `includes` match; extract a shared `unansweredRedCount(dept)` helper (dupl
 **Next frontier (unchanged):** Phase 2 — wire the live Claude call behind `liveReply` via the
 `serve.py /api/mark` proxy (holds the key server-side; hosted Artifact stays scripted since it's
 CSP-locked).
+
+---
+
+## 9. Session 3 (2026-07-09) — bundle republish + Phase D backend (Mark live agent, merged; E2E gated on key)
+
+**Trigger (user):** "Proceed with building the artifact… app will be hosted on Railway in our company
+account, credentials added cleanly (env vars; the Railway environment injects a cloud API key)…
+if Phase D can begin, go ahead."
+
+**Shipped:**
+- **Hosted artifact republished** with the Supernal redesign (it had been stale since 07-03, still
+  showing the dark-rail UI). `bundle.py` was recreated **in-repo** at `scripts/bundle.py` (the
+  scratchpad copy died with its session) and now also embeds Inter/Lora/JetBrains Mono as base64
+  `@font-face` (`scripts/fonts-embedded.css`) since the redesigned CSS needs webfonts under the
+  Artifact CSP. Bundle bug found+fixed on rebuild: the fragment was missing `<div id="app"></div>`.
+  Verified in-browser (login → Operations L2 → all views, 0 JS errors) before publish. Same URL.
+- **Phase D merged to main @ 187bf02** (plan `2026-07-08-mark-agent-sdk.md`, Tasks 1–4 via
+  subagent-driven-development, every task review-clean; tests 206 JS + 29 Py):
+  `POST /api/mark` in a ThreadingHTTPServer `serve.py` (Railway-ready: `0.0.0.0:$PORT`, root
+  `requirements.txt` pinned `anthropic>=0.116,<1`, `railway.json`; 503 without key; 413 >2MB body;
+  generic 500 + stderr traceback) → `server/mark_agent.py` (tool_runner, claude-opus-4-8, adaptive
+  thinking, max_tokens 16000 — NB: tool_runner REQUIRES max_tokens; effort lives in output_config)
+  + `server/mark_tools.py` (8 read-only @beta_tool tools over posted context + data/*.json)
+  + `server/mark_prompt.py` (frozen STABLE_PREFIX, identity-only suffix). Frontend seam:
+  `liveReply` fetch-or-fallback (30s timeout; scripted reply on ANY failure, so the CSP-locked
+  Artifact + keyless dev behave exactly as before); `buildDeptContext` gained a `responses` opt so
+  Mark's `get_response_status` sees the accountability store.
+
+**Run (local live test):**
+```bash
+python3 -m venv server/.venv && server/.venv/bin/pip install -r requirements.txt   # once
+ANTHROPIC_API_KEY=sk-… server/.venv/bin/python serve.py                            # backend+static on :8770
+# open http://localhost:8770 → Ask Mark (Operations L2) → live grounded replies; no key → scripted
+```
+
+**Task 5 (E2E with real key) still open + deploy checklist (from the whole-branch review):**
+(a) `/api/mark` is UNAUTHENTICATED — set a workspace spend limit on the key before the Railway
+deploy (accepted-risk sign-off); (b) measure real agent latency — likely raise the client
+`MARK_FETCH_TIMEOUT_MS` 30s→60–90s (streaming is the durable fix); (c) add a `cache_control`
+breakpoint on `system=` and verify `usage.cache_read_input_tokens>0` (4096-token min prefix);
+(d) run the agent-sdk-dev Python verifier. Follow-ups + triage detail: `.superpowers/sdd/progress.md`.
