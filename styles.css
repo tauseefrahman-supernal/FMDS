@@ -534,6 +534,7 @@ table.dt td.num { color: var(--text-secondary); }
 .drawer.is-open { transform: translateX(0); }
 
 /* ═══ Utility ═══ */
+code, .mono { font-family: var(--font-mono); font-size: 12px; }
 .muted { color: var(--text-dim); }
 .faint { color: var(--text-faint); }
 .tnum { font-variant-numeric: tabular-nums; }
