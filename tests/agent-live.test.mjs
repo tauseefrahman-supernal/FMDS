@@ -202,3 +202,121 @@ test('liveReply omits the trail gracefully when no reasons/comments/kz are suppl
   assert.ok(!/Open 8-step/.test(reply));
   assert.match(reply, /OTP — Mexico is currently red/);
 });
+
+// ─── Backend fetch-or-fallback (Task 4) ───────────────────────────────────────
+// liveReply tries POST /api/mark first when ctx.dept is supplied (and intent
+// isn't 'step-help'), then falls back to the exact scripted/grounded reply on
+// ANY failure. These tests stub `fetch` per-test and always restore it
+// afterward so file order never leaks a mock into an unrelated test.
+
+const opsFetchFixtureDept = {
+  id: 'operations', name: 'Operations', lead: 'Jim Kozel',
+  kpis: [
+    { id: 'otp', name: 'OTP (On-Time %)', level: 1, isMain: true, parentId: null,
+      actual: 0.863, target: 0.985, unit: 'ratio', direction: 'higher_better' },
+  ],
+};
+
+function withFetch(impl, fn) {
+  const original = globalThis.fetch;
+  globalThis.fetch = impl;
+  return fn().finally(() => {
+    if (original === undefined) delete globalThis.fetch;
+    else globalThis.fetch = original;
+  });
+}
+
+test('liveReply falls back to the scripted reply when fetch is unavailable (no global fetch at all)', async () => {
+  await withFetch(undefined, async () => {
+    assert.equal(typeof globalThis.fetch, 'undefined');
+    const reply = await liveReply('operations', 'explain-red', { dept: opsFetchFixtureDept });
+    assert.match(reply, /Mexico/);
+    assert.match(reply, /Galls color program/);
+  });
+});
+
+test('liveReply falls back to the scripted reply when fetch rejects (network error / CSP-shimmed bundle)', async () => {
+  await withFetch(() => Promise.reject(new Error('CSP blocked')), async () => {
+    const reply = await liveReply('operations', 'explain-red', { dept: opsFetchFixtureDept });
+    assert.match(reply, /Mexico/);
+    assert.match(reply, /Galls color program/);
+  });
+});
+
+test('liveReply falls back to the scripted reply on a non-OK status (e.g. 503 no-key response)', async () => {
+  await withFetch(
+    async () => ({ ok: false, status: 503, json: async () => ({ error: 'no key' }) }),
+    async () => {
+      const reply = await liveReply('operations', 'explain-red', { dept: opsFetchFixtureDept });
+      assert.match(reply, /Mexico/);
+      assert.match(reply, /Galls color program/);
+    }
+  );
+});
+
+test('liveReply falls back to the scripted reply when the 200 body is malformed (no string reply)', async () => {
+  await withFetch(
+    async () => ({ ok: true, status: 200, json: async () => ({ notReply: 'oops' }) }),
+    async () => {
+      const reply = await liveReply('operations', 'explain-red', { dept: opsFetchFixtureDept });
+      assert.match(reply, /Mexico/);
+    }
+  );
+});
+
+test('liveReply returns the backend reply verbatim on a successful fetch, without touching the scripted path', async () => {
+  await withFetch(
+    async () => ({ ok: true, status: 200, json: async () => ({ reply: 'Live answer from the real Mark agent.' }) }),
+    async () => {
+      const reply = await liveReply('operations', 'ask', { dept: opsFetchFixtureDept, question: 'why is OTP red?' });
+      assert.equal(reply, 'Live answer from the real Mark agent.');
+    }
+  );
+});
+
+test('liveReply POSTs {deptId, context, messages} to /api/mark, with context = buildDeptContext(...) including responses', async () => {
+  let captured = null;
+  const responses = [{ id: 'resp1', deptId: 'operations', kpiId: 'otp', answered: true }];
+  const messages = [{ role: 'user', content: 'why is OTP red?' }];
+  await withFetch(
+    async (url, opts) => {
+      captured = { url, opts };
+      return { ok: true, status: 200, json: async () => ({ reply: 'ok' }) };
+    },
+    async () => {
+      await liveReply('operations', 'ask', { dept: opsFetchFixtureDept, question: 'why is OTP red?', responses, messages });
+    }
+  );
+  assert.equal(captured.url, '/api/mark');
+  assert.equal(captured.opts.method, 'POST');
+  const body = JSON.parse(captured.opts.body);
+  assert.equal(body.deptId, 'operations');
+  assert.deepEqual(body.messages, [{ role: 'user', content: 'why is OTP red?' }]);
+  assert.equal(body.context.deptId, 'operations');
+  assert.ok(Array.isArray(body.context.kpis));
+  assert.deepEqual(body.context.responses, responses);
+});
+
+test('liveReply never calls fetch for the "step-help" intent, even with ctx.dept supplied', async () => {
+  let called = false;
+  await withFetch(
+    async () => { called = true; return { ok: true, status: 200, json: async () => ({ reply: 'nope' }) }; },
+    async () => {
+      const result = await liveReply('operations', 'step-help', { dept: opsFetchFixtureDept, step: 4, kpi: 'OTP' });
+      assert.ok(result && typeof result === 'object' && Array.isArray(result.items));
+    }
+  );
+  assert.equal(called, false, 'step-help must never hit the network — it always returns the structured object');
+});
+
+test('liveReply never calls fetch when ctx.dept is absent (bakedReply path)', async () => {
+  let called = false;
+  await withFetch(
+    async () => { called = true; return { ok: true, status: 200, json: async () => ({ reply: 'nope' }) }; },
+    async () => {
+      const reply = await liveReply('operations', 'explain-red', {});
+      assert.match(reply, /Mexico/);
+    }
+  );
+  assert.equal(called, false, 'no ctx.dept means no live context to post — must stay on bakedReply');
+});

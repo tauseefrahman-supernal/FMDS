@@ -11,3 +11,8 @@ all docs/
 # tool scratch dirs
 .playwright-mcp/
 .claude/
+
+# Python backend venv (server/) — anthropic SDK lives here, never global pip
+server/.venv/
+__pycache__/
+*.pyc
