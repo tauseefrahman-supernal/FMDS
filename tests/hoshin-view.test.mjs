@@ -16,11 +16,11 @@ import { hoshinPageHTML, hoshinStrip, hoshinChips } from '../views/hoshin.js';
 
 const hoshinFixture = {
   objectives: [
-    { id: 'financial-performance', name: 'Financial Performance', priorityTag: '(Priority: Financial Performance)' },
-    { id: 'acquisitions', name: 'Acquisitions', priorityTag: '(Priority: Acquisitions)' },
-    { id: 'organizational-development', name: 'Organizational Development', priorityTag: '(Priority: Organizational Development)' },
-    { id: 'branding-solution', name: 'Branding Solution', priorityTag: null },
-    { id: 'new-customer-acquisition-lifetime-journey', name: 'New Customer Acquisition + Lifetime Journey', priorityTag: null },
+    { id: 'financial-performance', name: 'Financial Performance', priorityTag: '(Priority: Financial Performance)', description: 'Grow revenue to $200m through channel management, ecomm, marketplaces, and acquisitions while achieving [60%] in margin and 80% cash conversion through operational performance and tech innovations.' },
+    { id: 'acquisitions', name: 'Acquisitions', priorityTag: '(Priority: Acquisitions)', description: null },
+    { id: 'organizational-development', name: 'Organizational Development', priorityTag: '(Priority: Organizational Development)', description: 'Create a clear structure for roles & responsibilities supported by a systematic staff development program and empowerment to drive individual and company-wide success.' },
+    { id: 'branding-solution', name: 'Branding Solution', priorityTag: null, description: null },
+    { id: 'new-customer-acquisition-lifetime-journey', name: 'New Customer Acquisition + Lifetime Journey', priorityTag: null, description: null },
   ],
   departments: {
     operations: {
@@ -101,9 +101,22 @@ test('hoshinPageHTML shows a neutral placeholder, never a fabricated status, for
   assert.match(html, /badge badge--neutral">Not tracked<\/span>/);
 });
 
-test('hoshinPageHTML shows a neutral note for an objective with no priorityTag', () => {
+test('hoshinPageHTML shows a neutral note for an objective with no priorityTag and no description', () => {
   const html = hoshinPageHTML(opsDept, hoshinFixture);
   assert.match(html, /No literal priority tag captured in source for this objective\./);
+});
+
+test('hoshinPageHTML prefers the objective\'s real description over its short priorityTag', () => {
+  const html = hoshinPageHTML(opsDept, hoshinFixture);
+  assert.match(html, /Grow revenue to \$200m through channel management/);
+  assert.match(html, /Create a clear structure for roles &amp; responsibilities/);
+  // the short bracket tags should NOT be what's rendered for objectives that have a real description
+  assert.doesNotMatch(html, /\(Priority: Financial Performance\)/);
+});
+
+test('hoshinPageHTML falls back to priorityTag when description is null (acquisitions has a tag but no verbatim description in source)', () => {
+  const html = hoshinPageHTML(opsDept, hoshinFixture);
+  assert.match(html, /\(Priority: Acquisitions\)/);
 });
 
 test('hoshinPageHTML renders a graceful empty state for a dept with zero activities', () => {

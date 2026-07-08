@@ -30,10 +30,14 @@
  *     either way.
  *
  * Zero-invented-data guards (data/hoshin.json's own fields, nothing added):
- *   - Objective "1-year priority" text = the objective's real `priorityTag`.
- *     2 of the 5 WE 2026 objectives (Branding Solution; New Customer
- *     Acquisition + Lifetime Journey) have no literal tag in source — shown as
- *     a neutral note, never a fabricated priority sentence.
+ *   - Objective "1-year priority" text prefers the objective's real
+ *     `description` (verbatim deck-quote text captured on the Marketing
+ *     block's activities — see data/hoshin.json _meta.objectiveMapping),
+ *     falling back to the shorter `priorityTag`, falling back to a neutral
+ *     "not captured" note. 4 of the 5 WE 2026 objectives carry a real
+ *     `description`; only Acquisitions has no verbatim description anywhere
+ *     in source, so its card falls through to its short `priorityTag`
+ *     bracket-tag text — never a fabricated priority sentence.
  *   - Target/Support-function/Accountable text is split on the source's own
  *     "\n" line breaks and rendered verbatim. Where a line count lines up 1:1
  *     across target/support/lead (the common case), each target row gets its
@@ -158,9 +162,11 @@ function objectiveCardsHTML(hoshin, dept) {
     const n = i + 1;
     const drives = r.relation === 'drives';
     const badgeLabel = `${esc(dept.name)} ${drives ? 'drives' : 'supports'}`;
-    const priorityText = obj && obj.priorityTag
-      ? esc(obj.priorityTag)
-      : 'No literal priority tag captured in source for this objective.';
+    const priorityText = obj && obj.description
+      ? esc(obj.description)
+      : obj && obj.priorityTag
+        ? esc(obj.priorityTag)
+        : 'No literal priority tag captured in source for this objective.';
     return `
     <section class="card card--pad hoshin-obj ${drives ? 'hoshin-obj--ops' : ''}">
       <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px">

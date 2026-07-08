@@ -1,5 +1,6 @@
 import test from 'node:test'; import assert from 'node:assert';
 import { readFileSync } from 'node:fs';
+import { activitiesFor } from '../lib/hoshin.js';
 
 const hoshin = JSON.parse(readFileSync(new URL('../data/hoshin.json', import.meta.url)));
 
@@ -67,4 +68,42 @@ test('hr and odg share the same HR & ODG source activities (duplicated by design
 
 test('finance has zero activities (source block is entirely blank)', () => {
   assert.equal(hoshin.departments.finance.activities.length, 0);
+});
+
+test('service is aliased to sales (owner direction 2026-07) — raw JSON activities stays [], aliasOf points to sales', () => {
+  assert.deepEqual(hoshin.departments.service.activities, []);
+  assert.equal(hoshin.departments.service.aliasOf, 'sales');
+});
+
+test('activitiesFor(hoshin, "service") resolves through the alias to Sales\'s same activities, non-empty', () => {
+  const serviceActs = activitiesFor(hoshin, 'service');
+  const salesActs = activitiesFor(hoshin, 'sales');
+  assert.ok(serviceActs.length > 0, 'service should inherit non-empty activities via aliasOf');
+  assert.deepEqual(serviceActs, salesActs);
+});
+
+test('objectives: 4 of 5 carry a real, non-null description; acquisitions stays null (no source text exists)', () => {
+  const byId = Object.fromEntries(hoshin.objectives.map(o => [o.id, o]));
+  const withDescription = ['financial-performance', 'organizational-development', 'branding-solution', 'new-customer-acquisition-lifetime-journey'];
+  withDescription.forEach((id) => {
+    assert.equal(typeof byId[id].description, 'string', `${id}.description should be a non-null string`);
+    assert.ok(byId[id].description.length > 0, `${id}.description should not be empty`);
+  });
+  assert.equal(byId['acquisitions'].description, null, 'acquisitions.description must stay null — no real source text exists');
+});
+
+test('objective descriptions are copied verbatim from the matching Marketing-block activity (objectiveId cross-check)', () => {
+  const marketing = hoshin.departments.marketing.activities;
+  const byId = Object.fromEntries(hoshin.objectives.map(o => [o.id, o]));
+  const expectations = [
+    { objectiveId: 'financial-performance', activityIndex: 0 },
+    { objectiveId: 'organizational-development', activityIndex: 2 },
+    { objectiveId: 'new-customer-acquisition-lifetime-journey', activityIndex: 3 },
+    { objectiveId: 'branding-solution', activityIndex: 4 },
+  ];
+  expectations.forEach(({ objectiveId, activityIndex }) => {
+    const activity = marketing[activityIndex];
+    assert.equal(activity.objectiveId, objectiveId, `marketing.activities[${activityIndex}].objectiveId should match ${objectiveId}`);
+    assert.equal(byId[objectiveId].description, activity.hoshinPriority, `${objectiveId}.description should be verbatim-equal to the source activity's hoshinPriority`);
+  });
 });

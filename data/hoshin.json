@@ -4,12 +4,12 @@
     "extractedBy": "scripts run for FMDS OS Phase B / Task B1 (2026-07-08)",
     "zeroInventedData": "Every hoshinPriority/activityPlan/target/supportFunction/lead string is copied verbatim from a workbook cell (only outer whitespace/newlines trimmed). When an activity's Targets/Support Function/Lead were laid out as several distinct values across physical rows (rather than one merged cell), those verbatim per-row values were concatenated with \"\\n\" in row order -- no new text was authored.",
     "timelineMethod": "The Implementation Time Line (cols G:U = Oct'25..Dec'26) is a Gantt-style cell-fill highlight, not a cell value -- but a naive 'solid fill = in range' reading was tested and found UNRELIABLE: the Finance block's 6 activity slots are 100% blank (verified -- no Hoshin Priority/Plan/Target/Support/Lead text anywhere) yet show the exact same fill pattern as populated activities elsewhere (first/last physical row of the group fully filled across all 15 months, with inner rows missing fill only at Nov'25/Dec'25). Since that pattern occurs with zero real data behind it, it is template/formatting noise, not user-entered Gantt data. Only 2 of ~31 activities (HR & ODG rows 47-51 and 53-57) show a genuinely different pattern: EVERY physical row, including first and last, unanimously excludes Oct/Nov/Dec 2025 -- that full-row unanimity is what distinguishes a deliberate edit from the template artifact. Rule applied: treat the fill pattern as a real partial-range signal only if Oct'25 (col G) is unfilled in a strict majority of the activity's physical rows (the noise pattern never touches Oct'25); if so, timeline.start/end/months are the union of filled columns across all rows and timeline.confidence = 'derived-from-fill-gap'. Otherwise the activity is reported as the full Oct'25-Dec'26 range with timeline.confidence = 'unverified-default-full-range' -- meaning no reliable partial-range signal was found, NOT a confirmed 15-month commitment. Only the 2 HR & ODG activities above carry 'derived-from-fill-gap'; every other activity in this file (29 of 31) carries 'unverified-default-full-range', so downstream consumers should not treat start/end as a hard commitment for those.",
-    "objectiveMapping": "The 5 canonical WE 2026 objectives (Financial Performance, Acquisitions, Organizational Development, Branding Solution, New Customer Acquisition + Lifetime Journey) come from the companion deck '2026 Hoshin Ojectives V-3.pdf' in the same project folder. 3 of the 5 appear verbatim as literal '(Priority: X)' tags inside Hoshin Priority cells (IT + Commercialization blocks); all 5 appear as verbatim, word-for-word quotes of the deck's objective descriptions in the Marketing block. objectiveId links an activity to its objective via (a) the explicit tag, (b) an exact verbatim-quote match, or (c) an unambiguous name/alias match ('Organizational Development' or 'Org Dev' as the literal priority label, 'New Customer Acquisition' as a leading phrase, or an explicit 'NN% Gross margin'/'GM' figure -- the latter is proven synonymous with the Financial Performance tag by Commercialization rows that carry BOTH forms, e.g. '150M 57.5% GM (Priority: Financial Performance)'). This linking logic never edits the stored verbatim text. Where a Hoshin Priority cell names more than one objective (slash-separated compound label, e.g. '57.5% Gross margin/ Organizational development'), objectiveId holds the first-listed objective and objectiveIds (non-null) holds the full ordered set; the raw hoshinPriority text always retains all of the original wording.",
+    "objectiveMapping": "The 5 canonical WE 2026 objectives (Financial Performance, Acquisitions, Organizational Development, Branding Solution, New Customer Acquisition + Lifetime Journey) come from the companion deck '2026 Hoshin Ojectives V-3.pdf' in the same project folder. 3 of the 5 appear verbatim as literal '(Priority: X)' tags inside Hoshin Priority cells (IT + Commercialization blocks); all 5 appear as verbatim, word-for-word quotes of the deck's objective descriptions in the Marketing block. objectiveId links an activity to its objective via (a) the explicit tag, (b) an exact verbatim-quote match, or (c) an unambiguous name/alias match ('Organizational Development' or 'Org Dev' as the literal priority label, 'New Customer Acquisition' as a leading phrase, or an explicit 'NN% Gross margin'/'GM' figure -- the latter is proven synonymous with the Financial Performance tag by Commercialization rows that carry BOTH forms, e.g. '150M 57.5% GM (Priority: Financial Performance)'). This linking logic never edits the stored verbatim text. Where a Hoshin Priority cell names more than one objective (slash-separated compound label, e.g. '57.5% Gross margin/ Organizational development'), objectiveId holds the first-listed objective and objectiveIds (non-null) holds the full ordered set; the raw hoshinPriority text always retains all of the original wording. Each objectives[] entry's new 'description' field (added 2026-07) is that objective's real 1-year priority explanation, copied verbatim, character-for-character, from the Marketing block activity whose objectiveId matches (financial-performance <- departments.marketing.activities[0].hoshinPriority; organizational-development <- activities[2]; new-customer-acquisition-lifetime-journey <- activities[3]; branding-solution <- activities[4]) -- itself sourced from the 2026 Hoshin deck per the paragraph above. No new prose was authored. 'acquisitions' has no verbatim description anywhere in the source workbook or deck excerpt captured in this repo -- its description is null rather than invented; only the short '(Priority: Acquisitions)' tag exists for it (see IT block activities).",
     "deptMapping": {
       "hr": "HR & ODG block, duplicated. Block has a single functional lead (Eric Freeman) covering both HR and ODG jointly; individual activities mix HR process content (career path, comp, training, onboarding) with an 'Organizational Development' priority label and don't cleanly separate by department, so all 10 activities are duplicated into both hr and odg.",
       "odg": "See hr -- same source block, same activities, duplicated by design.",
       "sales": "Commercialization block (Tony Morando), routed here in full. All 4 activities are outside/inside sales & account-expansion revenue plays.",
-      "service": "Commercialization block did NOT clearly cover Service (no activity mentions customer service); left empty rather than duplicating unrelated sales content into it.",
+      "service": "Commercialization block did NOT clearly cover Service (no activity mentions customer service); originally left empty rather than duplicating unrelated sales content into it. SUPERSEDED per owner direction (2026-07): Service has the same Hoshin objectives, priorities, and activities as Sales -- Service is now deliberately aliased to Sales/Commercialization via aliasOf (see departments.service.aliasOf, consumed by lib/hoshin.js's activitiesFor()) rather than left empty or duplicated. No new activity text was authored -- activitiesFor() resolves Service to Sales's same 4 verbatim activities above at read time.",
       "operations": "Operations block (Jim Kozel), routed here in full (6 activities).",
       "logistics": "Operations block, duplicated ONLY for the one activity whose Support Function explicitly names 'logistics' (the pricing/tariffs/shipping-GM activity, rows 124-128) -- its target ('Increase GM on shipping by 5%') also matches the logistics dept's headlineKpi ('WE Shipping Margin') in departments.json. The other 5 Operations activities have no logistics content.",
       "marketing": "Marketing block (TBD functional lead), 1:1, no duplication needed.",
@@ -25,27 +25,32 @@
     {
       "id": "financial-performance",
       "name": "Financial Performance",
-      "priorityTag": "(Priority: Financial Performance)"
+      "priorityTag": "(Priority: Financial Performance)",
+      "description": "Grow revenue to $200m through channel management, ecomm, marketplaces, and acquisitions while achieving [60%] in margin and 80% cash conversion through operational performance and tech innovations.  ​"
     },
     {
       "id": "acquisitions",
       "name": "Acquisitions",
-      "priorityTag": "(Priority: Acquisitions)"
+      "priorityTag": "(Priority: Acquisitions)",
+      "description": null
     },
     {
       "id": "organizational-development",
       "name": "Organizational Development",
-      "priorityTag": "(Priority: Organizational Development)"
+      "priorityTag": "(Priority: Organizational Development)",
+      "description": "Create a clear structure for roles &\nresponsibilities supported by a\nsystematic staff development program\nand empowerment to drive individual\nand company-wide success."
     },
     {
       "id": "branding-solution",
       "name": "Branding Solution",
-      "priorityTag": null
+      "priorityTag": null,
+      "description": "Develop end-to-end branding solutions\ndominating the IL market (85%), top\nprovider in LEO/Public Safety, becoming\nstrategic partners, establishing our\npresence in workwear, and fashion.​"
     },
     {
       "id": "new-customer-acquisition-lifetime-journey",
       "name": "New Customer Acquisition + Lifetime Journey",
-      "priorityTag": null
+      "priorityTag": null,
+      "description": "Develop end-to-end first-time customer\njourney onboarded within 5 minutes\ntracking and identifying customers that\nare lifetime vs transactional vs\nsometimes customers​"
     }
   ],
   "departments": {
@@ -802,6 +807,7 @@
     "service": {
       "block": "COMMERCIALIZATION",
       "functionalLead": "Tony Morando",
+      "aliasOf": "sales",
       "activities": []
     },
     "operations": {
