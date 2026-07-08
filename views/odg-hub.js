@@ -5,16 +5,23 @@
  *
  * ODG is the method hub, not a plain KPI table. This dedicated board shows:
  *  1. Headline adoption gap — FMDS 93.2% vs 8-Step 18.9% — as prominent stats
- *  2. SRR-by-department as svgBars (Operations ~50%, others 0)
- *  3. Training-plan-vs-actual by the 8 programs as svgBars
+ *  2. SRR-by-department as bars (Operations ~50%, others 0)
+ *  3. Training-plan-vs-actual by the 8 programs as bars
  *  4. Link to KZ tracker (#/dept/odg/solve)
  *
  * Data is read from dept (odg.json) — no invented numbers.
  * Design: $150M-clean; reuses shared CSS classes.
+ *
+ * Task 7 re-skin note: these adoption/SRR/training bars are comparisons
+ * across departments/programs against a single ramp target — not a per-row
+ * on/off-track gate — so per design-system principle "RAG is reserved for
+ * status, full stop" they render in the viz palette (identity/decoration)
+ * rather than red/amber/green. vizBars() below is a small local renderer
+ * (mirrors lib/charts.js svgBars()'s layout math) that resolves bar fill
+ * from a viz token instead of the RAG palette; the shared svgBars() stays
+ * untouched since other, already-migrated boards legitimately use it for
+ * real per-row RAG status.
  */
-
-import { svgBars } from '../lib/charts.js';
-import { ragStatus } from '../lib/rag.js';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -23,9 +30,50 @@ function pct(ratio) {
   return (ratio * 100).toFixed(1) + '%';
 }
 
-function ragColor(actual, target, direction) {
-  const s = ragStatus(actual, target, direction || 'higher_better');
-  return s;
+// Resolve a CSS custom property from the live document (falls back to a
+// plain hex when no DOM is present, e.g. under node --check / tests) —
+// same pattern as lib/charts.js's _cssVar().
+function _cssVar(name, fallback) {
+  if (typeof document === 'undefined') return fallback;
+  const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  return v || fallback;
+}
+
+// Local bar renderer using the viz-identity palette (never RAG hues) —
+// see module header. `rows` is [{label, value}]; every bar in a given call
+// shares one viz token (a single comparable metric across categories, like
+// the artifact's default single-series line color), not a per-row status.
+function vizBars(rows, { width = 480, barHeight = 22, gap = 7, vizVar = '--viz-single' } = {}) {
+  const PAD_L = 90, PAD_R = 40, PAD_T = 8;
+  const trackW = width - PAD_L - PAD_R;
+  const totalH = PAD_T + rows.length * (barHeight + gap);
+  const numeric = rows.map(r => r.value).filter(v => typeof v === 'number' && !Number.isNaN(v));
+  const maxV = numeric.length ? Math.max(...numeric) : 1;
+
+  // --muted / --text-dim are already complete `hsl(...)` values in
+  // styles.css; the --viz-* tokens are bare "H S% L%" triples that still
+  // need the hsl() wrapper (same distinction lib/charts.js's RAG_COLORS vs.
+  // its viz usage draws).
+  const trackFill = _cssVar('--muted', '#e9e5df');
+  const labelFill = _cssVar('--text-dim', '#5f594e');
+  const barFill   = `hsl(${_cssVar(vizVar, '197 13% 52%')})`;
+
+  const bars = rows.map((row, i) => {
+    const y    = PAD_T + i * (barHeight + gap);
+    const cx   = PAD_L;
+    const cy   = y + barHeight / 2 + 4;
+    const val  = (typeof row.value === 'number' && !Number.isNaN(row.value)) ? row.value : null;
+    const barW = val !== null ? Math.max(2, (val / maxV) * trackW) : 0;
+    const valStr = val !== null ? (val >= 1000 ? (val / 1000).toFixed(0) + 'k' : val.toFixed(1)) : '—';
+
+    return `
+    <text x="${cx - 4}" y="${cy}" text-anchor="end" font-size="10" fill="${labelFill}" dominant-baseline="middle">${row.label.slice(0, 14)}</text>
+    <rect x="${cx}" y="${y}" width="${trackW}" height="${barHeight}" rx="3" fill="${trackFill}"/>
+    ${val !== null ? `<rect x="${cx}" y="${y}" width="${barW.toFixed(1)}" height="${barHeight}" rx="3" fill="${barFill}" opacity="0.9"/>` : ''}
+    <text x="${cx + trackW + 4}" y="${cy}" font-size="10" fill="${labelFill}" dominant-baseline="middle">${valStr}</text>`;
+  }).join('');
+
+  return `<svg width="${width}" height="${totalH}" xmlns="http://www.w3.org/2000/svg">${bars}</svg>`;
 }
 
 // ─── Adoption headline section ───────────────────────────────────────────────
@@ -44,20 +92,20 @@ function renderAdoptionHeadline(dept) {
         Closing this gap is what the OS exists to do.
       </p>
       <div style="display:flex;gap:32px;flex-wrap:wrap;align-items:flex-end">
-        <div class="odg-stat-block" style="--stat-color:#2f9e44">
+        <div class="odg-stat-block">
           <div class="odg-stat-label">FMDS Adoption</div>
-          <div class="odg-stat-value" style="color:#2f9e44">${pct(fmds)}</div>
+          <div class="odg-stat-value" style="color:hsl(var(--viz-single))">${pct(fmds)}</div>
           <div class="odg-stat-sub text-muted">93.2% trained on FMDS framework</div>
         </div>
-        <div class="odg-stat-block" style="--stat-color:#e03131">
+        <div class="odg-stat-block">
           <div class="odg-stat-label">8-Step Usage</div>
-          <div class="odg-stat-value" style="color:#e03131">${pct(eightStep)}</div>
+          <div class="odg-stat-value" style="color:hsl(var(--viz-2))">${pct(eightStep)}</div>
           <div class="odg-stat-sub text-muted">18.9% actively using 8-Step</div>
         </div>
         ${gap != null ? `
-        <div class="odg-stat-block" style="--stat-color:#3b5bdb">
+        <div class="odg-stat-block">
           <div class="odg-stat-label">Adoption Gap</div>
-          <div class="odg-stat-value" style="color:#3b5bdb">${pct(gap)}</div>
+          <div class="odg-stat-value" style="color:hsl(var(--viz-7))">${pct(gap)}</div>
           <div class="odg-stat-sub text-muted">method awareness vs method use</div>
         </div>` : ''}
       </div>
@@ -74,9 +122,7 @@ function renderSrrBars(dept) {
   const rows = subs.map(cid => {
     const k = dept.kpis.find(x => x.id === cid);
     if (!k) return null;
-    const val = k.actual;
-    const rag = ragColor(val, k.target || 1.0, 'higher_better');
-    return { label: k.name.replace('SRR — ', ''), value: val, rag };
+    return { label: k.name.replace('SRR — ', ''), value: k.actual };
   }).filter(Boolean);
 
   if (!rows.length) return '';
@@ -93,10 +139,9 @@ function renderSrrBars(dept) {
         <span class="badge badge--warning" style="margin-left:6px">Source: ODG FMDS Board</span>
       </p>
       <div style="overflow-x:auto">
-        ${svgBars(rows.map(r => ({
+        ${vizBars(rows.map(r => ({
           label: r.label,
           value: typeof r.value === 'number' ? Math.round(r.value * 100) : null,
-          rag:   r.rag,
         })), { width: 480, barHeight: 22, gap: 7 })}
       </div>
       <p class="text-muted" style="font-size:0.68rem;margin-top:4px">Values shown as % (0–100)</p>
@@ -106,21 +151,17 @@ function renderSrrBars(dept) {
 // ─── Training plan vs actual by program (bar chart) ──────────────────────────
 
 function renderTrainingBars(dept) {
-  // Use the structured trainingPrograms array from odg.json
+  // Use the structured trainingPrograms array from odg.json.
+  // (Target for all programs is 10% monthly ramp, per the data note in the
+  // prose below — these are progress-vs-ramp comparison bars across
+  // programs, not a per-program RAG gate, so they render on the viz palette.)
   const programs = dept.trainingPrograms || [];
   if (!programs.length) return '';
 
-  // Target for all programs is 10% monthly ramp (from data note)
-  const TARGET = 0.1;
-
-  const rows = programs.map(p => {
-    const rag = ragColor(p.adoption, TARGET, 'higher_better');
-    return {
-      label: p.name,
-      value: typeof p.adoption === 'number' ? Math.round(p.adoption * 100) : null,
-      rag,
-    };
-  });
+  const rows = programs.map(p => ({
+    label: p.name,
+    value: typeof p.adoption === 'number' ? Math.round(p.adoption * 100) : null,
+  }));
 
   return `
     <section class="odg-section card" style="margin-bottom:24px">
@@ -131,7 +172,7 @@ function renderTrainingBars(dept) {
         <span class="badge" style="margin-left:6px">Source: ODG FMDS Board</span>
       </p>
       <div style="overflow-x:auto">
-        ${svgBars(rows, { width: 480, barHeight: 22, gap: 7 })}
+        ${vizBars(rows, { width: 480, barHeight: 22, gap: 7, vizVar: '--viz-5' })}
       </div>
       <p class="text-muted" style="font-size:0.68rem;margin-top:4px">Values shown as % (0–100). Target: 10%.</p>
     </section>`;
@@ -190,7 +231,7 @@ const ODG_STYLES = `
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    color: var(--slate-600);
+    color: var(--text-dim);
   }
 
   .odg-stat-value {

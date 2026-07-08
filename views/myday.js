@@ -243,7 +243,7 @@ export function renderMyDay(dept, mount, persona) {
 
     ${heroReasonBlock}
 
-    ${kpi.flag ? `<div class="frozen-banner reveal-2" style="background:var(--amber-bg);border-color:rgba(224,122,18,.28)">⚠ ${kpi.flag}</div>` : ''}
+    ${kpi.flag ? `<div class="frozen-banner reveal-2" style="background:var(--amber-bg);border-color:var(--amber-border)">⚠ ${kpi.flag}</div>` : ''}
 
     <h2 class="reveal-3" style="margin-bottom:14px">My activity drivers</h2>
     <div class="myday__grid reveal-3">

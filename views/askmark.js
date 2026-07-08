@@ -165,8 +165,8 @@ function renderHeader(dept, unansweredCount, answeredCount, rollup) {
       </div>
       <div class="mk-header__stats">
         <div class="mk-header__pills">
-          <span class="mk-pill mk-pill--red">${unansweredCount} action required</span>
-          <span class="mk-pill mk-pill--amber">${answeredCount} being actioned</span>
+          <span class="mk-pill mk-pill--red"><span class="mk-pill__dot"></span>${unansweredCount} action required</span>
+          <span class="mk-pill mk-pill--amber"><span class="mk-pill__dot"></span>${answeredCount} being actioned</span>
         </div>
         <span class="mk-header__rollup">${rollup.stalled} stalled · ${rollup.answered} response${rollup.answered === 1 ? '' : 's'} logged</span>
       </div>
@@ -175,6 +175,13 @@ function renderHeader(dept, unansweredCount, answeredCount, rollup) {
 
 // ─── Left column: red-KPI queue ─────────────────────────────────────────────
 
+// Compact 2-row card (Task 7 "shrink the action-required bar" fix): the
+// original 4-row layout (name+RAG badge / actual-vs-target / due+answered /
+// owner) ran roughly 2x taller than it needed to. Every card in this queue
+// is a RED kpi by definition (redKpisNeedingResponse only returns reds), so
+// the per-card "● Off Track" badge duplicated the card's own red left-border
+// with no new information — dropped rather than shrunk. Due date, owner and
+// the answered state now share one row instead of two.
 function renderQueueCard(item, dept) {
   const kpi      = findKpi(dept, item.kpiId);
   const actual   = kpi ? formatVal(kpi.actual, kpi.unit) : '—';
@@ -185,22 +192,14 @@ function renderQueueCard(item, dept) {
 
   return `
     <button type="button" class="mk-qcard${isActive ? ' mk-qcard--active' : ''}" data-kpi-id="${esc(item.kpiId)}">
-      <div class="mk-qcard__top">
+      <div class="mk-qcard__row1">
         <span class="mk-qcard__name">${esc(item.kpi)}</span>
-        ${ragChip(item.rag)}
+        <span class="text-mono mk-qcard__metric">${actual} <span class="mk-qcard__vs">/ ${target}</span></span>
       </div>
-      <div class="mk-qcard__metric">
-        <span class="text-mono">${actual}</span>
-        <span class="mk-qcard__vs">vs target</span>
-        <span class="text-mono mk-qcard__target">${target}</span>
+      <div class="mk-qcard__row2">
+        <span>Due ${formatDueDate(item.dueDate)} · ${esc(item.owner || 'Unassigned')}</span>
+        <span class="mk-qcard__answered--${answered ? 'yes' : 'no'}">${answered ? '✓ Answered' : '○ Not yet'}</span>
       </div>
-      <div class="mk-qcard__meta">
-        <span class="mk-qcard__due">Due ${formatDueDate(item.dueDate)}</span>
-        <span class="mk-qcard__answered mk-qcard__answered--${answered ? 'yes' : 'no'}">
-          ${answered ? '✓ Answered' : '○ Not yet answered'}
-        </span>
-      </div>
-      <div class="mk-qcard__owner">Owner: ${esc(item.owner || 'Unassigned')}</div>
     </button>`;
 }
 
@@ -788,102 +787,117 @@ const ASKMARK_STYLES = `
 
   /* Header */
   .mk-header { display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;
-    padding-bottom:16px; margin-bottom:18px; border-bottom:1px solid var(--line); }
+    padding-bottom:16px; margin-bottom:18px; border-bottom:1px solid var(--border); }
   .mk-header__ident { display:flex; align-items:center; gap:12px; }
+  /* Mark's avatar: flat viz-identity color (matches .cmt__avatar--ai /
+     .ai-note__avatar elsewhere) — no purple gradient, no accent ring. */
   .mk-avatar { width:40px; height:40px; border-radius:50%; flex-shrink:0;
     display:flex; align-items:center; justify-content:center;
-    font-family:var(--font-mono); font-weight:700; font-size:1rem; color:#fff;
-    background: linear-gradient(140deg, var(--accent), #6f4bff);
-    box-shadow: 0 0 0 3px var(--accent-tint); }
+    font-family:var(--font-mono); font-weight:700; font-size:1rem; color:var(--accent-fg);
+    background: hsl(var(--viz-single)); }
   .mk-header__name { font-size:1.05rem; font-weight:700; color:var(--text); line-height:1.2; }
   .mk-header__role { font-size:0.7rem; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:var(--accent); }
   .mk-header__stats { display:flex; flex-direction:column; align-items:flex-end; gap:6px; }
   .mk-header__pills { display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
-  .mk-pill { display:inline-flex; align-items:center; gap:6px; padding:5px 12px; border-radius:999px; font-size:0.8rem; font-weight:700; }
-  .mk-pill--red { background: var(--red-bg); color: var(--red); border:1px solid rgba(217,45,58,.22); }
-  .mk-pill--amber { background: var(--amber-bg); color: var(--amber); border:1px solid rgba(224,122,18,.22); }
-  .mk-header__rollup { font-size:0.72rem; color: var(--text-muted); }
+  /* Sized like the design system's .badge (2px/10px padding, 11.5px text)
+     rather than the old 0.8rem/5px-12px pill — a quiet count, not a banner. */
+  .mk-pill { display:inline-flex; align-items:center; gap:5px; padding:2px 10px; border-radius:var(--radius-full); font-size:11.5px; font-weight:500; border:1px solid transparent; }
+  .mk-pill--red { background: var(--red-bg); color: var(--red-text); border-color: var(--red-border); }
+  .mk-pill--amber { background: var(--amber-bg); color: var(--amber-text); border-color: var(--amber-border); }
+  .mk-pill__dot { width:6px; height:6px; border-radius:var(--radius-full); flex-shrink:0; }
+  .mk-pill--red .mk-pill__dot { background: var(--red); }
+  .mk-pill--amber .mk-pill__dot { background: var(--amber); }
+  .mk-header__rollup { font-size:0.72rem; color: var(--text-faint); }
 
   /* Two-pane grid: ~38% queue / ~62% chat */
   .askmark-grid { display:grid; grid-template-columns: 38% 1fr; gap:22px; align-items:start; }
   @media (max-width: 900px) { .askmark-grid { grid-template-columns: 1fr; } }
 
-  /* Queue column */
-  .mk-queue-head { display:flex; align-items:center; gap:8px; font-size:0.76rem; font-weight:700;
-    letter-spacing:0.05em; text-transform:uppercase; color: var(--red); margin-bottom:12px; }
-  .mk-queue-head--green { color: var(--green); }
-  .mk-queue-head--spaced { margin-top:22px; }
-  .mk-queue-head__count { margin-left:auto; background: var(--red-bg); color: var(--red); border-radius:999px; padding:1px 9px; font-size:0.72rem; }
-  .mk-queue-head__count--green { background: var(--green-bg); color: var(--green); }
-  .mk-queue-list { display:flex; flex-direction:column; gap:10px; }
+  /* Queue column — "Action required" bar (Task 7 fix): the owner flagged
+     this area as running ~2x taller than it needed to. Tighter section
+     heads, tighter list gaps, and (below) a 2-row card instead of 4. */
+  .mk-queue-head { display:flex; align-items:center; gap:6px; font-size:0.7rem; font-weight:700;
+    letter-spacing:0.05em; text-transform:uppercase; color: var(--red-text); margin-bottom:8px; }
+  .mk-queue-head--green { color: var(--green-text); }
+  .mk-queue-head--spaced { margin-top:16px; }
+  .mk-queue-head__count { margin-left:auto; background: var(--red-bg); color: var(--red-text); border-radius:var(--radius-full); padding:1px 8px; font-size:0.68rem; }
+  .mk-queue-head__count--green { background: var(--green-bg); color: var(--green-text); }
+  .mk-queue-list { display:flex; flex-direction:column; gap:6px; }
 
+  /* Card: collapsed from 4 rows (name+RAG badge / actual-vs-target /
+     due+answered / owner) to 2 (name+metric, due+owner+answered) with
+     tighter padding. Every card here is a RED kpi by definition
+     (redKpisNeedingResponse only returns reds), so the per-card "Off Track"
+     badge duplicated the red left-border with no new information — dropped
+     rather than shrunk. */
   .mk-qcard { display:block; width:100%; text-align:left; cursor:pointer; font-family:inherit;
-    background: var(--surface); border:1px solid var(--line); border-left:3px solid var(--red);
-    border-radius: var(--radius); padding:12px 14px;
-    transition: border-color var(--t-fast), box-shadow var(--t-fast), background var(--t-fast); }
+    background: var(--panel); border:1px solid var(--border); border-left:3px solid var(--red);
+    border-radius: var(--radius); padding:8px 10px;
+    transition: border-color var(--duration-fast), box-shadow var(--duration-fast), background var(--duration-fast); }
   .mk-qcard:hover { border-color: var(--red); box-shadow: var(--shadow-sm); }
   /* Compound selector so the active/selected state outranks both .mk-qcard:hover
      above AND the global button:hover rule (styles.css) — otherwise hovering an
      already-selected card would visually flash its highlight back to red/grey. */
   .mk-qcard.mk-qcard--active,
   .mk-qcard.mk-qcard--active:hover {
-    background: var(--accent-tint); border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-tint-2);
+    background: var(--accent-soft); border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-subtle-bg);
   }
-  .mk-qcard__top { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:7px; }
-  .mk-qcard__name { font-weight:600; font-size:0.88rem; color:var(--text); }
-  .mk-qcard__metric { display:flex; align-items:baseline; gap:6px; font-size:0.85rem; margin-bottom:7px; }
-  .mk-qcard__vs { color:var(--text-muted); font-size:0.7rem; }
-  .mk-qcard__target { color:var(--text-muted); }
-  .mk-qcard__meta { display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:0.72rem; color:var(--text-muted); margin-bottom:5px; }
-  .mk-qcard__answered--yes { color: var(--green); font-weight:600; }
-  .mk-qcard__answered--no { color: var(--red); font-weight:600; }
-  .mk-qcard__owner { font-size:0.72rem; color:var(--text-muted); }
+  .mk-qcard__row1 { display:flex; align-items:baseline; justify-content:space-between; gap:8px; margin-bottom:3px; }
+  .mk-qcard__name { font-weight:600; font-size:0.8rem; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .mk-qcard__metric { flex-shrink:0; font-size:0.76rem; color:var(--text-secondary); }
+  .mk-qcard__vs { color:var(--text-faint); font-weight:400; }
+  .mk-qcard__row2 { display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:0.68rem; color:var(--text-faint); }
+  .mk-qcard__answered--yes { color: var(--green-text); font-weight:600; }
+  .mk-qcard__answered--no { color: var(--red-text); font-weight:600; }
 
-  .mk-empty { padding:14px; border:1px dashed var(--line-strong); border-radius: var(--radius);
-    color:var(--text-muted); font-size:0.82rem; text-align:center; background: var(--surface-2); }
+  .mk-empty { padding:14px; border:1px dashed var(--border-strong); border-radius: var(--radius);
+    color:var(--text-faint); font-size:0.82rem; text-align:center; background: var(--bg-subtle); }
   .mk-empty--small { padding:10px; font-size:0.76rem; }
 
-  .mk-threads { margin-top:24px; }
-  .mk-threads__head { font-size:0.7rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-muted); margin-bottom:8px; }
+  .mk-threads { margin-top:16px; }
+  .mk-threads__head { font-size:0.7rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-faint); margin-bottom:8px; }
 
   /* Right column stacks the response card above the chat */
   .askmark-col--chat { display:flex; flex-direction:column; gap:16px; }
 
   /* Response card (spec §5.2) */
   .mk-rc-wrap { display:block; }
-  .mk-rc { background: var(--surface); border:1px solid var(--line); border-left:3px solid var(--red);
+  .mk-rc { background: var(--panel); border:1px solid var(--border); border-left:3px solid var(--red);
     border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); padding:16px 18px; }
   .mk-rc--answered { border-left-color: var(--green); }
-  .mk-rc--empty { display:flex; align-items:center; gap:10px; justify-content:center; color:var(--text-muted);
-    font-size:0.85rem; border-left-color: var(--line); border-style:dashed; background: var(--surface-2); padding:22px; }
+  .mk-rc--empty { display:flex; align-items:center; gap:10px; justify-content:center; color:var(--text-faint);
+    font-size:0.85rem; border-left-color: var(--border); border-style:dashed; background: var(--bg-subtle); padding:22px; }
   .mk-rc__empty-icon { font-size:1.1rem; color: var(--accent); }
 
-  .mk-rc__head { border-bottom:1px solid var(--line); padding-bottom:12px; margin-bottom:12px; }
+  .mk-rc__head { border-bottom:1px solid var(--border); padding-bottom:12px; margin-bottom:12px; }
   .mk-rc__head-top { display:flex; align-items:center; gap:10px; margin-bottom:6px; }
   .mk-rc__kpi { font-size:1rem; font-weight:700; color:var(--text); }
-  .mk-rc__meta { display:flex; align-items:center; flex-wrap:wrap; gap:6px; font-size:0.76rem; color:var(--text-muted); }
-  .mk-rc__actual { font-size:0.88rem; color:var(--red); font-weight:700; }
-  .mk-rc__vs { color:var(--text-muted); }
+  .mk-rc__meta { display:flex; align-items:center; flex-wrap:wrap; gap:6px; font-size:0.76rem; color:var(--text-dim); }
+  .mk-rc__actual { font-size:0.88rem; color:var(--red-text); font-weight:700; }
+  .mk-rc__vs { color:var(--text-faint); }
   .mk-rc__target { color:var(--text); }
-  .mk-rc__sep-dot { color:var(--line-strong); }
+  .mk-rc__sep-dot { color:var(--border-strong); }
 
-  /* Lifecycle chip track (spec §5.3) */
+  /* Lifecycle chip track (spec §5.3) — colors match the artifact's
+     .life-chip.is-done / .is-now pattern: a completed stage is a soft sage
+     tint (not green — finishing a stage isn't a status report), the current
+     stage is solid accent. */
   .mk-lc { margin-bottom:16px; }
-  .mk-lc__label { font-size:0.62rem; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-muted); margin-bottom:8px; }
+  .mk-lc__label { font-size:0.62rem; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-faint); margin-bottom:8px; }
   .mk-lc__track { display:flex; align-items:center; flex-wrap:wrap; gap:4px; }
-  .mk-lc__chip { display:inline-flex; align-items:center; gap:5px; padding:3px 10px; border-radius:999px;
-    font-size:0.72rem; font-weight:600; border:1px solid var(--line); background: var(--surface-2); color:var(--text-muted); }
-  .mk-lc__chip--done { background: var(--green-bg); color: var(--green); border-color: rgba(31,157,87,.22); }
-  .mk-lc__chip--current { background: var(--accent-tint); color: var(--accent); border-color: var(--accent-tint-2); }
+  .mk-lc__chip { display:inline-flex; align-items:center; gap:5px; padding:3px 10px; border-radius:var(--radius-full);
+    font-size:0.72rem; font-weight:500; border:1px solid var(--border-soft); background: var(--muted); color:var(--text-faint); }
+  .mk-lc__chip--done { background: hsl(var(--action-1)); color: var(--accent-text); border-color: hsl(var(--action-3)); }
+  .mk-lc__chip--current { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); font-weight:600; }
   .mk-lc__glyph { font-size:0.7rem; }
-  .mk-lc__sep { color: var(--line-strong); font-size:0.7rem; }
+  .mk-lc__sep { color: var(--border-strong); font-size:0.7rem; }
 
   /* Read-back (answered state) */
   .mk-rc__answered-tag { display:inline-flex; align-items:center; gap:6px; font-size:0.74rem; font-weight:700;
-    color: var(--green); background: var(--green-bg); border:1px solid rgba(31,157,87,.22);
-    border-radius:999px; padding:3px 11px; margin-bottom:12px; }
+    color: var(--green-text); background: var(--green-bg); border:1px solid var(--green-border);
+    border-radius:var(--radius-full); padding:3px 11px; margin-bottom:12px; }
   .mk-rc__readback { display:flex; flex-direction:column; gap:12px; margin:0; }
-  .mk-rc__ro-field dt { font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; color:var(--text-muted); margin-bottom:3px; }
+  .mk-rc__ro-field dt { font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; color:var(--text-faint); margin-bottom:3px; }
   .mk-rc__ro-field dd { margin:0; font-size:0.86rem; color:var(--text); line-height:1.5; }
   .mk-rc__kz-link { color: var(--accent); font-weight:700; text-decoration:none; }
   .mk-rc__kz-link:hover { text-decoration:underline; }
@@ -893,37 +907,37 @@ const ASKMARK_STYLES = `
   .mk-rc__form { display:flex; flex-direction:column; gap:14px; }
   .mk-rc__field-group { display:flex; flex-direction:column; gap:6px; }
   .mk-rc__label { font-size:0.8rem; font-weight:700; color:var(--text); }
-  .mk-rc__hint { font-weight:500; font-size:0.72rem; color:var(--accent); margin-left:4px; }
+  .mk-rc__hint { font-weight:500; font-size:0.72rem; color:var(--accent-text); margin-left:4px; }
   .mk-rc__input { width:100%; box-sizing:border-box; resize:vertical; font-family:inherit; font-size:0.85rem;
-    line-height:1.5; padding:9px 11px; border:1px solid var(--line-strong); border-radius: var(--radius);
-    background: var(--canvas); color:var(--text); }
-  .mk-rc__input:focus { outline:none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-tint); }
+    line-height:1.5; padding:9px 11px; border:1px solid var(--border-input); border-radius: var(--radius);
+    background: var(--bg); color:var(--text); }
+  .mk-rc__input:focus { outline:none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
   .mk-rc__input--sm { max-width:340px; }
   .mk-rc__draft { align-self:flex-start; margin-top:2px; }
-  .mk-rc__draft-note { font-size:0.7rem; color:var(--text-muted); }
-  .mk-rc__toggle { display:inline-flex; border:1px solid var(--line-strong); border-radius:999px; overflow:hidden; align-self:flex-start; }
-  .mk-rc__toggle-btn { border:none; border-radius:0; background:var(--surface); color:var(--text-muted);
+  .mk-rc__draft-note { font-size:0.7rem; color:var(--text-faint); }
+  .mk-rc__toggle { display:inline-flex; border:1px solid var(--border-input); border-radius:var(--radius-full); overflow:hidden; align-self:flex-start; }
+  .mk-rc__toggle-btn { border:none; border-radius:0; background:var(--panel); color:var(--text-dim);
     font-size:0.8rem; font-weight:600; padding:5px 18px; cursor:pointer; }
   /* Compound :hover selectors so the toggle outranks the global button:hover
      rule (styles.css, specificity 0,0,1,1) — otherwise hovering the active
      "Yes" repaints it slate-on-white and the white label vanishes. */
-  .mk-rc__toggle-btn.mk-rc__toggle-btn:hover { background: var(--surface-2); }
+  .mk-rc__toggle-btn.mk-rc__toggle-btn:hover { background: var(--bg-subtle); }
   .mk-rc__toggle-btn.mk-rc__toggle-btn--active,
-  .mk-rc__toggle-btn.mk-rc__toggle-btn--active:hover { background: var(--accent); color:#fff; }
-  .mk-rc__esc-note { font-size:0.74rem; color:var(--amber); background: var(--amber-bg);
-    border:1px solid rgba(224,122,18,.22); border-radius: var(--radius); padding:6px 10px; }
+  .mk-rc__toggle-btn.mk-rc__toggle-btn--active:hover { background: var(--accent); color:var(--accent-fg); }
+  .mk-rc__esc-note { font-size:0.74rem; color:var(--amber-text); background: var(--amber-bg);
+    border:1px solid var(--amber-border); border-radius: var(--radius); padding:6px 10px; }
   .mk-rc__actions { display:flex; justify-content:flex-end; padding-top:2px; }
 
   /* Chat column */
   .mk-chat { display:flex; flex-direction:column; min-height:360px; flex:1;
-    background: var(--surface); border:1px solid var(--line); border-radius: var(--radius-lg);
+    background: var(--panel); border:1px solid var(--border); border-radius: var(--radius-lg);
     box-shadow: var(--shadow-sm); overflow:hidden; }
   .mk-chat__thread { flex:1; overflow-y:auto; padding:20px; display:flex; flex-direction:column; gap:14px; min-height:200px; }
-  .mk-chat__empty { margin:auto; color:var(--text-muted); font-size:0.88rem; text-align:center; }
-  .mk-chat__composer { display:flex; gap:10px; padding:14px 16px; border-top:1px solid var(--line); background: var(--surface-2); }
+  .mk-chat__empty { margin:auto; color:var(--text-faint); font-size:0.88rem; text-align:center; }
+  .mk-chat__composer { display:flex; gap:10px; padding:14px 16px; border-top:1px solid var(--border); background: var(--bg-subtle); }
   .mk-chat__composer textarea { flex:1; resize:none; font-family:inherit; font-size:0.85rem; padding:9px 12px;
-    border:1px solid var(--line-strong); border-radius: var(--radius); background: var(--canvas); color:var(--text); }
-  .mk-chat__composer textarea:focus { outline:none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-tint); }
+    border:1px solid var(--border-input); border-radius: var(--radius); background: var(--bg); color:var(--text); }
+  .mk-chat__composer textarea:focus { outline:none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
   .mk-chat__composer .btn { align-self:flex-end; }
 `;
 

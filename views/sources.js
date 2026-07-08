@@ -159,7 +159,7 @@ function renderSourceCard(ts, kpis) {
     </div>`).join('');
 
   const cardNote = isManual
-    ? `<div class="src-card__note text-muted text-small" style="margin-top:8px;padding-top:8px;border-top:1px solid var(--slate-200)">
+    ? `<div class="src-card__note text-muted text-small" style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
          No source system exists for these items. They are human-reported incident counts and rates — the only remaining manual entry in FMDS OS.
        </div>`
     : '';
@@ -252,7 +252,7 @@ function renderFlowLine(kpis) {
        </div>`;
 
   const manualBlock = manualKpis.length > 0
-    ? `<div class="src-flow-flag src-flow-flag--manual" style="margin-top:8px;border-color:#fca5a5">
+    ? `<div class="src-flow-flag src-flow-flag--manual" style="margin-top:8px;border-color:var(--red-border)">
          <span class="src-flow-flag__icon">⚡</span>
          <span><strong>${manualKpis.length} safety item${manualKpis.length !== 1 ? 's' : ''}</strong> remain manual — no source system exists for incident reporting:
            <span class="text-mono" style="font-size:0.72rem">
@@ -307,13 +307,13 @@ function injectSourceStyles(doc) {
       align-items: center;
       gap: 3px;
       padding: 1px 7px;
-      border-radius: 999px;
+      border-radius: var(--radius-full);
       font-size: 0.67rem;
       font-weight: 600;
-      font-family: var(--font-mono, 'IBM Plex Mono', monospace);
-      background: #fff7ed;
-      color: #9a3412;
-      border: 1px solid #fed7aa;
+      font-family: var(--font-mono);
+      background: var(--amber-bg);
+      color: var(--amber-text);
+      border: 1px solid var(--amber-border);
       vertical-align: middle;
     }
     .src-pill--manual-only {
@@ -321,25 +321,25 @@ function injectSourceStyles(doc) {
       align-items: center;
       gap: 3px;
       padding: 1px 7px;
-      border-radius: 999px;
+      border-radius: var(--radius-full);
       font-size: 0.67rem;
       font-weight: 600;
-      font-family: var(--font-mono, 'IBM Plex Mono', monospace);
-      background: #fee2e2;
-      color: #991b1b;
-      border: 1px solid #fca5a5;
+      font-family: var(--font-mono);
+      background: var(--red-bg);
+      color: var(--red-text);
+      border: 1px solid var(--red-border);
       vertical-align: middle;
     }
     .src-card--manual-only {
-      border-left: 3px solid #fca5a5;
-      background: #fff5f5;
+      border-left: 3px solid var(--red-border);
+      background: var(--red-bg);
     }
     .src-card__icon {
       margin-right: 4px;
     }
     .src-flow-flag--manual {
-      border-color: #fca5a5 !important;
-      background: #fff5f5;
+      border-color: var(--red-border) !important;
+      background: var(--red-bg);
     }
   `;
   doc.head.appendChild(style);
@@ -389,9 +389,9 @@ export function renderSources(dept, mount) {
 
   // Re-keyed elimination note
   const eliminationNote = reKeyedKpis.length
-    ? `<div class="src-elimination-note" style="background:#fffbeb;border:1px solid #fde68a;border-radius:var(--radius);
+    ? `<div class="src-elimination-note" style="background:var(--amber-bg);border:1px solid var(--amber-border);border-radius:var(--radius);
            padding:10px 14px;margin-bottom:18px;font-size:0.8rem;line-height:1.5">
-         <strong style="color:#92400e">Double-entry being eliminated:</strong>
+         <strong style="color:var(--amber-text)">Double-entry being eliminated:</strong>
          <span class="text-muted" style="margin-left:6px">${reKeyedKpis.length} KPI${reKeyedKpis.length !== 1 ? 's' : ''} currently re-keyed from source systems into the board —
          FMDS OS replaces these with direct pulls from the source, removing the manual step entirely.</span>
        </div>`
@@ -418,7 +418,7 @@ export function renderSources(dept, mount) {
           ${integratedBadges}
           ${manualBadge}
         </div>
-        <div class="src-stat text-mono" style="font-size:0.82rem;color:var(--text-muted)">
+        <div class="src-stat text-mono" style="font-size:0.82rem;color:var(--text-dim)">
           ${statLine}
         </div>
       </div>
@@ -428,7 +428,7 @@ export function renderSources(dept, mount) {
 
       <!-- ── Source system cards ── -->
       <div class="src-section reveal-3" style="margin-bottom:28px">
-        <div class="src-section-label" style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:12px">By Source System</div>
+        <div class="src-section-label" style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-dim);margin-bottom:12px">By Source System</div>
         <div class="src-cards">
           ${integratedCards || ''}
           ${manualOnlyCard}
@@ -438,13 +438,13 @@ export function renderSources(dept, mount) {
 
       <!-- ── Per-KPI table ── -->
       <div class="src-section reveal-4" style="margin-bottom:28px">
-        <div class="src-section-label" style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:12px">Per-KPI Detail</div>
+        <div class="src-section-label" style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-dim);margin-bottom:12px">Per-KPI Detail</div>
         ${kpiTable}
       </div>
 
       <!-- ── Data flow ── -->
       <div class="src-section">
-        <div class="src-section-label" style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:12px">Data Flow</div>
+        <div class="src-section-label" style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-dim);margin-bottom:12px">Data Flow</div>
         ${flowLine}
       </div>
 
