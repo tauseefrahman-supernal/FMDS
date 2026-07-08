@@ -6,12 +6,16 @@
 # with that venv's python. Static serving works with plain system python3
 # and no dependencies at all; `anthropic` is imported lazily inside the
 # POST handler so a missing package never breaks the static app.
-import http.server, os, json
+import http.server, os, json, sys, traceback
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 PORT = int(os.environ.get('PORT', 8770))
 HOST = '0.0.0.0' if os.environ.get('PORT') else '127.0.0.1'
+
+# Reject oversized request bodies before reading them into memory (public
+# deploy on Railway — this closes a trivial memory-exhaustion vector).
+MAX_BODY_BYTES = 2 * 1024 * 1024  # 2 MB
 
 
 class Handler(http.server.SimpleHTTPRequestHandler):
@@ -33,6 +37,26 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self.send_error(404, 'Not Found')
             return
 
+        # Size cap runs before anything else (including the API-key check) so
+        # an oversized body is always rejected without being read into memory.
+        # Missing Content-Length is treated as an empty body (matches prior
+        # behavior); a present-but-malformed header is rejected outright.
+        header = self.headers.get('Content-Length')
+        if header is None:
+            length = 0
+        else:
+            try:
+                length = int(header)
+            except ValueError:
+                length = -1
+            if length < 0:
+                self._send_json(400, {'error': 'Invalid Content-Length header.'})
+                return
+
+        if length > MAX_BODY_BYTES:
+            self._send_json(413, {'error': 'Request body too large (max 2 MB).'})
+            return
+
         if not os.environ.get('ANTHROPIC_API_KEY'):
             self._send_json(503, {
                 'error': 'ANTHROPIC_API_KEY is not set on the server — Mark is unavailable; falling back to scripted replies.'
@@ -40,7 +64,6 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return
 
         try:
-            length = int(self.headers.get('Content-Length', 0) or 0)
             raw = self.rfile.read(length) if length else b'{}'
             body = json.loads(raw or b'{}')
         except (ValueError, json.JSONDecodeError):
@@ -54,8 +77,11 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         try:
             from server import mark_agent  # lazy import: keeps static serving anthropic-free
             reply = mark_agent.run(dept_id, context, messages)
-        except Exception as exc:
-            self._send_json(500, {'error': f'Mark agent failed: {exc}'})
+        except Exception:
+            # Never leak internals (stack traces, key fragments) to the public
+            # client; the real error goes to the server's own log.
+            traceback.print_exc(file=sys.stderr)
+            self._send_json(500, {'error': 'Mark agent failed — see server log.'})
             return
 
         self._send_json(200, {'reply': reply})
