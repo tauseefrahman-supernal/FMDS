@@ -52,12 +52,12 @@ function sourceBadge(source, kpi) {
   const isManual = kpi && kpi.manualOnly === true;
   const label = ts.split(' / ')[0];
   if (isManual) {
-    return `<span class="badge" title="Manual entry — no source system" style="background:#fee2e2;color:#991b1b;border:1px solid #fca5a5">${label}</span>`;
+    return `<span class="badge" title="Manual entry — no source system" style="background:var(--red-bg);color:var(--red-text);border:1px solid var(--red-border)">${label}</span>`;
   }
   const wasReKeyed = source && source !== ts &&
     ['manual', 'hand-keyed', 'coo board', 'literal', 'bowler'].some(tok => source.toLowerCase().includes(tok));
   if (wasReKeyed) {
-    return `<span class="badge" title="Target: ${ts} (today: re-keyed from ${source})" style="background:#f0fdf4;color:#166534;border:1px solid #86efac">${label}</span>`;
+    return `<span class="badge" title="Target: ${ts} (today: re-keyed from ${source})" style="background:var(--green-bg);color:var(--green-text);border:1px solid var(--green-border)">${label}</span>`;
   }
   return `<span class="badge" title="${ts}">${label}</span>`;
 }
@@ -296,7 +296,7 @@ function renderRepSubKpis(rep) {
     const actualStr = lastVal != null ? formatVal(lastVal, unit) : '—';
     const isGrip = key === 'grip';
     const sourceNote = isGrip
-      ? '<span class="badge" style="font-size:0.62rem;background:#d1fae5;color:#065f46">Grip (live)</span>'
+      ? '<span class="badge" style="font-size:0.62rem;background:var(--green-bg);color:var(--green-text)">Grip (live)</span>'
       : '<span class="text-muted" style="font-size:0.62rem">manual</span>';
     const chart = series.filter(v => v != null).length >= 2
       ? svgLine(series, { target: sub.target || null, width: 160, height: 44, mini: true })
@@ -356,7 +356,7 @@ function renderServiceRepExpansion(rep) {
   return `
     <tr class="kpi-expansion-row" data-rep-expansion-for="${rep.id}">
       <td colspan="6" style="padding:0">
-        <div style="padding:6px 16px 10px 68px;background:var(--slate-50,#f8fafc);border-bottom:1px solid var(--slate-200)">
+        <div style="padding:6px 16px 10px 68px;background:var(--bg-subtle);border-bottom:1px solid var(--slate-200)">
           <div class="kpi-explain__label" style="color:var(--slate-500);margin-bottom:4px">L1 Sub-KPIs — Day-by-Day (${rep.name.split('—')[0].trim()})</div>
           ${renderRepSubKpis(rep)}
           ${rep.flag ? `<div class="badge badge--warning" style="margin-top:6px;display:inline-flex;white-space:normal;line-height:1.4;max-width:100%">⚠ ${rep.flag}</div>` : ''}
@@ -414,10 +414,10 @@ function renderServiceExpansion(kpi, dept, expandedTeamIds, expandedRepIds) {
 
   const noelBanner = kpi.flagDetail ? `
     <div class="noel-rollup-banner" style="
-      margin:10px 0 12px;padding:10px 14px;border-radius:var(--radius,6px);
-      background:#fef9c3;border:2px solid #facc15;font-size:0.8rem;line-height:1.6">
-      <div style="font-weight:700;color:#854d0e;margin-bottom:4px">⚠ Data Quality — Team Noel Roll-Up Missing from Data Base Main</div>
-      <div style="color:#78350f">
+      margin:10px 0 12px;padding:10px 14px;border-radius:var(--radius);
+      background:var(--amber-bg);border:2px solid var(--amber-border);font-size:0.8rem;line-height:1.6">
+      <div style="font-weight:700;color:var(--amber-text);margin-bottom:4px">⚠ Data Quality — Team Noel Roll-Up Missing from Data Base Main</div>
+      <div style="color:var(--amber-text)">
         The number shown (<strong>$16.10M</strong>) reflects <strong>Team JC only</strong>.
         True combined total is <strong>$29.83M</strong>.
         <strong>Team Noel ($13.73M — 46%)</strong> is not rolling up:
@@ -501,23 +501,23 @@ function injectStyles() {
   stylesInjected = true;
   const style = document.createElement('style');
   style.textContent = `
-    .kpi-expansion { padding: 8px 8px 14px; background: var(--slate-50, #f8fafc); }
+    .kpi-expansion { padding: 8px 8px 14px; background: var(--bg-subtle); }
     .kpi-explain {
-      background: var(--accent-light, #eef3ff);
-      border-left: 3px solid var(--accent, #2f6bff);
+      background: var(--accent-soft);
+      border-left: 3px solid var(--accent);
       padding: 10px 16px 10px 22px;
-      border-radius: var(--radius, 6px);
+      border-radius: var(--radius);
     }
     .kpi-explain__label {
       font-size: 0.62rem; font-weight: 700; letter-spacing: 0.07em;
-      text-transform: uppercase; color: var(--accent, #2f6bff); margin-bottom: 6px;
+      text-transform: uppercase; color: var(--accent-text); margin-bottom: 6px;
     }
-    .kpi-explain__grid { display: grid; gap: 4px; font-size: 0.8rem; line-height: 1.55; color: var(--slate-700, #334155); }
+    .kpi-explain__grid { display: grid; gap: 4px; font-size: 0.8rem; line-height: 1.55; color: var(--slate-700); }
     .kpi-explain__k {
-      display: inline-block; min-width: 66px; font-weight: 700; color: var(--slate-500, #64748b);
+      display: inline-block; min-width: 66px; font-weight: 700; color: var(--text-faint);
       font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.03em; margin-right: 6px;
     }
-    .kpi-details { margin-top: 8px; padding: 10px 16px; background: #fff; border: 1px solid var(--slate-200, #e2e8f0); border-radius: var(--radius, 6px); }
+    .kpi-details { margin-top: 8px; padding: 10px 16px; background: var(--panel); border: 1px solid var(--slate-200); border-radius: var(--radius); }
   `;
   document.head.appendChild(style);
 }

@@ -102,15 +102,16 @@ function injectOverviewStyles() {
       margin-top: 8px;
     }
     .ov-card {
-      border-radius: var(--radius, 6px);
-      border: 1px solid var(--slate-200);
-      background: #fff;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: var(--panel);
+      box-shadow: var(--shadow-sm);
       overflow: hidden;
     }
-    .ov-card--red    { border-left: 4px solid #ef4444; }
-    .ov-card--amber  { border-left: 4px solid #f59e0b; }
-    .ov-card--green  { border-left: 4px solid #22c55e; }
-    .ov-card--nodata { border-left: 4px solid var(--slate-300); }
+    .ov-card--red    { border-left: 4px solid var(--red); }
+    .ov-card--amber  { border-left: 4px solid var(--amber); }
+    .ov-card--green  { border-left: 4px solid var(--green); }
+    .ov-card--nodata { border-left: 4px solid var(--border-strong); }
 
     .ov-card__head {
       display: flex;
@@ -122,7 +123,7 @@ function injectOverviewStyles() {
     .ov-card__name {
       font-weight: 600;
       font-size: 0.88rem;
-      color: var(--slate-900);
+      color: var(--text);
       flex: 1;
     }
     .ov-card__rag {
@@ -132,10 +133,10 @@ function injectOverviewStyles() {
       padding: 2px 8px;
       border-radius: 999px;
     }
-    .ov-card__rag--red    { background: #fee2e2; color: #b91c1c; }
-    .ov-card__rag--amber  { background: #fef3c7; color: #92400e; }
-    .ov-card__rag--green  { background: #dcfce7; color: #166534; }
-    .ov-card__rag--nodata { background: var(--slate-100); color: var(--slate-500); }
+    .ov-card__rag--red    { background: var(--red-bg);   color: var(--red-text); }
+    .ov-card__rag--amber  { background: var(--amber-bg); color: var(--amber-text); }
+    .ov-card__rag--green  { background: var(--green-bg); color: var(--green-text); }
+    .ov-card__rag--nodata { background: var(--muted);    color: var(--text-faint); }
 
     .ov-card__vals {
       display: flex;
@@ -144,30 +145,30 @@ function injectOverviewStyles() {
       padding: 0 16px 10px;
     }
     .ov-card__actual {
-      font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+      font-family: var(--font-mono);
       font-size: 1.6rem;
       font-weight: 700;
-      color: var(--slate-900);
+      color: var(--text);
       line-height: 1.1;
     }
-    .ov-card__actual--red   { color: #dc2626; }
-    .ov-card__actual--amber { color: #b45309; }
-    .ov-card__actual--green { color: #16a34a; }
+    .ov-card__actual--red   { color: var(--red-text); }
+    .ov-card__actual--amber { color: var(--amber-text); }
+    .ov-card__actual--green { color: var(--green-text); }
     .ov-card__target-label {
       font-size: 0.72rem;
-      color: var(--slate-500);
+      color: var(--text-faint);
     }
     .ov-card__target-val {
-      font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+      font-family: var(--font-mono);
       font-size: 0.82rem;
-      color: var(--slate-600);
+      color: var(--text-dim);
     }
 
     .ov-card__agent {
       margin: 0 16px 12px;
       padding: 10px 12px;
-      background: #f8fafc;
-      border: 1px solid var(--slate-200);
+      background: var(--bg-subtle);
+      border: 1px solid var(--border);
       border-radius: 4px;
       font-size: 0.76rem;
       line-height: 1.55;
@@ -181,13 +182,13 @@ function injectOverviewStyles() {
       font-weight: 700;
       letter-spacing: 0.05em;
       text-transform: uppercase;
-      color: var(--slate-500);
+      color: var(--text-faint);
       margin-bottom: 6px;
     }
     .ov-card__agent-dot {
       width: 6px; height: 6px;
       border-radius: 50%;
-      background: var(--accent, #2f6bff);
+      background: var(--accent);
       display: inline-block;
     }
     .ov-card__agent-body {
@@ -196,18 +197,18 @@ function injectOverviewStyles() {
 
     .ov-card__footer {
       padding: 8px 16px 12px;
-      border-top: 1px solid var(--slate-100);
+      border-top: 1px solid var(--border-soft);
       display: flex;
       justify-content: space-between;
       align-items: center;
     }
     .ov-card__footer-source {
       font-size: 0.68rem;
-      color: var(--slate-400);
+      color: var(--text-faint);
     }
     .ov-card__kpi-link {
       font-size: 0.72rem;
-      color: var(--accent, #2f6bff);
+      color: var(--accent);
       text-decoration: none;
       font-weight: 600;
     }
@@ -218,7 +219,7 @@ function injectOverviewStyles() {
       font-weight: 800;
       letter-spacing: 0.1em;
       text-transform: uppercase;
-      color: var(--slate-400);
+      color: var(--text-faint);
       margin: 20px 0 6px;
     }
     .ov-section-label:first-child { margin-top: 0; }
@@ -230,9 +231,10 @@ function injectOverviewStyles() {
       margin-top: 8px;
     }
     .ov-l1-card {
-      border-radius: var(--radius, 6px);
-      border: 1px solid var(--slate-200);
-      background: #fff;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: var(--panel);
+      box-shadow: var(--shadow-sm);
       padding: 14px 16px;
     }
     .ov-l1-card__label {
@@ -240,7 +242,7 @@ function injectOverviewStyles() {
       font-weight: 700;
       letter-spacing: 0.05em;
       text-transform: uppercase;
-      color: var(--slate-500);
+      color: var(--text-faint);
       margin-bottom: 6px;
     }
     .ov-l1-card__kpiname {
@@ -255,7 +257,7 @@ function injectOverviewStyles() {
       font-size: 0.8rem;
     }
     .ov-l1-card__val {
-      font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+      font-family: var(--font-mono);
       font-weight: 700;
       font-size: 1.1rem;
     }
@@ -434,10 +436,10 @@ function renderL1OperationsOverview(dept, mount, persona) {
       : ragStatus(kpi.actual, kpi.target, kpi.direction || 'higher_better');
 
     const ragColors = {
-      red:    { bg: '#fee2e2', fg: '#b91c1c', label: 'Off Track' },
-      amber:  { bg: '#fef3c7', fg: '#92400e', label: 'At Risk'   },
-      green:  { bg: '#dcfce7', fg: '#166534', label: 'On Track'  },
-      nodata: { bg: '#f1f5f9', fg: '#64748b', label: 'No Data'   },
+      red:    { bg: 'var(--red-bg)',   fg: 'var(--red-text)',   label: 'Off Track' },
+      amber:  { bg: 'var(--amber-bg)', fg: 'var(--amber-text)', label: 'At Risk'   },
+      green:  { bg: 'var(--green-bg)', fg: 'var(--green-text)', label: 'On Track'  },
+      nodata: { bg: 'var(--muted)',    fg: 'var(--text-faint)', label: 'No Data'   },
     };
     const rc = ragColors[rag];
 
@@ -452,11 +454,11 @@ function renderL1OperationsOverview(dept, mount, persona) {
           <span style="font-size:0.72rem;padding:2px 8px;border-radius:999px;
                        background:${rc.bg};color:${rc.fg};font-weight:700">${rc.label}</span>
         </div>
-        <div style="margin-top:6px;font-size:0.72rem;color:var(--slate-500)">
+        <div style="margin-top:6px;font-size:0.72rem;color:var(--text-faint)">
           Target: ${kpi.target != null ? formatVal(kpi.target, kpi.unit) : '—'}
           ${kpi.latestMonth ? ` · Latest: ${kpi.latestMonth}` : ''}
         </div>
-        ${kpi.unitNote ? `<div style="margin-top:4px;font-size:0.68rem;color:#92400e">⚠ ${kpi.unitNote}</div>` : ''}
+        ${kpi.unitNote ? `<div style="margin-top:4px;font-size:0.68rem;color:var(--amber-text)">⚠ ${kpi.unitNote}</div>` : ''}
       </div>`;
   };
 

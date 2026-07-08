@@ -51,12 +51,12 @@ function sourceBadge(source, kpi) {
   const isManual = kpi && kpi.manualOnly === true;
   const label = ts.split(' / ')[0];
   if (isManual) {
-    return `<span class="badge" title="Manual entry — no source system" style="background:#fee2e2;color:#991b1b;border:1px solid #fca5a5">${label}</span>`;
+    return `<span class="badge" title="Manual entry — no source system" style="background:var(--red-bg);color:var(--red-text);border:1px solid var(--red-border)">${label}</span>`;
   }
   const wasReKeyed = source && source !== ts &&
     ['manual', 'hand-keyed', 'coo board', 'literal', 'bowler'].some(tok => source.toLowerCase().includes(tok));
   if (wasReKeyed) {
-    return `<span class="badge" title="Target: ${ts} (today: re-keyed from ${source})" style="background:#f0fdf4;color:#166534;border:1px solid #86efac">${label}</span>`;
+    return `<span class="badge" title="Target: ${ts} (today: re-keyed from ${source})" style="background:var(--green-bg);color:var(--green-text);border:1px solid var(--green-border)">${label}</span>`;
   }
   return `<span class="badge" title="${ts}">${label}</span>`;
 }
@@ -254,8 +254,8 @@ function renderOwnerGroupHeader(boardId, dept) {
   if (!board) return '';
 
   const ownerColor = board.ownerCode === 'PC'
-    ? 'background:#ede9fe;color:#4c1d95;border:1px solid #c4b5fd'
-    : 'background:#dbeafe;color:#1e40af;border:1px solid #93c5fd';
+    ? 'background:var(--viz-4-bg);color:hsl(var(--viz-4));border:1px solid hsl(var(--viz-4) / .35)'
+    : 'background:var(--viz-single-bg);color:hsl(var(--viz-single));border:1px solid hsl(var(--viz-single) / .35)';
 
   return `
     <tr class="owner-group-header">
@@ -392,14 +392,14 @@ export function renderTeamBoard(dept, mount) {
          Carlos's <strong>Hermes agent</strong> can wrap this board — the agent integration layer is intentionally left open for Hermes to connect as the Marketing automation layer.
        </div>
        <div style="margin-bottom:14px;padding:10px 14px;border-radius:var(--radius);
-            background:#f0fdf4;border:1px solid #86efac;font-size:0.8rem;line-height:1.6">
-         <strong style="color:#166534">Two-owner L2 model:</strong>
+            background:var(--info-bg);border:1px solid var(--info-border);font-size:0.8rem;line-height:1.6">
+         <strong style="color:var(--info-text)">Two-owner L2 model:</strong>
          Marketing is the only FMDS department with two distinct L2 owners operating in separate boards.
          <span style="display:inline-flex;align-items:center;gap:4px;margin:0 4px;padding:1px 7px;border-radius:999px;
-              background:#ede9fe;color:#4c1d95;font-weight:700;font-size:0.72rem">PC</span>
+              background:var(--viz-4-bg);color:hsl(var(--viz-4));font-weight:700;font-size:0.72rem">PC</span>
          owns <em>Branding &amp; Creative</em> (search visibility, social, PR, agency accountability).
          <span style="display:inline-flex;align-items:center;gap:4px;margin:0 4px;padding:1px 7px;border-radius:999px;
-              background:#dbeafe;color:#1e40af;font-weight:700;font-size:0.72rem">Carlos Mitchell</span>
+              background:var(--viz-single-bg);color:hsl(var(--viz-single));font-weight:700;font-size:0.72rem">Carlos Mitchell</span>
          owns <em>Ecomm &amp; Performance Marketing</em> (ecomm revenue, paid channels, demand gen / leads pipeline).
          KPIs below are grouped by board with the owner identified.
        </div>`

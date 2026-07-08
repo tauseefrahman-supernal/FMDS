@@ -91,12 +91,12 @@ function sourceBadge(source, kpi) {
   const isManual = kpi && kpi.manualOnly === true;
   const label = ts.split(' / ')[0];
   if (isManual) {
-    return `<span class="badge" title="Manual entry — no source system" style="background:#fee2e2;color:#991b1b;border:1px solid #fca5a5">${label}</span>`;
+    return `<span class="badge" title="Manual entry — no source system" style="background:var(--red-bg);color:var(--red-text);border:1px solid var(--red-border)">${label}</span>`;
   }
   const wasReKeyed = source && source !== ts &&
     ['manual', 'hand-keyed', 'coo board', 'literal', 'bowler'].some(tok => source.toLowerCase().includes(tok));
   if (wasReKeyed) {
-    return `<span class="badge" title="Target: ${ts} (today: re-keyed from ${source})" style="background:#f0fdf4;color:#166534;border:1px solid #86efac">${label}</span>`;
+    return `<span class="badge" title="Target: ${ts} (today: re-keyed from ${source})" style="background:var(--green-bg);color:var(--green-text);border:1px solid var(--green-border)">${label}</span>`;
   }
   return `<span class="badge" title="${ts}">${label}</span>`;
 }
@@ -302,14 +302,18 @@ function locRag(kpi) {
 
 /** Category label bar */
 function categoryBadge(category) {
+  // Category labels are identity, not RAG status — each gets a stable viz slot
+  // so a KPI's category never borrows a status hue (a SAFETY KPI can be green).
+  // SAFETY deliberately avoids the warm/red-adjacent viz slots (viz-2 Rust,
+  // viz-4 Mauve) so it never reads as "already red" next to its own RAG pill.
   const colors = {
-    'SAFETY':           'background:#fee2e2;color:#991b1b;border:1px solid #fca5a5',
-    'QUALITY':          'background:#fef9c3;color:#854d0e;border:1px solid #fde047',
-    'SERVICE/DELIVERY': 'background:#dbeafe;color:#1e40af;border:1px solid #93c5fd',
-    'COST':             'background:#d1fae5;color:#065f46;border:1px solid #6ee7b7',
-    'HRD':              'background:#ede9fe;color:#4c1d95;border:1px solid #c4b5fd',
+    'SAFETY':           'background:var(--viz-7-bg);color:hsl(var(--viz-7));border:1px solid hsl(var(--viz-7) / .35)',
+    'QUALITY':          'background:var(--viz-3-bg);color:hsl(var(--viz-3));border:1px solid hsl(var(--viz-3) / .35)',
+    'SERVICE/DELIVERY': 'background:var(--viz-single-bg);color:hsl(var(--viz-single));border:1px solid hsl(var(--viz-single) / .35)',
+    'COST':             'background:var(--viz-5-bg);color:hsl(var(--viz-5));border:1px solid hsl(var(--viz-5) / .35)',
+    'HRD':              'background:var(--viz-4-bg);color:hsl(var(--viz-4));border:1px solid hsl(var(--viz-4) / .35)',
   };
-  const style = colors[category] || 'background:var(--slate-100);color:var(--slate-700)';
+  const style = colors[category] || 'background:var(--muted);color:var(--slate-700)';
   return `<span style="font-size:0.65rem;font-weight:700;padding:1px 6px;border-radius:3px;${style}">${category}</span>`;
 }
 
@@ -319,8 +323,8 @@ function unitBadge(kpi) {
   const label = kpi.unitLabel || kpi.unit;
   if (label === 'ratio' || label === 'rate' || label === 'count' || label === 'not_set') return '';
   const warnStyle = (kpi.flag && kpi.flag.startsWith('unit_mismatch'))
-    ? 'background:#fef3c7;color:#92400e;border:1px solid #fcd34d'
-    : 'background:var(--slate-100);color:var(--slate-600)';
+    ? 'background:var(--amber-bg);color:var(--amber-text);border:1px solid var(--amber-border)'
+    : 'background:var(--muted);color:var(--slate-600)';
   return `<span style="font-size:0.62rem;padding:1px 5px;border-radius:3px;${warnStyle}" title="${kpi.unitNote || ''}">${label}</span>`;
 }
 
@@ -339,20 +343,16 @@ function monthSparkline(monthlyActuals, target) {
   const py = (v) => H - pad - ((v - mn) / range) * (H - 2 * pad);
   const pts = vals.map((v, i) => `${px(i)},${py(v)}`).join(' ');
   const targetY = target != null ? py(target) : null;
+  // Target line + trend line are decoration, never a status hue: text-dim (at
+  // low alpha, matching the dashed-target convention) and viz-single respectively.
   const tLine = targetY != null
-    ? `<line x1="${pad}" y1="${targetY}" x2="${W - pad}" y2="${targetY}" stroke="#94a3b8" stroke-width="1" stroke-dasharray="3,2"/>`
+    ? `<line x1="${pad}" y1="${targetY}" x2="${W - pad}" y2="${targetY}" style="stroke:hsl(var(--surface-7a) / .55)" stroke-width="1" stroke-dasharray="3,2"/>`
     : '';
-  // Color the line by final value vs target
-  let lineColor = '#64748b';
-  if (target != null && vals.length) {
-    const last = vals[vals.length - 1];
-    // Simple: flag April OTP for Mexico (0.789 vs 0.985)
-    lineColor = '#3b82f6'; // blue default
-  }
+  const lineColor = 'hsl(var(--viz-single))';
   return `<svg width="${W}" height="${H}" style="display:block">
     ${tLine}
-    <polyline points="${pts}" fill="none" stroke="${lineColor}" stroke-width="1.5"/>
-    ${vals.map((v, i) => `<circle cx="${px(i)}" cy="${py(v)}" r="2" fill="${lineColor}"/>`).join('')}
+    <polyline points="${pts}" fill="none" style="stroke:${lineColor}" stroke-width="1.5"/>
+    ${vals.map((v, i) => `<circle cx="${px(i)}" cy="${py(v)}" r="2" style="fill:${lineColor}"/>`).join('')}
   </svg>`;
 }
 
@@ -378,8 +378,8 @@ function rollupNote(kpi) {
   if (!kpi.rollup) return '';
   const r = kpi.rollup;
   const color = r.isManualRekey === false
-    ? '#1e40af'  // formula roll-up — blue
-    : '#92400e'; // manual re-key — amber
+    ? 'var(--info-text)'   // formula roll-up
+    : 'var(--amber-text)'; // manual re-key
   const icon = r.isManualRekey === false ? '⊕' : '↵';
   return `<div style="font-size:0.68rem;color:${color};padding-left:26px;margin-top:4px;line-height:1.5">
     ${icon} <strong>${r.isManualRekey === false ? 'Formula roll-up' : 'Manual re-key'}:</strong>
@@ -410,7 +410,7 @@ function renderContribRows(kpi) {
       : '';
 
     const formulaHtml = c.formula
-      ? `<div style="font-size:0.62rem;color:#1e40af;padding-left:62px;margin-top:2px;font-family:var(--font-mono,'IBM Plex Mono',monospace)">${c.formula}</div>`
+      ? `<div style="font-size:0.62rem;color:var(--info-text);padding-left:62px;margin-top:2px;font-family:var(--font-mono)">${c.formula}</div>`
       : '';
 
     // Monthly sparkline if monthlyActuals present on contribution
@@ -447,7 +447,7 @@ function renderContribRows(kpi) {
  */
 function locSourceBadge(kpi) {
   if (kpi.manualOnly === true) {
-    return `<span class="badge" title="Manual entry — no source system" style="font-size:0.65rem;background:#fee2e2;color:#991b1b;border:1px solid #fca5a5">Manual entry</span>`;
+    return `<span class="badge" title="Manual entry — no source system" style="font-size:0.65rem;background:var(--red-bg);color:var(--red-text);border:1px solid var(--red-border)">Manual entry</span>`;
   }
   const ts = kpi.targetSource || kpi.source;
   if (!ts) {
@@ -457,7 +457,7 @@ function locSourceBadge(kpi) {
   const wasReKeyed = kpi.source && kpi.source !== ts &&
     ['manual', 'hand-keyed', 'coo board', 'literal', 'bowler'].some(tok => (kpi.source || '').toLowerCase().includes(tok));
   if (wasReKeyed) {
-    return `<span class="badge" title="Target: ${ts} (today: re-keyed)" style="font-size:0.65rem;background:#f0fdf4;color:#166534;border:1px solid #86efac">${label}</span>`;
+    return `<span class="badge" title="Target: ${ts} (today: re-keyed)" style="font-size:0.65rem;background:var(--green-bg);color:var(--green-text);border:1px solid var(--green-border)">${label}</span>`;
   }
   return `<span class="badge" title="${ts}" style="font-size:0.65rem">${label}</span>`;
 }
@@ -485,7 +485,7 @@ function renderLocKpiRow(kpi, expandedLocKpis) {
     ? `<span class="flag-icon" title="${String(kpi.flag).replace(/"/g, '&quot;')}">⚠</span>`
     : '';
   const mxOnlyBadge = kpi.mexicoOnly
-    ? `<span style="font-size:0.6rem;padding:1px 5px;border-radius:3px;background:#ede9fe;color:#5b21b6;border:1px solid #c4b5fd">Mexico only</span>`
+    ? `<span style="font-size:0.6rem;padding:1px 5px;border-radius:3px;background:var(--viz-2-bg);color:hsl(var(--viz-2));border:1px solid hsl(var(--viz-2) / .35)">Mexico only</span>`
     : '';
   const nodataBadge = kpi.nodata
     ? `<span class="badge badge--warning">no data</span>`
@@ -515,9 +515,9 @@ function renderLocKpiRow(kpi, expandedLocKpis) {
           ${nodataBadge}
           ${contribCountBadge}
         </div>
-        ${kpi.unitNote ? `<div style="font-size:0.68rem;color:#92400e;padding-left:26px;margin-top:2px">⚠ ${kpi.unitNote}</div>` : ''}
+        ${kpi.unitNote ? `<div style="font-size:0.68rem;color:var(--amber-text);padding-left:26px;margin-top:2px">⚠ ${kpi.unitNote}</div>` : ''}
         ${kpi.nodataNote ? `<div style="font-size:0.68rem;color:var(--slate-500);padding-left:26px;margin-top:2px">${kpi.nodataNote}</div>` : ''}
-        ${kpi.flagDetail ? `<div style="font-size:0.68rem;color:#b91c1c;padding-left:26px;margin-top:2px">⚠ ${kpi.flagDetail}</div>` : ''}
+        ${kpi.flagDetail ? `<div style="font-size:0.68rem;color:var(--red-text);padding-left:26px;margin-top:2px">⚠ ${kpi.flagDetail}</div>` : ''}
         ${hasContribs ? rollupNote(kpi) : ''}
       </td>
       <td class="text-right text-mono">${kpi.target == null ? '—' : formatLocVal(kpi.target, kpi.unit, kpi.targetType)}</td>
@@ -685,7 +685,7 @@ function injectStyles() {
       padding: 5px 12px;
       border-radius: 999px;
       border: 1px solid var(--slate-300);
-      background: #fff;
+      background: var(--panel);
       font-size: 0.8rem;
       color: var(--slate-700);
       cursor: pointer;
@@ -699,7 +699,7 @@ function injectStyles() {
     .loc-chip--active {
       background: var(--accent);
       border-color: var(--accent);
-      color: #fff;
+      color: var(--accent-fg);
       font-weight: 600;
     }
     .loc-chip--we {
@@ -715,17 +715,17 @@ function injectStyles() {
       color: var(--slate-400);
     }
     .badge--info {
-      background: var(--accent-light);
-      color: var(--accent);
-      border: 1px solid var(--accent);
+      background: var(--accent-soft);
+      color: var(--accent-text);
+      border: 1px solid var(--accent-subtle-bg);
       opacity: 0.85;
     }
     /* Operator contribution row */
     .contrib-operator-row {
-      background: #f8fafc;
+      background: var(--bg-subtle);
     }
     .contrib-operator-row:hover {
-      background: #f1f5f9;
+      background: var(--surface-hover);
     }
     /* Entry type badges: manual vs formula */
     .contrib-badge {
@@ -739,19 +739,19 @@ function injectStyles() {
       cursor: default;
     }
     .contrib-badge--manual {
-      background: #fff7ed;
-      color: #9a3412;
-      border: 1px solid #fed7aa;
+      background: var(--amber-bg);
+      color: var(--amber-text);
+      border: 1px solid var(--amber-border);
     }
     .contrib-badge--formula {
-      background: #eff6ff;
-      color: #1e40af;
-      border: 1px solid #bfdbfe;
+      background: var(--info-bg);
+      color: var(--info-text);
+      border: 1px solid var(--info-border);
     }
     /* Per-KPI explanation block (top of any expansion) */
     .kpi-explain {
-      background: var(--accent-light, #eef3ff);
-      border-left: 3px solid var(--accent, #2f6bff);
+      background: var(--accent-soft);
+      border-left: 3px solid var(--accent);
       padding: 10px 16px 10px 22px;
       margin: 2px 0;
     }
@@ -760,7 +760,7 @@ function injectStyles() {
       font-weight: 700;
       letter-spacing: 0.07em;
       text-transform: uppercase;
-      color: var(--accent, #2f6bff);
+      color: var(--accent-text);
       margin-bottom: 6px;
     }
     .kpi-explain__grid {
@@ -768,13 +768,13 @@ function injectStyles() {
       gap: 4px;
       font-size: 0.8rem;
       line-height: 1.55;
-      color: var(--slate-700, #334155);
+      color: var(--slate-700);
     }
     .kpi-explain__k {
       display: inline-block;
       min-width: 66px;
       font-weight: 700;
-      color: var(--slate-500, #64748b);
+      color: var(--text-faint);
       font-size: 0.68rem;
       text-transform: uppercase;
       letter-spacing: 0.03em;
@@ -938,9 +938,9 @@ export function renderLocationBoard(dept, mount) {
         <strong>WE Main</strong> = COO Board independently entered (Mechanism B).
         <strong>Location tabs</strong> = per-location FMDS board (real KPI sets differ by location).
         OTP and PPLH rows show operator/line contributions when expanded —
-        <span style="background:#fff7ed;color:#9a3412;border:1px solid #fed7aa;font-size:0.65rem;padding:1px 5px;border-radius:3px">manual</span>
+        <span style="background:var(--amber-bg);color:var(--amber-text);border:1px solid var(--amber-border);font-size:0.65rem;padding:1px 5px;border-radius:3px">manual</span>
         = hand-keyed literal;
-        <span style="background:#eff6ff;color:#1e40af;border:1px solid #bfdbfe;font-size:0.65rem;padding:1px 5px;border-radius:3px">formula</span>
+        <span style="background:var(--info-bg);color:var(--info-text);border:1px solid var(--info-border);font-size:0.65rem;padding:1px 5px;border-radius:3px">formula</span>
         = computed by in-sheet formula. ⚠ = data flag. Click a row to expand.
       </p>
     </div>`;
