@@ -1,0 +1,1401 @@
+{
+  "_meta": {
+    "source": "CEO DASHBOARD 26.xlsm > 'Executive Hoshin Activities' sheet",
+    "extractedBy": "scripts run for FMDS OS Phase B / Task B1 (2026-07-08)",
+    "zeroInventedData": "Every hoshinPriority/activityPlan/target/supportFunction/lead string is copied verbatim from a workbook cell (only outer whitespace/newlines trimmed). When an activity's Targets/Support Function/Lead were laid out as several distinct values across physical rows (rather than one merged cell), those verbatim per-row values were concatenated with \"\\n\" in row order -- no new text was authored.",
+    "timelineMethod": "The Implementation Time Line (cols G:U = Oct'25..Dec'26) is a Gantt-style cell-fill highlight, not a cell value -- but a naive 'solid fill = in range' reading was tested and found UNRELIABLE: the Finance block's 6 activity slots are 100% blank (verified -- no Hoshin Priority/Plan/Target/Support/Lead text anywhere) yet show the exact same fill pattern as populated activities elsewhere (first/last physical row of the group fully filled across all 15 months, with inner rows missing fill only at Nov'25/Dec'25). Since that pattern occurs with zero real data behind it, it is template/formatting noise, not user-entered Gantt data. Only 2 of ~31 activities (HR & ODG rows 47-51 and 53-57) show a genuinely different pattern: EVERY physical row, including first and last, unanimously excludes Oct/Nov/Dec 2025 -- that full-row unanimity is what distinguishes a deliberate edit from the template artifact. Rule applied: treat the fill pattern as a real partial-range signal only if Oct'25 (col G) is unfilled in a strict majority of the activity's physical rows (the noise pattern never touches Oct'25); if so, timeline.start/end/months are the union of filled columns across all rows and timeline.confidence = 'derived-from-fill-gap'. Otherwise the activity is reported as the full Oct'25-Dec'26 range with timeline.confidence = 'unverified-default-full-range' -- meaning no reliable partial-range signal was found, NOT a confirmed 15-month commitment. Only the 2 HR & ODG activities above carry 'derived-from-fill-gap'; every other activity in this file (29 of 31) carries 'unverified-default-full-range', so downstream consumers should not treat start/end as a hard commitment for those.",
+    "objectiveMapping": "The 5 canonical WE 2026 objectives (Financial Performance, Acquisitions, Organizational Development, Branding Solution, New Customer Acquisition + Lifetime Journey) come from the companion deck '2026 Hoshin Ojectives V-3.pdf' in the same project folder. 3 of the 5 appear verbatim as literal '(Priority: X)' tags inside Hoshin Priority cells (IT + Commercialization blocks); all 5 appear as verbatim, word-for-word quotes of the deck's objective descriptions in the Marketing block. objectiveId links an activity to its objective via (a) the explicit tag, (b) an exact verbatim-quote match, or (c) an unambiguous name/alias match ('Organizational Development' or 'Org Dev' as the literal priority label, 'New Customer Acquisition' as a leading phrase, or an explicit 'NN% Gross margin'/'GM' figure -- the latter is proven synonymous with the Financial Performance tag by Commercialization rows that carry BOTH forms, e.g. '150M 57.5% GM (Priority: Financial Performance)'). This linking logic never edits the stored verbatim text. Where a Hoshin Priority cell names more than one objective (slash-separated compound label, e.g. '57.5% Gross margin/ Organizational development'), objectiveId holds the first-listed objective and objectiveIds (non-null) holds the full ordered set; the raw hoshinPriority text always retains all of the original wording.",
+    "deptMapping": {
+      "hr": "HR & ODG block, duplicated. Block has a single functional lead (Eric Freeman) covering both HR and ODG jointly; individual activities mix HR process content (career path, comp, training, onboarding) with an 'Organizational Development' priority label and don't cleanly separate by department, so all 10 activities are duplicated into both hr and odg.",
+      "odg": "See hr -- same source block, same activities, duplicated by design.",
+      "sales": "Commercialization block (Tony Morando), routed here in full. All 4 activities are outside/inside sales & account-expansion revenue plays.",
+      "service": "Commercialization block did NOT clearly cover Service (no activity mentions customer service); left empty rather than duplicating unrelated sales content into it.",
+      "operations": "Operations block (Jim Kozel), routed here in full (6 activities).",
+      "logistics": "Operations block, duplicated ONLY for the one activity whose Support Function explicitly names 'logistics' (the pricing/tariffs/shipping-GM activity, rows 124-128) -- its target ('Increase GM on shipping by 5%') also matches the logistics dept's headlineKpi ('WE Shipping Margin') in departments.json. The other 5 Operations activities have no logistics content.",
+      "marketing": "Marketing block (TBD functional lead), 1:1, no duplication needed.",
+      "it": "IT block (Phil Jarvis), 1:1, no duplication needed.",
+      "finance": "Finance block (Will Schwartz) has 6 structural activity slots in the sheet but ALL are blank (no Hoshin Priority/Activity Plan/Targets/Support/Lead text in any of them) -- activities: [] rather than fabricating placeholder content."
+    },
+    "knownAmbiguity": [
+      "HR & ODG activity at rows 47-51 has a blank (single-space) Hoshin Priority cell; objectiveId is left null because neither that cell nor the Activity Plan text names a WE 2026 objective unambiguously (its Target does mention '150,000,000 Revenue Development Growth', which is suggestive of Financial Performance, but this was not treated as strong enough evidence to auto-link).",
+      "'(Priority: Organizational  Development)' at IT row 207 has a literal double-space typo in the source cell; the canonical objectives list uses the correctly-spaced tag from row 220 ('(Priority: Organizational Development)') as priorityTag, but classification matching normalizes whitespace so both variants resolve to the same objectiveId."
+    ]
+  },
+  "objectives": [
+    {
+      "id": "financial-performance",
+      "name": "Financial Performance",
+      "priorityTag": "(Priority: Financial Performance)"
+    },
+    {
+      "id": "acquisitions",
+      "name": "Acquisitions",
+      "priorityTag": "(Priority: Acquisitions)"
+    },
+    {
+      "id": "organizational-development",
+      "name": "Organizational Development",
+      "priorityTag": "(Priority: Organizational Development)"
+    },
+    {
+      "id": "branding-solution",
+      "name": "Branding Solution",
+      "priorityTag": null
+    },
+    {
+      "id": "new-customer-acquisition-lifetime-journey",
+      "name": "New Customer Acquisition + Lifetime Journey",
+      "priorityTag": null
+    }
+  ],
+  "departments": {
+    "hr": {
+      "block": "HR & ODG",
+      "functionalLead": "Eric Freeman",
+      "activities": [
+        {
+          "hoshinPriority": "Organizational Development #2 - 7% NVAW crossover to VAW",
+          "objectiveId": "organizational-development",
+          "objectiveIds": null,
+          "activityPlan": "HR Structure Change- Organizational changes within the HR department. Restructuing roles to add L&D Manager to support WE career path and training management.",
+          "target": "1- New HR structure by Q425/Q2226\n2- 9% NAVW cross over to VAW - Q426",
+          "supportFunction": "HR",
+          "lead": "Clarissa L.",
+          "timeline": {
+            "start": "Oct'25",
+            "end": "Dec'26",
+            "months": [
+              "Oct'25",
+              "Nov'25",
+              "Dec'25",
+              "Jan'26",
+              "Feb'26",
+              "Mar'26",
+              "Apr'26",
+              "May'26",
+              "Jun'26",
+              "Jul'26",
+              "Aug'26",
+              "Sep'26",
+              "Oct'26",
+              "Nov'26",
+              "Dec'26"
+            ],
+            "confidence": "unverified-default-full-range"
+          }
+        },
+        {
+          "hoshinPriority": null,
+          "objectiveId": null,
+          "objectiveIds": null,
+          "activityPlan": "Structure Change- Organizational changes and  restructuing roles for proper career path and training management primarily focusing on Sales, Marketing and HR",
+          "target": "150,000,000 Revenue Development Growth\n9% NAVW cross over to VAW - Q226",
+          "supportFunction": "TM\nRC\nODG/HR",
+          "lead": "RC/EF\nRC/EF\nRC/EF",
+          "timeline": {
+            "start": "Jan'26",
+            "end": "Dec'26",
+            "months": [
+              "Jan'26",
+              "Feb'26",
+              "Mar'26",
+              "Apr'26",
+              "May'26",
+              "Jun'26",
+              "Jul'26",
+              "Aug'26",
+              "Sep'26",
+              "Oct'26",
+              "Nov'26",
+              "Dec'26"
+            ],
+            "confidence": "derived-from-fill-gap"
+          }
+        },
+        {
+          "hoshinPriority": "Organizational Development",
+          "objectiveId": "organizational-development",
+          "objectiveIds": null,
+          "activityPlan": "Career Development Path - Deployment of a career path for all functions that is supported by training for each level",
+          "target": "Milestone: 100% rollout by Q426\nSRR Target Score\n-\tInitial 60% - 80% \n-\tFinal target within one year – 80%",
+          "supportFunction": "ELT Team\nHR/ODG",
+          "lead": "L&D Manager\nAD",
+          "timeline": {
+            "start": "Jan'26",
+            "end": "Dec'26",
+            "months": [
+              "Jan'26",
+              "Feb'26",
+              "Mar'26",
+              "Apr'26",
+              "May'26",
+              "Jun'26",
+              "Jul'26",
+              "Aug'26",
+              "Sep'26",
+              "Oct'26",
+              "Nov'26",
+              "Dec'26"
+            ],
+            "confidence": "derived-from-fill-gap"
+          }
+        },
+        {
+          "hoshinPriority": "Organizational Development & 7% NVAW crossover to VAW",
+          "objectiveId": "organizational-development",
+          "objectiveIds": null,
+          "activityPlan": "ADP LMS System\n1-\tDevelopment and Deployment of LMS System\n2-\tTraining & Implementation of LMS System                         3-       Link to SRR",
+          "target": "Milestone: 100% rollout by Q426\nTarget: \n1.\tFunctions onboarding reduction time by 50%\n2.\t9% NAVW cross over to VAW - Q425\n3.       SRR 100% roll out",
+          "supportFunction": "ADP\nODG\nAll Functions",
+          "lead": "Talent Spec.\nEF/AD\nTalent Spec.",
+          "timeline": {
+            "start": "Oct'25",
+            "end": "Dec'26",
+            "months": [
+              "Oct'25",
+              "Nov'25",
+              "Dec'25",
+              "Jan'26",
+              "Feb'26",
+              "Mar'26",
+              "Apr'26",
+              "May'26",
+              "Jun'26",
+              "Jul'26",
+              "Aug'26",
+              "Sep'26",
+              "Oct'26",
+              "Nov'26",
+              "Dec'26"
+            ],
+            "confidence": "unverified-default-full-range"
+          }
+        },
+        {
+          "hoshinPriority": "Organizational Development",
+          "objectiveId": "organizational-development",
+          "objectiveIds": null,
+          "activityPlan": "Succesion Plan-  Have a talent pipeline with the right leadership ready to sustain growth, expansion aligned with a career path",
+          "target": "Bench Depth Ratio: Average number of successors per key role\nTarget: \n•\tReady Now A ≥ 1 successors for key roles\n•\tReady Later B (12-24 months) ≥ 2 successors for key roles \n•\tReady Later C (3-5 years) ≥ 2 successors for key roles",
+          "supportFunction": "ELT\nODG\nFunct. Leaders\nFunct. Leaders",
+          "lead": "Clarissa L.\nEF\nL&D Manager\nL&D Manager",
+          "timeline": {
+            "start": "Oct'25",
+            "end": "Dec'26",
+            "months": [
+              "Oct'25",
+              "Nov'25",
+              "Dec'25",
+              "Jan'26",
+              "Feb'26",
+              "Mar'26",
+              "Apr'26",
+              "May'26",
+              "Jun'26",
+              "Jul'26",
+              "Aug'26",
+              "Sep'26",
+              "Oct'26",
+              "Nov'26",
+              "Dec'26"
+            ],
+            "confidence": "unverified-default-full-range"
+          }
+        },
+        {
+          "hoshinPriority": "Organizational Development",
+          "objectiveId": "organizational-development",
+          "objectiveIds": null,
+          "activityPlan": "Compensation & Bonus structure- Develop, Deploy and Implement a formal salary structure with a bonus program that ties to KPI performance and SRR Audits",
+          "target": "1.   % of EE below 50% (risk zone)\n2.   % of EE above 120% (over-market)                      3.   100% linked to Performance Evaluations and SRR",
+          "supportFunction": "Funct Mgrs\nCSO/ FIN\nHR Wise/ELT/ADP",
+          "lead": "Talent Specialist\nClarissa L.\nHR Mgr",
+          "timeline": {
+            "start": "Oct'25",
+            "end": "Dec'26",
+            "months": [
+              "Oct'25",
+              "Nov'25",
+              "Dec'25",
+              "Jan'26",
+              "Feb'26",
+              "Mar'26",
+              "Apr'26",
+              "May'26",
+              "Jun'26",
+              "Jul'26",
+              "Aug'26",
+              "Sep'26",
+              "Oct'26",
+              "Nov'26",
+              "Dec'26"
+            ],
+            "confidence": "unverified-default-full-range"
+          }
+        },
+        {
+          "hoshinPriority": "Organizational                          Development",
+          "objectiveId": "organizational-development",
+          "objectiveIds": null,
+          "activityPlan": "Training and Development-Develop, Deploy and Implement a formal training structure including new hires and a formal onboarding process",
+          "target": "1. 100% of all Onboarding utilizing Training Plans        2.  2x Checks of Training Plan utilization                     3.  100% Linkage of development to Revenue through FMDS                                                                    4. 150,000,000 Revenue Development Growth              5. FMDS Delpoyment 100% Company wide",
+          "supportFunction": "ODG\nHR\nDivisional Manager & ELT",
+          "lead": "EF and AD\nClarissa L.\nAdm and Op's",
+          "timeline": {
+            "start": "Oct'25",
+            "end": "Dec'26",
+            "months": [
+              "Oct'25",
+              "Nov'25",
+              "Dec'25",
+              "Jan'26",
+              "Feb'26",
+              "Mar'26",
+              "Apr'26",
+              "May'26",
+              "Jun'26",
+              "Jul'26",
+              "Aug'26",
+              "Sep'26",
+              "Oct'26",
+              "Nov'26",
+              "Dec'26"
+            ],
+            "confidence": "unverified-default-full-range"
+          }
+        },
+        {
+          "hoshinPriority": "Organizational                        Development",
+          "objectiveId": "organizational-development",
+          "objectiveIds": null,
+          "activityPlan": "Training and Development- Create a formal development plan, a defined structure, and synchronized processes, limiting bench strength, accountability, and scalability to support organizational growth.",
+          "target": "1. 100% of all Onboarding utilizing Training Plans\n2.  2x Checks of Training Plan utilization\n3.  100% Linkage of development to Revenue through FMDS                                                                    4. 150,000,00 revenue growth                                                          5. 100% Training Structure at all levels",
+          "supportFunction": "ODG\nHR\nDivisional Manager",
+          "lead": "EF and AD\nClarissa L.\nAdm and Op's",
+          "timeline": {
+            "start": "Oct'25",
+            "end": "Dec'26",
+            "months": [
+              "Oct'25",
+              "Nov'25",
+              "Dec'25",
+              "Jan'26",
+              "Feb'26",
+              "Mar'26",
+              "Apr'26",
+              "May'26",
+              "Jun'26",
+              "Jul'26",
+              "Aug'26",
+              "Sep'26",
+              "Oct'26",
+              "Nov'26",
+              "Dec'26"
+            ],
+            "confidence": "unverified-default-full-range"
+          }
+        },
+        {
+          "hoshinPriority": "Organizational                        Development",
+          "objectiveId": "organizational-development",
+          "objectiveIds": null,
+          "activityPlan": "Training and Development-  Utilize UK Lean Institute students ability to 8 step problem solve through cross functional problems.  (One per quarter per member and Monthly Qulity Meeting) focusing on systems and process improvements",
+          "target": "1. 100% of UK Lean Students utilizing 8-step Quarterly deep dive Problems and Monthly Quality report out                                                               2.  100% tracked to SQDC-ODG  FMDS                                    3.  100% Linkage of development to Revenue through FMDS and Propblem Solving",
+          "supportFunction": "ODG\nHR\nDivisional Manager & ELT",
+          "lead": "EF and AD\nClarissa L.\nAdm and Op's",
+          "timeline": {
+            "start": "Oct'25",
+            "end": "Dec'26",
+            "months": [
+              "Oct'25",
+              "Nov'25",
+              "Dec'25",
+              "Jan'26",
+              "Feb'26",
+              "Mar'26",
+              "Apr'26",
+              "May'26",
+              "Jun'26",
+              "Jul'26",
+              "Aug'26",
+              "Sep'26",
+              "Oct'26",
+              "Nov'26",
+              "Dec'26"
+            ],
+            "confidence": "unverified-default-full-range"
+          }
+        },
+        {
+          "hoshinPriority": "Organizational                        Development",
+          "objectiveId": "organizational-development",
+          "objectiveIds": null,
+          "activityPlan": "Succesion Plan-  Train in Leadership Application, competencies, to strengthen internal talent pipelines, reduce backfill costs, and support succession gaps in key roles through training deployment",
+          "target": "1.100% SUP and below training Completion                                       2. 150,000,000 Revenue Development Growth\n3. SRR target 80%",
+          "supportFunction": "ODG\nHR\nDivisional Manager",
+          "lead": "EF and AD\nClarissa L.\nAdm and Op's",
+          "timeline": {
+            "start": "Oct'25",
+            "end": "Dec'26",
+            "months": [
+              "Oct'25",
+              "Nov'25",
+              "Dec'25",
+              "Jan'26",
+              "Feb'26",
+              "Mar'26",
+              "Apr'26",
+              "May'26",
+              "Jun'26",
+              "Jul'26",
+              "Aug'26",
+              "Sep'26",
+              "Oct'26",
+              "Nov'26",
+              "Dec'26"
+            ],
+            "confidence": "unverified-default-full-range"
+          }
+        }
+      ]
+    },
+    "odg": {
+      "block": "HR & ODG",
+      "functionalLead": "Eric Freeman",
+      "activities": [
+        {
+          "hoshinPriority": "Organizational Development #2 - 7% NVAW crossover to VAW",
+          "objectiveId": "organizational-development",
+          "objectiveIds": null,
+          "activityPlan": "HR Structure Change- Organizational changes within the HR department. Restructuing roles to add L&D Manager to support WE career path and training management.",
+          "target": "1- New HR structure by Q425/Q2226\n2- 9% NAVW cross over to VAW - Q426",
+          "supportFunction": "HR",
+          "lead": "Clarissa L.",
+          "timeline": {
+            "start": "Oct'25",
+            "end": "Dec'26",
+            "months": [
+              "Oct'25",
+              "Nov'25",
+              "Dec'25",
+              "Jan'26",
+              "Feb'26",
+              "Mar'26",
+              "Apr'26",
+              "May'26",
+              "Jun'26",
+              "Jul'26",
+              "Aug'26",
+              "Sep'26",
+              "Oct'26",
+              "Nov'26",
+              "Dec'26"
+            ],
+            "confidence": "unverified-default-full-range"
+          }
+        },
+        {
+          "hoshinPriority": null,
+          "objectiveId": null,
+          "objectiveIds": null,
+          "activityPlan": "Structure Change- Organizational changes and  restructuing roles for proper career path and training management primarily focusing on Sales, Marketing and HR",
+          "target": "150,000,000 Revenue Development Growth\n9% NAVW cross over to VAW - Q226",
+          "supportFunction": "TM\nRC\nODG/HR",
+          "lead": "RC/EF\nRC/EF\nRC/EF",
+          "timeline": {
+            "start": "Jan'26",
+            "end": "Dec'26",
+            "months": [
+              "Jan'26",
+              "Feb'26",
+              "Mar'26",
+              "Apr'26",
+              "May'26",
+              "Jun'26",
+              "Jul'26",
+              "Aug'26",
+              "Sep'26",
+              "Oct'26",
+              "Nov'26",
+              "Dec'26"
+            ],
+            "confidence": "derived-from-fill-gap"
+          }
+        },
+        {
+          "hoshinPriority": "Organizational Development",
+          "objectiveId": "organizational-development",
+          "objectiveIds": null,
+          "activityPlan": "Career Development Path - Deployment of a career path for all functions that is supported by training for each level",
+          "target": "Milestone: 100% rollout by Q426\nSRR Target Score\n-\tInitial 60% - 80% \n-\tFinal target within one year – 80%",
+          "supportFunction": "ELT Team\nHR/ODG",
+          "lead": "L&D Manager\nAD",
+          "timeline": {
+            "start": "Jan'26",
+            "end": "Dec'26",
+            "months": [
+              "Jan'26",
+              "Feb'26",
+              "Mar'26",
+              "Apr'26",
+              "May'26",
+              "Jun'26",
+              "Jul'26",
+              "Aug'26",
+              "Sep'26",
+              "Oct'26",
+              "Nov'26",
+              "Dec'26"
+            ],
+            "confidence": "derived-from-fill-gap"
+          }
+        },
+        {
+          "hoshinPriority": "Organizational Development & 7% NVAW crossover to VAW",
+          "objectiveId": "organizational-development",
+          "objectiveIds": null,
+          "activityPlan": "ADP LMS System\n1-\tDevelopment and Deployment of LMS System\n2-\tTraining & Implementation of LMS System                         3-       Link to SRR",
+          "target": "Milestone: 100% rollout by Q426\nTarget: \n1.\tFunctions onboarding reduction time by 50%\n2.\t9% NAVW cross over to VAW - Q425\n3.       SRR 100% roll out",
+          "supportFunction": "ADP\nODG\nAll Functions",
+          "lead": "Talent Spec.\nEF/AD\nTalent Spec.",
+          "timeline": {
+            "start": "Oct'25",
+            "end": "Dec'26",
+            "months": [
+              "Oct'25",
+              "Nov'25",
+              "Dec'25",
+              "Jan'26",
+              "Feb'26",
+              "Mar'26",
+              "Apr'26",
+              "May'26",
+              "Jun'26",
+              "Jul'26",
+              "Aug'26",
+              "Sep'26",
+              "Oct'26",
+              "Nov'26",
+              "Dec'26"
+            ],
+            "confidence": "unverified-default-full-range"
+          }
+        },
+        {
+          "hoshinPriority": "Organizational Development",
+          "objectiveId": "organizational-development",
+          "objectiveIds": null,
+          "activityPlan": "Succesion Plan-  Have a talent pipeline with the right leadership ready to sustain growth, expansion aligned with a career path",
+          "target": "Bench Depth Ratio: Average number of successors per key role\nTarget: \n•\tReady Now A ≥ 1 successors for key roles\n•\tReady Later B (12-24 months) ≥ 2 successors for key roles \n•\tReady Later C (3-5 years) ≥ 2 successors for key roles",
+          "supportFunction": "ELT\nODG\nFunct. Leaders\nFunct. Leaders",
+          "lead": "Clarissa L.\nEF\nL&D Manager\nL&D Manager",
+          "timeline": {
+            "start": "Oct'25",
+            "end": "Dec'26",
+            "months": [
+              "Oct'25",
+              "Nov'25",
+              "Dec'25",
+              "Jan'26",
+              "Feb'26",
+              "Mar'26",
+              "Apr'26",
+              "May'26",
+              "Jun'26",
+              "Jul'26",
+              "Aug'26",
+              "Sep'26",
+              "Oct'26",
+              "Nov'26",
+              "Dec'26"
+            ],
+            "confidence": "unverified-default-full-range"
+          }
+        },
+        {
+          "hoshinPriority": "Organizational Development",
+          "objectiveId": "organizational-development",
+          "objectiveIds": null,
+          "activityPlan": "Compensation & Bonus structure- Develop, Deploy and Implement a formal salary structure with a bonus program that ties to KPI performance and SRR Audits",
+          "target": "1.   % of EE below 50% (risk zone)\n2.   % of EE above 120% (over-market)                      3.   100% linked to Performance Evaluations and SRR",
+          "supportFunction": "Funct Mgrs\nCSO/ FIN\nHR Wise/ELT/ADP",
+          "lead": "Talent Specialist\nClarissa L.\nHR Mgr",
+          "timeline": {
+            "start": "Oct'25",
+            "end": "Dec'26",
+            "months": [
+              "Oct'25",
+              "Nov'25",
+              "Dec'25",
+              "Jan'26",
+              "Feb'26",
+              "Mar'26",
+              "Apr'26",
+              "May'26",
+              "Jun'26",
+              "Jul'26",
+              "Aug'26",
+              "Sep'26",
+              "Oct'26",
+              "Nov'26",
+              "Dec'26"
+            ],
+            "confidence": "unverified-default-full-range"
+          }
+        },
+        {
+          "hoshinPriority": "Organizational                          Development",
+          "objectiveId": "organizational-development",
+          "objectiveIds": null,
+          "activityPlan": "Training and Development-Develop, Deploy and Implement a formal training structure including new hires and a formal onboarding process",
+          "target": "1. 100% of all Onboarding utilizing Training Plans        2.  2x Checks of Training Plan utilization                     3.  100% Linkage of development to Revenue through FMDS                                                                    4. 150,000,000 Revenue Development Growth              5. FMDS Delpoyment 100% Company wide",
+          "supportFunction": "ODG\nHR\nDivisional Manager & ELT",
+          "lead": "EF and AD\nClarissa L.\nAdm and Op's",
+          "timeline": {
+            "start": "Oct'25",
+            "end": "Dec'26",
+            "months": [
+              "Oct'25",
+              "Nov'25",
+              "Dec'25",
+              "Jan'26",
+              "Feb'26",
+              "Mar'26",
+              "Apr'26",
+              "May'26",
+              "Jun'26",
+              "Jul'26",
+              "Aug'26",
+              "Sep'26",
+              "Oct'26",
+              "Nov'26",
+              "Dec'26"
+            ],
+            "confidence": "unverified-default-full-range"
+          }
+        },
+        {
+          "hoshinPriority": "Organizational                        Development",
+          "objectiveId": "organizational-development",
+          "objectiveIds": null,
+          "activityPlan": "Training and Development- Create a formal development plan, a defined structure, and synchronized processes, limiting bench strength, accountability, and scalability to support organizational growth.",
+          "target": "1. 100% of all Onboarding utilizing Training Plans\n2.  2x Checks of Training Plan utilization\n3.  100% Linkage of development to Revenue through FMDS                                                                    4. 150,000,00 revenue growth                                                          5. 100% Training Structure at all levels",
+          "supportFunction": "ODG\nHR\nDivisional Manager",
+          "lead": "EF and AD\nClarissa L.\nAdm and Op's",
+          "timeline": {
+            "start": "Oct'25",
+            "end": "Dec'26",
+            "months": [
+              "Oct'25",
+              "Nov'25",
+              "Dec'25",
+              "Jan'26",
+              "Feb'26",
+              "Mar'26",
+              "Apr'26",
+              "May'26",
+              "Jun'26",
+              "Jul'26",
+              "Aug'26",
+              "Sep'26",
+              "Oct'26",
+              "Nov'26",
+              "Dec'26"
+            ],
+            "confidence": "unverified-default-full-range"
+          }
+        },
+        {
+          "hoshinPriority": "Organizational                        Development",
+          "objectiveId": "organizational-development",
+          "objectiveIds": null,
+          "activityPlan": "Training and Development-  Utilize UK Lean Institute students ability to 8 step problem solve through cross functional problems.  (One per quarter per member and Monthly Qulity Meeting) focusing on systems and process improvements",
+          "target": "1. 100% of UK Lean Students utilizing 8-step Quarterly deep dive Problems and Monthly Quality report out                                                               2.  100% tracked to SQDC-ODG  FMDS                                    3.  100% Linkage of development to Revenue through FMDS and Propblem Solving",
+          "supportFunction": "ODG\nHR\nDivisional Manager & ELT",
+          "lead": "EF and AD\nClarissa L.\nAdm and Op's",
+          "timeline": {
+            "start": "Oct'25",
+            "end": "Dec'26",
+            "months": [
+              "Oct'25",
+              "Nov'25",
+              "Dec'25",
+              "Jan'26",
+              "Feb'26",
+              "Mar'26",
+              "Apr'26",
+              "May'26",
+              "Jun'26",
+              "Jul'26",
+              "Aug'26",
+              "Sep'26",
+              "Oct'26",
+              "Nov'26",
+              "Dec'26"
+            ],
+            "confidence": "unverified-default-full-range"
+          }
+        },
+        {
+          "hoshinPriority": "Organizational                        Development",
+          "objectiveId": "organizational-development",
+          "objectiveIds": null,
+          "activityPlan": "Succesion Plan-  Train in Leadership Application, competencies, to strengthen internal talent pipelines, reduce backfill costs, and support succession gaps in key roles through training deployment",
+          "target": "1.100% SUP and below training Completion                                       2. 150,000,000 Revenue Development Growth\n3. SRR target 80%",
+          "supportFunction": "ODG\nHR\nDivisional Manager",
+          "lead": "EF and AD\nClarissa L.\nAdm and Op's",
+          "timeline": {
+            "start": "Oct'25",
+            "end": "Dec'26",
+            "months": [
+              "Oct'25",
+              "Nov'25",
+              "Dec'25",
+              "Jan'26",
+              "Feb'26",
+              "Mar'26",
+              "Apr'26",
+              "May'26",
+              "Jun'26",
+              "Jul'26",
+              "Aug'26",
+              "Sep'26",
+              "Oct'26",
+              "Nov'26",
+              "Dec'26"
+            ],
+            "confidence": "unverified-default-full-range"
+          }
+        }
+      ]
+    },
+    "sales": {
+      "block": "COMMERCIALIZATION",
+      "functionalLead": "Tony Morando",
+      "activities": [
+        {
+          "hoshinPriority": "150M % 57.5 GM (Priority: Financial Performance)",
+          "objectiveId": "financial-performance",
+          "objectiveIds": null,
+          "activityPlan": "Expansion revenue within our core accounts of $20M",
+          "target": "KPI: Retention $ = $15M\n\nKPI: $ from converted accounts = 5M",
+          "supportFunction": "Operations\nIT\nMarketing",
+          "lead": "Tamara (Strategic Activities)\nNoel & JC (Activity Assurance)",
+          "timeline": {
+            "start": "Oct'25",
+            "end": "Dec'26",
+            "months": [
+              "Oct'25",
+              "Nov'25",
+              "Dec'25",
+              "Jan'26",
+              "Feb'26",
+              "Mar'26",
+              "Apr'26",
+              "May'26",
+              "Jun'26",
+              "Jul'26",
+              "Aug'26",
+              "Sep'26",
+              "Oct'26",
+              "Nov'26",
+              "Dec'26"
+            ],
+            "confidence": "unverified-default-full-range"
+          }
+        },
+        {
+          "hoshinPriority": "150M 57.5% GM (Priority: Financial Performance)",
+          "objectiveId": "financial-performance",
+          "objectiveIds": null,
+          "activityPlan": "Acquire new customers in high value segments by outside sales with a goal of $20M",
+          "target": "KPI: # of new customers \n\nKPI: $ from net new customers \n\nKPI: time to first $500k in net new for new hires",
+          "supportFunction": "Marketing\nIT\nOperations",
+          "lead": "Tony Morando (Strategic Activity)",
+          "timeline": {
+            "start": "Oct'25",
+            "end": "Dec'26",
+            "months": [
+              "Oct'25",
+              "Nov'25",
+              "Dec'25",
+              "Jan'26",
+              "Feb'26",
+              "Mar'26",
+              "Apr'26",
+              "May'26",
+              "Jun'26",
+              "Jul'26",
+              "Aug'26",
+              "Sep'26",
+              "Oct'26",
+              "Nov'26",
+              "Dec'26"
+            ],
+            "confidence": "unverified-default-full-range"
+          }
+        },
+        {
+          "hoshinPriority": "$150M 57.5% GM (Priority: Financial Performance)",
+          "objectiveId": "financial-performance",
+          "objectiveIds": null,
+          "activityPlan": "Expand inside sales to achieve $10M in revenue.",
+          "target": "KPI: $ from reactivated accounts \n\n\nKPI: Quote to win rate \n\n\nKPI: Incoming $\n\n\nKPI: Ave lead response time",
+          "supportFunction": "Sales & Marketing \n\n\nIT & Sales Leadership \n\n\nOperations & Marketing \n\n\nRev Ops & Sales Leadership",
+          "lead": "Tony Morando (Stategic Activity)",
+          "timeline": {
+            "start": "Oct'25",
+            "end": "Dec'26",
+            "months": [
+              "Oct'25",
+              "Nov'25",
+              "Dec'25",
+              "Jan'26",
+              "Feb'26",
+              "Mar'26",
+              "Apr'26",
+              "May'26",
+              "Jun'26",
+              "Jul'26",
+              "Aug'26",
+              "Sep'26",
+              "Oct'26",
+              "Nov'26",
+              "Dec'26"
+            ],
+            "confidence": "unverified-default-full-range"
+          }
+        },
+        {
+          "hoshinPriority": "Org Dev",
+          "objectiveId": "organizational-development",
+          "objectiveIds": null,
+          "activityPlan": "Lean system Development $20M in revenue.",
+          "target": "KPI: Mangers 100% trained in all Lean Training                                                                                                \n\nKPI: TL's and TMs have 100% Basic Lean Training       \n\nKPI: Tl's 100% Trained in Leadership Application",
+          "supportFunction": "ODG & HR",
+          "lead": "Alison Diaco / Eric Freeman",
+          "timeline": {
+            "start": "Oct'25",
+            "end": "Dec'26",
+            "months": [
+              "Oct'25",
+              "Nov'25",
+              "Dec'25",
+              "Jan'26",
+              "Feb'26",
+              "Mar'26",
+              "Apr'26",
+              "May'26",
+              "Jun'26",
+              "Jul'26",
+              "Aug'26",
+              "Sep'26",
+              "Oct'26",
+              "Nov'26",
+              "Dec'26"
+            ],
+            "confidence": "unverified-default-full-range"
+          }
+        }
+      ]
+    },
+    "service": {
+      "block": "COMMERCIALIZATION",
+      "functionalLead": "Tony Morando",
+      "activities": []
+    },
+    "operations": {
+      "block": "OPERATIONS",
+      "functionalLead": "Jim Kozel",
+      "activities": [
+        {
+          "hoshinPriority": "57.5% Gross margin/ Organizational development",
+          "objectiveId": "financial-performance",
+          "objectiveIds": [
+            "financial-performance",
+            "organizational-development"
+          ],
+          "activityPlan": "Labor efficiency improved by 9%",
+          "target": "Training completed by June\nUPLH improvement by 2% q1, 2% Q2, 3% Q3, 2% Q4\nWPS complete by end of Q1 of 2026\nnet increase of price increase to be $1M for WE",
+          "supportFunction": "ODG\nIT\nHR\nPricing",
+          "lead": "PM",
+          "timeline": {
+            "start": "Oct'25",
+            "end": "Dec'26",
+            "months": [
+              "Oct'25",
+              "Nov'25",
+              "Dec'25",
+              "Jan'26",
+              "Feb'26",
+              "Mar'26",
+              "Apr'26",
+              "May'26",
+              "Jun'26",
+              "Jul'26",
+              "Aug'26",
+              "Sep'26",
+              "Oct'26",
+              "Nov'26",
+              "Dec'26"
+            ],
+            "confidence": "unverified-default-full-range"
+          }
+        },
+        {
+          "hoshinPriority": "57.5% Gross margin",
+          "objectiveId": "financial-performance",
+          "objectiveIds": null,
+          "activityPlan": "Material decreased by 10%",
+          "target": "Alternative leather produducer producing by end of Q2\nWaste elimination efforts in all plants netting a 15% improvement in scrap\nFinish WMS by end of Q4",
+          "supportFunction": "ENG\nR&D\nPM\nIT",
+          "lead": "Purch",
+          "timeline": {
+            "start": "Oct'25",
+            "end": "Dec'26",
+            "months": [
+              "Oct'25",
+              "Nov'25",
+              "Dec'25",
+              "Jan'26",
+              "Feb'26",
+              "Mar'26",
+              "Apr'26",
+              "May'26",
+              "Jun'26",
+              "Jul'26",
+              "Aug'26",
+              "Sep'26",
+              "Oct'26",
+              "Nov'26",
+              "Dec'26"
+            ],
+            "confidence": "unverified-default-full-range"
+          }
+        },
+        {
+          "hoshinPriority": "57.5% Gross margin/ 10% NVAW crossover to VAW/Organizational Development",
+          "objectiveId": "financial-performance",
+          "objectiveIds": [
+            "financial-performance",
+            "organizational-development"
+          ],
+          "activityPlan": "Indirect labor decreased by 15%",
+          "target": "Decrease 1 supervisor per location by Q2\ndecrease 1 maintenance person by location by Q2\nEliminate reliance on Brent by Q3\nDecrease Art/Digizing by 50% by end of year",
+          "supportFunction": "HR\nIT",
+          "lead": "PM",
+          "timeline": {
+            "start": "Oct'25",
+            "end": "Dec'26",
+            "months": [
+              "Oct'25",
+              "Nov'25",
+              "Dec'25",
+              "Jan'26",
+              "Feb'26",
+              "Mar'26",
+              "Apr'26",
+              "May'26",
+              "Jun'26",
+              "Jul'26",
+              "Aug'26",
+              "Sep'26",
+              "Oct'26",
+              "Nov'26",
+              "Dec'26"
+            ],
+            "confidence": "unverified-default-full-range"
+          }
+        },
+        {
+          "hoshinPriority": "57.5% Gross margin",
+          "objectiveId": "financial-performance",
+          "objectiveIds": null,
+          "activityPlan": "Decrease impact on expenses related to production by $700,000 by end of year",
+          "target": "Maintain a 15% below budget on factory supplies and Repairs and Maint (93,000)\nIncrease GM on shipping by 5% ($440,000)\nIncrease prices to make tariffs a net zero cost ($140,000)\nInbound duties decrease by 10%\nPrice increase HP by 4%",
+          "supportFunction": "Purc\nPricing\nlogistics",
+          "lead": "PM",
+          "timeline": {
+            "start": "Oct'25",
+            "end": "Dec'26",
+            "months": [
+              "Oct'25",
+              "Nov'25",
+              "Dec'25",
+              "Jan'26",
+              "Feb'26",
+              "Mar'26",
+              "Apr'26",
+              "May'26",
+              "Jun'26",
+              "Jul'26",
+              "Aug'26",
+              "Sep'26",
+              "Oct'26",
+              "Nov'26",
+              "Dec'26"
+            ],
+            "confidence": "unverified-default-full-range"
+          }
+        },
+        {
+          "hoshinPriority": "Organizational Development",
+          "objectiveId": "organizational-development",
+          "objectiveIds": null,
+          "activityPlan": "Lean systems development",
+          "target": "Exec Team True Lean trained by End of Year\n1 level down from exec team trained in true lean by end of year\n8 step problem solving for lead level all departments\nSRR score of 80% by end of year all departments",
+          "supportFunction": "HR\nODG",
+          "lead": "Team Champ",
+          "timeline": {
+            "start": "Oct'25",
+            "end": "Dec'26",
+            "months": [
+              "Oct'25",
+              "Nov'25",
+              "Dec'25",
+              "Jan'26",
+              "Feb'26",
+              "Mar'26",
+              "Apr'26",
+              "May'26",
+              "Jun'26",
+              "Jul'26",
+              "Aug'26",
+              "Sep'26",
+              "Oct'26",
+              "Nov'26",
+              "Dec'26"
+            ],
+            "confidence": "unverified-default-full-range"
+          }
+        },
+        {
+          "hoshinPriority": "New Customer Acquisition & Lifetime Journey",
+          "objectiveId": "new-customer-acquisition-lifetime-journey",
+          "objectiveIds": null,
+          "activityPlan": "Onboarding New Accounts over $500k annualy",
+          "target": "Create SW for onboarding new retail, new IL and large existing IL",
+          "supportFunction": null,
+          "lead": null,
+          "timeline": {
+            "start": "Oct'25",
+            "end": "Dec'26",
+            "months": [
+              "Oct'25",
+              "Nov'25",
+              "Dec'25",
+              "Jan'26",
+              "Feb'26",
+              "Mar'26",
+              "Apr'26",
+              "May'26",
+              "Jun'26",
+              "Jul'26",
+              "Aug'26",
+              "Sep'26",
+              "Oct'26",
+              "Nov'26",
+              "Dec'26"
+            ],
+            "confidence": "unverified-default-full-range"
+          }
+        }
+      ]
+    },
+    "logistics": {
+      "block": "OPERATIONS",
+      "functionalLead": "Jim Kozel",
+      "activities": [
+        {
+          "hoshinPriority": "57.5% Gross margin",
+          "objectiveId": "financial-performance",
+          "objectiveIds": null,
+          "activityPlan": "Decrease impact on expenses related to production by $700,000 by end of year",
+          "target": "Maintain a 15% below budget on factory supplies and Repairs and Maint (93,000)\nIncrease GM on shipping by 5% ($440,000)\nIncrease prices to make tariffs a net zero cost ($140,000)\nInbound duties decrease by 10%\nPrice increase HP by 4%",
+          "supportFunction": "Purc\nPricing\nlogistics",
+          "lead": "PM",
+          "timeline": {
+            "start": "Oct'25",
+            "end": "Dec'26",
+            "months": [
+              "Oct'25",
+              "Nov'25",
+              "Dec'25",
+              "Jan'26",
+              "Feb'26",
+              "Mar'26",
+              "Apr'26",
+              "May'26",
+              "Jun'26",
+              "Jul'26",
+              "Aug'26",
+              "Sep'26",
+              "Oct'26",
+              "Nov'26",
+              "Dec'26"
+            ],
+            "confidence": "unverified-default-full-range"
+          }
+        }
+      ]
+    },
+    "marketing": {
+      "block": "MARKETING",
+      "functionalLead": "TBD",
+      "activities": [
+        {
+          "hoshinPriority": "Grow revenue to $200m through channel management, ecomm, marketplaces, and acquisitions while achieving [60%] in margin and 80% cash conversion through operational performance and tech innovations.  ​",
+          "objectiveId": "financial-performance",
+          "objectiveIds": null,
+          "activityPlan": "Grow e-commerce revenue to 6MM of total revenue and improve site conversion to ≥2.5% by FY26 through OPT stabilization, AI Designer commercialization, and platform optimization.",
+          "target": "Blended Site Conversion Rate ≥2.5%\nE-commerce Revenue (6mm) on pace\nAI Designer Adoption & AI-Influenced Revenue (get with JK and PJ re: the ROI) - we want what % of design work flowing through this",
+          "supportFunction": "IT\nOperations\nFinance",
+          "lead": "Head of Demand Marketing (CM)",
+          "timeline": {
+            "start": "Oct'25",
+            "end": "Dec'26",
+            "months": [
+              "Oct'25",
+              "Nov'25",
+              "Dec'25",
+              "Jan'26",
+              "Feb'26",
+              "Mar'26",
+              "Apr'26",
+              "May'26",
+              "Jun'26",
+              "Jul'26",
+              "Aug'26",
+              "Sep'26",
+              "Oct'26",
+              "Nov'26",
+              "Dec'26"
+            ],
+            "confidence": "unverified-default-full-range"
+          }
+        },
+        {
+          "hoshinPriority": "Grow revenue to $200m through channel management, ecomm, marketplaces, and acquisitions while achieving [60%] in margin and 80% cash conversion through operational performance and tech innovations.",
+          "objectiveId": "financial-performance",
+          "objectiveIds": null,
+          "activityPlan": "Establish marketing-sourced pipeline measurement discipline and grow MSP by 15% in H2 while achieving ≥25% MQL→SQL conversion.",
+          "target": "Marketing-Sourced Revenue ($ & % of total)\nMQL → SQL Conversion ≥25%\nLaunch revenue target achieved within 30 days\n100% sales enablement delivery before launch",
+          "supportFunction": "Sales\nFinance\nIT",
+          "lead": "Head of Demanad Marketing (CM), CSO ™",
+          "timeline": {
+            "start": "Oct'25",
+            "end": "Dec'26",
+            "months": [
+              "Oct'25",
+              "Nov'25",
+              "Dec'25",
+              "Jan'26",
+              "Feb'26",
+              "Mar'26",
+              "Apr'26",
+              "May'26",
+              "Jun'26",
+              "Jul'26",
+              "Aug'26",
+              "Sep'26",
+              "Oct'26",
+              "Nov'26",
+              "Dec'26"
+            ],
+            "confidence": "unverified-default-full-range"
+          }
+        },
+        {
+          "hoshinPriority": "Create a clear structure for roles &\nresponsibilities supported by a\nsystematic staff development program\nand empowerment to drive individual\nand company-wide success.",
+          "objectiveId": "organizational-development",
+          "objectiveIds": null,
+          "activityPlan": "Improve marketing execution speed by 20% and achieve 100% KPI ownership and ≥95% data accuracy by FY26",
+          "target": "% Roles with Defined KPIs = 100%\nHubSpot Adoption by Role (How to score)\nSRR Target of 80%",
+          "supportFunction": "HR\nIT\nSales",
+          "lead": "CMO",
+          "timeline": {
+            "start": "Oct'25",
+            "end": "Dec'26",
+            "months": [
+              "Oct'25",
+              "Nov'25",
+              "Dec'25",
+              "Jan'26",
+              "Feb'26",
+              "Mar'26",
+              "Apr'26",
+              "May'26",
+              "Jun'26",
+              "Jul'26",
+              "Aug'26",
+              "Sep'26",
+              "Oct'26",
+              "Nov'26",
+              "Dec'26"
+            ],
+            "confidence": "unverified-default-full-range"
+          }
+        },
+        {
+          "hoshinPriority": "Develop end-to-end first-time customer\njourney onboarded within 5 minutes\ntracking and identifying customers that\nare lifetime vs transactional vs\nsometimes customers​",
+          "objectiveId": "new-customer-acquisition-lifetime-journey",
+          "objectiveIds": null,
+          "activityPlan": "Increase repeat purchase rate and revenue from existing customers by 15% by FY26 through lifecycle automation and CRM discipline.",
+          "target": "Repeat Purchase / Reorder Rate +15%\nRevenue Mix: Lifetime vs Transactional\nConversion from Lifecycle Automations",
+          "supportFunction": "Sales\nIT\nCustomer Service",
+          "lead": "CMO\nLifecycle Marketing",
+          "timeline": {
+            "start": "Oct'25",
+            "end": "Dec'26",
+            "months": [
+              "Oct'25",
+              "Nov'25",
+              "Dec'25",
+              "Jan'26",
+              "Feb'26",
+              "Mar'26",
+              "Apr'26",
+              "May'26",
+              "Jun'26",
+              "Jul'26",
+              "Aug'26",
+              "Sep'26",
+              "Oct'26",
+              "Nov'26",
+              "Dec'26"
+            ],
+            "confidence": "unverified-default-full-range"
+          }
+        },
+        {
+          "hoshinPriority": "Develop end-to-end branding solutions\ndominating the IL market (85%), top\nprovider in LEO/Public Safety, becoming\nstrategic partners, establishing our\npresence in workwear, and fashion.​",
+          "objectiveId": "branding-solution",
+          "objectiveIds": null,
+          "activityPlan": "Standardize brand and sales messaging to reduce custom content requests by 25% and improve sales asset adoption by FY26.",
+          "target": "Sales Adoption of Standardized Materials\nSales Feedback Score on Enablement Assets",
+          "supportFunction": "Sales\nProduct\nOperations",
+          "lead": "CMO\nHead of Brand (PC)",
+          "timeline": {
+            "start": "Oct'25",
+            "end": "Dec'26",
+            "months": [
+              "Oct'25",
+              "Nov'25",
+              "Dec'25",
+              "Jan'26",
+              "Feb'26",
+              "Mar'26",
+              "Apr'26",
+              "May'26",
+              "Jun'26",
+              "Jul'26",
+              "Aug'26",
+              "Sep'26",
+              "Oct'26",
+              "Nov'26",
+              "Dec'26"
+            ],
+            "confidence": "unverified-default-full-range"
+          }
+        }
+      ]
+    },
+    "it": {
+      "block": "IT",
+      "functionalLead": "Phil Jarvis",
+      "activities": [
+        {
+          "hoshinPriority": "Project Titan/AI (WEVision)\n(Priority: Financial Performance)",
+          "objectiveId": "financial-performance",
+          "objectiveIds": null,
+          "activityPlan": "Utilizing a plethora of new AI tools, in order to improve internal training and efficiency, improve customer experience utilizing self-help, interactive AI tools, while decreasing order, digitizating and customer service time using simulated and digitized embroidery images and files, monetizing our design request asset library, and AI auto-generated images based on customer input.",
+          "target": "- AIDaaS (Erica Briones-Fractional Chief AI Officer) - At least one initiative per department head, while paying for the engagement\n- Internal training - Monthly Training and/or Viva Engage posts on key topics\n- In-House User AI Tools - Expedient by 10/15; Other by 12/31 for Consistency, F7Security, and Savings - 250 licenses = $39K/year\n- v1.0 AI Customer Experience (Optimize Image, and users select Eagle Eye or Image Reference Search)\n- v1.2 Simulated Samples with Google Gemini immediately creating a Digital Passport, sending samples to Art Team - 75% of customers using this tool place orders (Pilot 12/25)\n- v1.3 Implement EpiServer Pricing Upcharges and Increased Turn Times for Poor Quality Scale Images (Pilot 1/26)\n- v1.5 HPI/Galls/Customer Samples using Color Charts, import into WE format and Optimizely/EpiServer\n- v1.6 Automated Ordering Based on PO (Saves Order Entry manual input time)\n- v1.75 Simulated Samples (Phase 2); All products and any additional enhancements\n- Cintas PDFs/Invoices\n- Auto-Generateed Images from customer text (E.g., Stickers) - 5% Revenue Lift\n- AI Chat - Self-help for customers contacting Customer Service, one-call resolution on 80% of the chats\nFUTURE CONSIDERATIONS\n- CustomGenie Integration\n- Monetizing our Design Request Asset Library - 2026-$100K, 2027-$500K\n- Digitized Embroidery Designs - $180K annualized savings to begin in 2028\n- Others (Freight, Operational Analytics, etc.)",
+          "supportFunction": "Sales\nAccounting\nOPs\nMarketing\nHR\nIT",
+          "lead": "Nick Chapman",
+          "timeline": {
+            "start": "Oct'25",
+            "end": "Dec'26",
+            "months": [
+              "Oct'25",
+              "Nov'25",
+              "Dec'25",
+              "Jan'26",
+              "Feb'26",
+              "Mar'26",
+              "Apr'26",
+              "May'26",
+              "Jun'26",
+              "Jul'26",
+              "Aug'26",
+              "Sep'26",
+              "Oct'26",
+              "Nov'26",
+              "Dec'26"
+            ],
+            "confidence": "unverified-default-full-range"
+          }
+        },
+        {
+          "hoshinPriority": "NetSuite-->BC365 Migration\n(Priority: Acquisitions)",
+          "objectiveId": "acquisitions",
+          "objectiveIds": null,
+          "activityPlan": "In order to fully decommission the HPI ERP system (eliminating 1 of the 3 existing systems) and ancillary software, migrating it to our existing BC365 system, completing the HPI Acquisiton project while seeing the savings from the software in future years.",
+          "target": "- Elimination of HPI ERP system and ancillary software\n- $100K/Annualized (Starting in 2027) for the NetSuite and ancillary software",
+          "supportFunction": "Accounting\nOPs",
+          "lead": "Gabe Rodriguez",
+          "timeline": {
+            "start": "Oct'25",
+            "end": "Dec'26",
+            "months": [
+              "Oct'25",
+              "Nov'25",
+              "Dec'25",
+              "Jan'26",
+              "Feb'26",
+              "Mar'26",
+              "Apr'26",
+              "May'26",
+              "Jun'26",
+              "Jul'26",
+              "Aug'26",
+              "Sep'26",
+              "Oct'26",
+              "Nov'26",
+              "Dec'26"
+            ],
+            "confidence": "unverified-default-full-range"
+          }
+        },
+        {
+          "hoshinPriority": "New Era Reset, HPI-->Optimizely/EpiServer Migration & Quoting System\n(Priority: Acquisitions)",
+          "objectiveId": "acquisitions",
+          "objectiveIds": null,
+          "activityPlan": "- In order to do a New Era Reset and pull together Anonymous Design, Guest Checkout, New Era, etc. getting them all under one roof and eliminating future \"Undefined\" projects to finish this all up.\n- In order to fully decommission the HPI eCommerce System running on BigCommerce (eliminating BigCommerce), migrating it to our Optimizely/EpiSever environment.\n- In order to create a Quoting System within Optimizely/EpiServer because the Hero's Pride Quoting System is going away with the migration, and World Emblem needs one.",
+          "target": "- 10% Revenue Lift",
+          "supportFunction": "Sales\nMarketing\nAccounting",
+          "lead": "Doug Swingle",
+          "timeline": {
+            "start": "Oct'25",
+            "end": "Dec'26",
+            "months": [
+              "Oct'25",
+              "Nov'25",
+              "Dec'25",
+              "Jan'26",
+              "Feb'26",
+              "Mar'26",
+              "Apr'26",
+              "May'26",
+              "Jun'26",
+              "Jul'26",
+              "Aug'26",
+              "Sep'26",
+              "Oct'26",
+              "Nov'26",
+              "Dec'26"
+            ],
+            "confidence": "unverified-default-full-range"
+          }
+        },
+        {
+          "hoshinPriority": "Security\n(Priority: Organizational  Development)",
+          "objectiveId": "organizational-development",
+          "objectiveIds": null,
+          "activityPlan": "In order to secure the World Emblem systems and software environment exceeding industry standards and establishing a world class secure environment, implement end-user training, PCI Compliance for our eCommerce systems, advanced AI-based monitoring tools, adhering to the CIS framework, monitored and scored by the Coalition and Security Scorecard independent systems, and decreasing and getting the best Cyber Insurance rate possible due to our security scores annually.",
+          "target": "- Implement an annual training with 3 quarterly reinforcement training sessions, along with random phishing campaigns\n- Score >90% (A-Rating) weekly on both Coalition and Security Scorecard\n- Get the best price (largest discount) for annual Cyber Insurance policy per our rating/score\n- File PCI by the end of the Calendar year with No Issues\n- CIS framework task completion",
+          "supportFunction": "Sales\nAccounting\nOPs\nMarketing\nHR\nIT",
+          "lead": "Martin Gonzalez",
+          "timeline": {
+            "start": "Oct'25",
+            "end": "Dec'26",
+            "months": [
+              "Oct'25",
+              "Nov'25",
+              "Dec'25",
+              "Jan'26",
+              "Feb'26",
+              "Mar'26",
+              "Apr'26",
+              "May'26",
+              "Jun'26",
+              "Jul'26",
+              "Aug'26",
+              "Sep'26",
+              "Oct'26",
+              "Nov'26",
+              "Dec'26"
+            ],
+            "confidence": "unverified-default-full-range"
+          }
+        },
+        {
+          "hoshinPriority": "Pulse Nesting-Embroidery\n(Priority: Financial Performance)",
+          "objectiveId": "financial-performance",
+          "objectiveIds": null,
+          "activityPlan": "In order to increase operational efficiency in our embroidery systems by nesting emblems utilize the least amount of material and space, improving operational throughput and material savings, implement the Pulse shape nesting solution.",
+          "target": "- 15% overall efficency gains\n- $250K in 2026; $350K Annualized in 2027",
+          "supportFunction": "OPs\nAccounting",
+          "lead": "Nick Chapman",
+          "timeline": {
+            "start": "Oct'25",
+            "end": "Dec'26",
+            "months": [
+              "Oct'25",
+              "Nov'25",
+              "Dec'25",
+              "Jan'26",
+              "Feb'26",
+              "Mar'26",
+              "Apr'26",
+              "May'26",
+              "Jun'26",
+              "Jul'26",
+              "Aug'26",
+              "Sep'26",
+              "Oct'26",
+              "Nov'26",
+              "Dec'26"
+            ],
+            "confidence": "unverified-default-full-range"
+          }
+        },
+        {
+          "hoshinPriority": "IT Staffing & Development\n(Priority: Organizational Development)",
+          "objectiveId": "organizational-development",
+          "objectiveIds": null,
+          "activityPlan": "In order to increase IT staff to bring in multiple projects that are currently Consultant led (Primarily WPS), and to add velocity to our current Azure DevOPs Project/Task Backlog.  In order to raise the bar in IT, and in alignment with HR's Hoshin and timelines, all IT staff will have Development Plans, Career Paths, Training, etc. while also preparing for Succession Management for key roles.",
+          "target": "- Bring in the dedicated WPS team in-house (and with True North InfoTek), realizing savings on resources\n- Utilize the WPS team savings (mentioned above) and utilize these dollars to add additional staff taking on additional velocity from the Azure DevOPs backlog and utilizing fewer resources from vendors (E.g., Hanson PMs/BAs)\n- Bring in an eCom Developer to help and prepare to backfill (Doug Swingle) with Optimizely/EpiServer and BigCommerce",
+          "supportFunction": "HR\nAccounting",
+          "lead": "Phil Jarvis",
+          "timeline": {
+            "start": "Oct'25",
+            "end": "Dec'26",
+            "months": [
+              "Oct'25",
+              "Nov'25",
+              "Dec'25",
+              "Jan'26",
+              "Feb'26",
+              "Mar'26",
+              "Apr'26",
+              "May'26",
+              "Jun'26",
+              "Jul'26",
+              "Aug'26",
+              "Sep'26",
+              "Oct'26",
+              "Nov'26",
+              "Dec'26"
+            ],
+            "confidence": "unverified-default-full-range"
+          }
+        }
+      ]
+    },
+    "finance": {
+      "block": "FINANCE",
+      "functionalLead": "Will Schwartz",
+      "activities": []
+    }
+  }
+}
