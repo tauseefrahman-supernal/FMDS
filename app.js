@@ -3,7 +3,7 @@
  *
  * Routes:
  *   #/                       → home (placeholder)
- *   #/dept/:id/:view         → one of: team | kpi | my | solve | sop | mark
+ *   #/dept/:id/:view         → one of: team | kpi | hoshin | my | solve | sop | sources | mark
  *
  * Left-rail views per department:
  *   Team Board      — always visible
@@ -40,6 +40,7 @@ import { createStore }            from './lib/store.js';
 import { renderTeamBoard }        from './views/teamboard.js';
 import { renderLocationBoard }    from './views/teamboard-location.js';
 import { renderOverview }         from './views/overview.js';
+import { renderHoshin }           from './views/hoshin.js';
 import { renderOdgHub }           from './views/odg-hub.js';
 import { renderKpi }              from './views/kpi.js';
 import { renderMyBoard }          from './views/myboard.js';
@@ -160,6 +161,7 @@ async function loadDeptView(deptId, view) {
 const ICONS = {
   overview: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1.5" y="1.5" width="13" height="13" rx="2"/><path d="M1.5 6h13M6 6v9"/></svg>',
   kpi:      '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 13.5V9M6 13.5V5.5M10 13.5V8M14 13.5V3"/></svg>',
+  hoshin:   '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><circle cx="8" cy="8" r="2.25"/></svg>',
   solve:    '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 14V2.5M3 2.5h9.5l-2 3.5 2 3.5H3"/></svg>',
   sop:      '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 1.5h6.5L13.5 4.5V14.5h-9.5z"/><path d="M6 6.5h4M6 9h4M6 11.5h2.5"/></svg>',
   sources:  '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><ellipse cx="8" cy="3.5" rx="5.5" ry="2"/><path d="M2.5 3.5v9c0 1.1 2.5 2 5.5 2s5.5-.9 5.5-2v-9M2.5 8c0 1.1 2.5 2 5.5 2s5.5-.9 5.5-2"/></svg>',
@@ -190,6 +192,12 @@ function navFor(dept, role) {
   return [
     { id: 'team',  label: 'Overview',        icon: 'overview' },
     { id: 'kpi',   label: 'KPI Boards',      icon: 'kpi' },
+    // Hoshin: informational policy-deployment surface, gated like Overview/KPI
+    // Boards/Sources (visible even on frozen depts) rather than like the
+    // operational tools (solve/sop/mark) — a frozen dept still has a real
+    // Hoshin page (objective cards + functional lead), it just has no active
+    // 8-step/SOP/Ask-Mark workflows.
+    { id: 'hoshin', label: 'Hoshin',         icon: 'hoshin' },
     ...(!isFrozen ? [{ id: 'solve', label: 'Problem-Solving', icon: 'solve' }] : []),
     ...(!isFrozen ? [{ id: 'sop',   label: 'Standard Work',   icon: 'sop' }] : []),
     { id: 'sources', label: 'Sources', icon: 'sources' },
@@ -389,6 +397,9 @@ function dispatchView(dept, view, mount) {
         : renderKpi(dept, mount);
       break;
 
+    case 'hoshin':
+      renderHoshin(dept, mount);
+      break;
     case 'sources': renderSources(dept, mount); break;
     case 'my': {
       if (session && session.role === 'L1') {
