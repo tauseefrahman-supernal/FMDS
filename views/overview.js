@@ -25,6 +25,7 @@ import { mains, byId }  from '../lib/registry.js';
 import { ragStatus }     from '../lib/rag.js';
 import { bakedReply }    from '../lib/agent.js';
 import { commentThreadHTML, bindComments } from '../lib/comments.js';
+import { loadHoshin, objectiveRelations }  from '../lib/hoshin.js';
 
 // ─── Formatters (shared with teamboard pattern) ───────────────────────────────
 
@@ -330,6 +331,78 @@ function escHtml(str) {
     .replace(/"/g, '&quot;');
 }
 
+// ─── Hoshin strip — WE 2026 policy-deployment alignment (Plan Phase B, Task B3) ─
+//
+// One "disk" per WE 2026 objective. `drives` disks are filled with the
+// --accent token (this board's primary Hoshin); `supports` disks are dim
+// (base --muted/--text-faint disk, dimmed further via .is-dim). This is a
+// relation indicator, not a status — RAG colors never appear here.
+
+function hoshinDiskHTML(n, relation) {
+  const cls = relation === 'drives' ? ' hoshin-disk--drives' : '';
+  return `<span class="hoshin-disk${cls}" style="width:22px;height:22px;font-size:10px">${n}</span>`;
+}
+
+function buildHoshinStrip(dept, hoshin) {
+  const relations = objectiveRelations(hoshin, dept.id);
+  if (!relations.length) return '';
+
+  const driving = relations.filter(r => r.relation === 'drives');
+
+  const disks = relations.map((r, i) => `
+      <span class="hoshin-strip__item${r.relation === 'supports' ? ' is-dim' : ''}"
+            title="${escHtml(r.name)} — this board ${r.relation === 'drives' ? 'drives' : 'supports'} this objective">
+        ${hoshinDiskHTML(i + 1, r.relation)}
+      </span>`).join('');
+
+  const label = driving.length
+    ? `Hoshin 2026 · this board drives: <b>${driving.map(r => escHtml(r.name)).join(', ')}</b>`
+    : `Hoshin 2026 · this board supports company objectives`;
+
+  return `
+    <div class="hoshin-strip">
+      <div class="hoshin-strip__disks">${disks}</div>
+      <div class="hoshin-strip__text">${label}</div>
+      <a class="hoshin-strip__link" href="#/dept/${dept.id}/hoshin">Hoshin View →</a>
+    </div>`;
+}
+
+/**
+ * injectHoshinStrip(dept, mount)
+ *
+ * Fire-and-forget: renderL2Overview/renderL1OperationsOverview already paint
+ * the board synchronously (no signature change, no await added upstream —
+ * dispatchView() calls renderOverview() without awaiting it). Once
+ * data/hoshin.json resolves, the strip is spliced in right under the board
+ * header. `loadHoshin()` returns null with no `fetch` global (Node tests),
+ * so this is a graceful no-op there.
+ *
+ * The `.team-board` node is captured *before* the await so a rapid re-render
+ * (same dept re-navigated, or a different dept/view entirely) that replaces
+ * mount's contents in the meantime leaves this reference detached; the
+ * `isConnected` check after the await catches that and bails rather than
+ * inject into a stale or wrong board.
+ */
+async function injectHoshinStrip(dept, mount) {
+  const board = mount.querySelector('.team-board');
+  if (!board || board.dataset.hoshinDept !== dept.id) return;
+  if (board.dataset.hoshinPending) return; // already loading/loaded for this exact node
+  board.dataset.hoshinPending = '1';
+
+  let hoshin;
+  try {
+    hoshin = await loadHoshin();
+  } catch { return; } // graceful no-op on fetch failure
+
+  if (!hoshin || !board.isConnected) return;
+
+  const html = buildHoshinStrip(dept, hoshin);
+  if (!html) return;
+
+  const header = board.firstElementChild;
+  if (header) header.insertAdjacentHTML('afterend', html);
+}
+
 // ─── L2 main-KPI overview ─────────────────────────────────────────────────────
 
 function renderL2Overview(dept, mount, author) {
@@ -379,7 +452,7 @@ function renderL2Overview(dept, mount, author) {
     : 'All KPIs on track or no active issues';
 
   mount.innerHTML = `
-    <div class="team-board">
+    <div class="team-board" data-hoshin-dept="${dept.id}">
       <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:20px">
         <div>
           <h2>${dept.name} — Overview</h2>
@@ -463,7 +536,7 @@ function renderL1OperationsOverview(dept, mount, persona) {
   };
 
   mount.innerHTML = `
-    <div class="team-board">
+    <div class="team-board" data-hoshin-dept="${dept.id}">
       <div style="margin-bottom:20px">
         <h2>${dept.name} — My Targets</h2>
         <p class="text-muted text-small mt-1">
@@ -513,4 +586,6 @@ export function renderOverview(dept, mount, session) {
     // L2 for all departments (including Operations L2 Jim Kozel view)
     renderL2Overview(dept, mount, author);
   }
+
+  injectHoshinStrip(dept, mount);
 }

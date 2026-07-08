@@ -1680,3 +1680,27 @@ button.step-track__dot:hover { transform: scale(1.12); }
 .a3-callout { padding: 12px 16px; border-radius: var(--radius); border: 1px solid; }
 .a3-callout--red { background: var(--red-bg); border-color: var(--red-border); }
 .a3-callout--accent { background: hsl(var(--action-1)); border-color: hsl(var(--action-3)); }
+
+/* ── Hoshin strip / disk — per-board WE 2026 alignment (Plan Phase B, Task B3).
+     Relation indicator, not status: never RAG-colored. `drives` = filled
+     --accent; `supports` = dim base disk (--muted/--text-faint, .is-dim). ──── */
+.hoshin-disk {
+  display: inline-grid; place-items: center; flex-shrink: 0;
+  border-radius: var(--radius-full);
+  background: var(--muted); color: var(--text-faint);
+  font-weight: 600; font-family: var(--font-serif);
+  border: 1px solid var(--border);
+}
+.hoshin-disk--drives { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+.hoshin-strip {
+  display: flex; align-items: center; gap: var(--sp-4);
+  padding: var(--sp-3) var(--sp-4); margin: 0 0 var(--sp-4);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--panel);
+}
+.hoshin-strip__disks { display: flex; gap: 6px; flex-shrink: 0; }
+.hoshin-strip__item.is-dim { opacity: 0.5; }
+.hoshin-strip__text { flex: 1; min-width: 0; font-size: 0.78rem; color: var(--text-dim); }
+.hoshin-strip__text b { color: var(--text); font-weight: 600; }
+.hoshin-strip__link { font-size: 0.76rem; font-weight: 600; color: var(--accent); flex-shrink: 0; white-space: nowrap; }
+.hoshin-strip__link:hover { text-decoration: underline; }
