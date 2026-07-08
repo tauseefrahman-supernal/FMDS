@@ -1,32 +1,34 @@
 /**
  * views/overview.js — Role-scoped RED/GREEN Overview surface
  *
- * renderOverview(dept, mount)
+ * renderOverview(dept, mount, session)
  *
- * L2 lead: compact status cards for all department-main KPIs, sorted
- *   RED → AMBER → GREEN. Under each RED/AMBER card: agent explanation
- *   drawn from bakedReply('explain-red') + the KPI's own story/flagDetail.
- *   Each card has an "Open in KPI Boards →" link.
+ * Layout ported from docs/redesign/reference/view-overview.js (§5.1 of
+ * docs/redesign/DESIGN-GUIDE.md) — a `.page-head` + a "Needs attention" hero
+ * card per red/amber main KPI (Mark's grounded read as a `.ai-note` thread,
+ * plus a "Review Draft 8-Step" note when a linked KZ exists) + an "On track"
+ * `.stat-tile` grid for everything else. Wired to OUR data throughout: no
+ * field is invented — anything the reference hardcodes for Operations (the
+ * "86.3", "Mechanism B", "Jim Kozel" example) is derived here from dept.kpis,
+ * dept.lead, kpi.story, kpi.rollupMethod, and data/kz-records.json so the
+ * same renderer works for every department.
  *
- * L1 operator: light per-location target view (their own targets from
- *   locationBoards, if available) — or falls back to main summary for
- *   departments without L1 location data.
+ * L2 lead (and any role landing here for a non-Operations dept): the hero +
+ *   stat-tile board described above, built from dept.kpis (the mains).
  *
- * Operations special path:
- *   L2 → mains from dept.kpis (OTP, PPLH, Materials — WE-level)
- *   L1 → per-location targets (location = session.persona.location if set)
- *
- * All other departments:
- *   L2 → mains summary (same card format, generic agent reply)
- *   L1 → fallback to L2 mains summary (most dept L1 personas are supervisors)
+ * L1 operator, Operations only: unchanged per-location target cards (no
+ *   reference spec exists for this surface — Task 15 covers the L1 home
+ *   surfaces proper). Re-skinned only to drop the old left-color-bar status
+ *   convention in favor of the shared `.badge` treatment.
  */
 
-import { mains, byId }  from '../lib/registry.js';
-import { ragStatus }     from '../lib/rag.js';
-import { bakedReply }    from '../lib/agent.js';
-import { commentThreadHTML, bindComments } from '../lib/comments.js';
+import { mains }        from '../lib/registry.js';
+import { ragStatus }    from '../lib/rag.js';
+import { bakedReply }   from '../lib/agent.js';
+import { sparkline }    from '../lib/charts.js';
+import { byDept, progress } from '../lib/eightstep.js';
 
-// ─── Formatters (shared with teamboard pattern) ───────────────────────────────
+// ─── Formatters ────────────────────────────────────────────────────────────
 
 function formatVal(v, unit) {
   if (v == null) return '—';
@@ -44,370 +46,351 @@ function formatVal(v, unit) {
   return v.toLocaleString(undefined, { maximumFractionDigits: 2 });
 }
 
-function ragLabel(status) {
-  return { green: 'On Track', amber: 'At Risk', red: 'Off Track', nodata: 'No Data' }[status] || status;
+function isPctUnit(unit) {
+  return unit === 'ratio' || unit === 'percent' || unit === '%' || unit === 'pct';
 }
 
-// ─── Agent explanation for a single KPI ──────────────────────────────────────
+// The 56px hero numeral needs the bare number split from its unit (the unit
+// renders separately at 24px via <small>) — only done for percent-like units,
+// which is what the reference itself does ("86.3" + small "%"). Every other
+// unit just renders formatVal()'s full string with no split, since inventing
+// a generic "number vs unit" split for units like "$/wk" or "pcs/hr" would
+// either duplicate the $ sign or mangle magnitude abbreviations (k/M).
+function heroValueParts(kpi) {
+  if (kpi.actual == null) return { main: '—', small: '' };
+  if (isPctUnit(kpi.unit)) return { main: (kpi.actual * 100).toFixed(1), small: '%' };
+  return { main: formatVal(kpi.actual, kpi.unit), small: '' };
+}
 
-/**
- * Build the agent explanation text for a red/amber KPI.
- * Combines:
- *  1. The KPI's own `story.text` or `flagDetail` from data (richer than generic reply)
- *  2. The dept-level `bakedReply('explain-red', {kpi: kpi.name})` as fallback/supplement
- *  3. `rollup` note (if present) — OTP/PPLH entry mechanics
- */
+// Stat tiles are smaller (26px) — percent-like units get the whole formatted
+// string (e.g. "73.4%") with no separate unit chip; other units append the
+// dept's own unit label as the <small> suffix, UNLESS it's a $ unit (formatVal
+// already renders the $ sign / k / M abbreviation, so a second unit chip would
+// just repeat "$/wk" next to a number that already reads "$1.19M").
+function tileValueParts(kpi) {
+  if (kpi.actual == null) return { main: '—', small: '' };
+  if (isPctUnit(kpi.unit)) return { main: formatVal(kpi.actual, kpi.unit), small: '' };
+  const isDollar = typeof kpi.unit === 'string' && kpi.unit.includes('$');
+  return { main: formatVal(kpi.actual, kpi.unit), small: isDollar ? '' : (kpi.unit || '') };
+}
+
+// A couple of departments' KPI `series` are flat number arrays (e.g.
+// Operations: [0.948, 0.943, ...]); marketing.json instead stores
+// `[{week,date,target,actual}, ...]`. sparkline() expects a flat numeric
+// array, so normalize both shapes down to one here rather than teach the
+// chart helper about department-specific data quirks.
+function seriesNumbers(kpi) {
+  const s = kpi.series;
+  if (!Array.isArray(s)) return [];
+  if (s.length && s[0] && typeof s[0] === 'object') {
+    return s.map((pt) => (pt && typeof pt === 'object') ? (pt.actual ?? null) : pt);
+  }
+  return s;
+}
+
+function seriesLabels(kpi) {
+  const s = kpi.series;
+  if (Array.isArray(s) && s.length && s[0] && typeof s[0] === 'object') {
+    return s.map((pt) => 'Wk ' + (pt && pt.week != null ? pt.week : '?'));
+  }
+  return seriesNumbers(kpi).map((_, i) => 'Wk ' + (i + 1));
+}
+
+// ─── RAG + badge ─────────────────────────────────────────────────────────────
+
+function kpiRag(kpi) {
+  if (kpi.nodata || kpi.actual == null || kpi.target == null) return 'nodata';
+  return ragStatus(kpi.actual, kpi.target, kpi.direction || 'higher_better');
+}
+
+function statusBadge(rag) {
+  const map = {
+    green:  ['green',   'On Track'],
+    amber:  ['amber',   'At Risk'],
+    red:    ['red',     'Off Track'],
+    nodata: ['outline', 'No Data'],
+  };
+  const [cls, label] = map[rag] || map.nodata;
+  const dot = rag === 'nodata' ? '' : '<span class="dot"></span>';
+  return `<span class="badge badge--${cls}">${dot}${label}</span>`;
+}
+
+// ─── Source note + vs-target lines ──────────────────────────────────────────
+
+function sourceNoteFor(kpi) {
+  const parts = [];
+  if (kpi.source) parts.push(kpi.source.split(' / ')[0]);
+  if (kpi.targetSource) parts.push('target from ' + kpi.targetSource);
+  return parts.join(' · ');
+}
+
+// The hero card's "vs target X · <mechanism/context>" line. The mechanism
+// clause is the KPI's own T3-story note when one exists (Operations' OTP is
+// the only KPI with this much narrative depth); otherwise it's a plain-English
+// read of the KPI's real `rollupMethod` field — never an invented narrative.
+function mechanismContext(kpi) {
+  if (kpi.story && kpi.story.mechanismNote) return kpi.story.mechanismNote;
+  const labels = {
+    independent: 'main entered independently',
+    sum:         'sum of contributing KPIs',
+    avg:         'average of contributing KPIs',
+    manual:      'manually entered',
+    external:    'external report',
+  };
+  return kpi.rollupMethod && labels[kpi.rollupMethod] ? labels[kpi.rollupMethod] : null;
+}
+
+function heroVsLine(kpi) {
+  const targetDisplay = kpi.target != null ? formatVal(kpi.target, kpi.unit) : '—';
+  const mech = mechanismContext(kpi);
+  return `vs target <b>${targetDisplay}</b>${mech ? ' · ' + mech : ''}`;
+}
+
+function tileVsLine(kpi) {
+  if (kpi.target == null) return 'No target set';
+  const targetDisplay = formatVal(kpi.target, kpi.unit);
+  const dirNote = kpi.direction === 'lower_better' ? 'lower is better' : 'higher is better';
+  return `vs target ${targetDisplay} · ${dirNote}`;
+}
+
+// ─── Mark's "what's driving this" explanation ───────────────────────────────
+//
+// Combines (in order of groundedness):
+//  1. The KPI's own `story.text` (+ `story.denominatorNote`) — richest, most
+//     grounded (currently only Operations' OTP has this depth of narrative).
+//  2. `kpi.flagDetail` / a short `kpi.flag` string.
+//  3. `kpi.rollup.note` — roll-up/entry-mechanic note, appended if present.
+//  4. Falls back to the dept-level `bakedReply('explain-red', ...)` template
+//     when the KPI itself carries no grounded text.
 function kpiAgentExplanation(dept, kpi) {
   const parts = [];
 
-  // Story text from KPI data (most grounded)
   if (kpi.story && kpi.story.text) {
     parts.push(kpi.story.text);
-    if (kpi.story.denominatorNote) {
-      parts.push(`Denominator note: ${kpi.story.denominatorNote}`);
-    }
+    if (kpi.story.denominatorNote) parts.push(`Denominator note: ${kpi.story.denominatorNote}`);
   } else if (kpi.flagDetail) {
     parts.push(kpi.flagDetail);
   } else if (kpi.flag && typeof kpi.flag === 'string' && kpi.flag.length < 200) {
     parts.push(kpi.flag);
   }
 
-  // Rollup / entry mechanic note
   if (kpi.rollup && kpi.rollup.note) {
     parts.push(`Entry mechanic: ${kpi.rollup.note}`);
   }
 
-  // If no KPI-specific story, fall back to dept-level baked reply
   if (!parts.length) {
     const reply = bakedReply(dept.id, 'explain-red', { kpi: kpi.name });
-    // Strip the "Why is X red?\n\n" prefix for inline display
     parts.push(reply.replace(/^Why is [^\n]+\?\n\n/, '').trim());
   }
 
   return parts.filter(Boolean).join('\n\n');
 }
 
-// ─── Styles (injected once) ───────────────────────────────────────────────────
+// ─── Hero card (red/amber headline KPI) ────────────────────────────────────
 
-let overviewStylesInjected = false;
-function injectOverviewStyles() {
-  if (overviewStylesInjected) return;
-  overviewStylesInjected = true;
-  const style = document.createElement('style');
-  style.textContent = `
-    .overview-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-      gap: 16px;
-      margin-top: 8px;
-    }
-    .ov-card {
-      border-radius: var(--radius, 6px);
-      border: 1px solid var(--slate-200);
-      background: #fff;
-      overflow: hidden;
-    }
-    .ov-card--red    { border-left: 4px solid #ef4444; }
-    .ov-card--amber  { border-left: 4px solid #f59e0b; }
-    .ov-card--green  { border-left: 4px solid #22c55e; }
-    .ov-card--nodata { border-left: 4px solid var(--slate-300); }
-
-    .ov-card__head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 12px 16px 10px;
-      gap: 12px;
-    }
-    .ov-card__name {
-      font-weight: 600;
-      font-size: 0.88rem;
-      color: var(--slate-900);
-      flex: 1;
-    }
-    .ov-card__rag {
-      font-size: 0.72rem;
-      font-weight: 700;
-      letter-spacing: 0.04em;
-      padding: 2px 8px;
-      border-radius: 999px;
-    }
-    .ov-card__rag--red    { background: #fee2e2; color: #b91c1c; }
-    .ov-card__rag--amber  { background: #fef3c7; color: #92400e; }
-    .ov-card__rag--green  { background: #dcfce7; color: #166534; }
-    .ov-card__rag--nodata { background: var(--slate-100); color: var(--slate-500); }
-
-    .ov-card__vals {
-      display: flex;
-      align-items: baseline;
-      gap: 12px;
-      padding: 0 16px 10px;
-    }
-    .ov-card__actual {
-      font-family: var(--font-mono, 'IBM Plex Mono', monospace);
-      font-size: 1.6rem;
-      font-weight: 700;
-      color: var(--slate-900);
-      line-height: 1.1;
-    }
-    .ov-card__actual--red   { color: #dc2626; }
-    .ov-card__actual--amber { color: #b45309; }
-    .ov-card__actual--green { color: #16a34a; }
-    .ov-card__target-label {
-      font-size: 0.72rem;
-      color: var(--slate-500);
-    }
-    .ov-card__target-val {
-      font-family: var(--font-mono, 'IBM Plex Mono', monospace);
-      font-size: 0.82rem;
-      color: var(--slate-600);
-    }
-
-    .ov-card__agent {
-      margin: 0 16px 12px;
-      padding: 10px 12px;
-      background: #f8fafc;
-      border: 1px solid var(--slate-200);
-      border-radius: 4px;
-      font-size: 0.76rem;
-      line-height: 1.55;
-      color: var(--slate-700);
-    }
-    .ov-card__agent-head {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 0.68rem;
-      font-weight: 700;
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-      color: var(--slate-500);
-      margin-bottom: 6px;
-    }
-    .ov-card__agent-dot {
-      width: 6px; height: 6px;
-      border-radius: 50%;
-      background: var(--accent, #2f6bff);
-      display: inline-block;
-    }
-    .ov-card__agent-body {
-      white-space: pre-line;
-    }
-
-    .ov-card__footer {
-      padding: 8px 16px 12px;
-      border-top: 1px solid var(--slate-100);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .ov-card__footer-source {
-      font-size: 0.68rem;
-      color: var(--slate-400);
-    }
-    .ov-card__kpi-link {
-      font-size: 0.72rem;
-      color: var(--accent, #2f6bff);
-      text-decoration: none;
-      font-weight: 600;
-    }
-    .ov-card__kpi-link:hover { text-decoration: underline; }
-
-    .ov-section-label {
-      font-size: 0.68rem;
-      font-weight: 800;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: var(--slate-400);
-      margin: 20px 0 6px;
-    }
-    .ov-section-label:first-child { margin-top: 0; }
-
-    .ov-l1-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: 12px;
-      margin-top: 8px;
-    }
-    .ov-l1-card {
-      border-radius: var(--radius, 6px);
-      border: 1px solid var(--slate-200);
-      background: #fff;
-      padding: 14px 16px;
-    }
-    .ov-l1-card__label {
-      font-size: 0.72rem;
-      font-weight: 700;
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-      color: var(--slate-500);
-      margin-bottom: 6px;
-    }
-    .ov-l1-card__kpiname {
-      font-weight: 600;
-      font-size: 0.88rem;
-      margin-bottom: 8px;
-    }
-    .ov-l1-card__row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 0.8rem;
-    }
-    .ov-l1-card__val {
-      font-family: var(--font-mono, 'IBM Plex Mono', monospace);
-      font-weight: 700;
-      font-size: 1.1rem;
-    }
-  `;
-  document.head.appendChild(style);
-}
-
-// ─── Single status card ───────────────────────────────────────────────────────
-
-function buildStatusCard(dept, kpi, role, author) {
-  const isNoData = kpi.nodata || kpi.actual == null;
-  const rag = isNoData
-    ? 'nodata'
-    : ragStatus(kpi.actual, kpi.target, kpi.direction || 'higher_better');
-
-  const ragLabels = { red: 'RED', amber: 'AMBER', green: 'GREEN', nodata: 'No Data' };
-
-  const actualDisplay = isNoData ? '—' : formatVal(kpi.actual, kpi.unit);
-  const targetDisplay = kpi.target != null ? formatVal(kpi.target, kpi.unit) : '—';
-
-  // The AI "why" now lives as Mark's lead note inside the comment thread below
-  // (single source, no duplicate explanation block).
-  const agentBlock = '';
-
-  const sourceText = kpi.source
-    ? kpi.source.split(' / ')[0]
-    : (kpi.rollupMethod === 'independent' ? 'Mechanism B' : '');
-
-  // Comment thread on every card. Red/amber start expanded (highlighted);
-  // green / no-data start collapsed behind a "Notes" toggle.
-  // Mark's lead note uses the dept-aware explanation for red/amber (richer than
-  // the generic template); green/no-data use the default composeMarkNote framing.
-  const collapsed = !(rag === 'red' || rag === 'amber');
-  const markNote = (rag === 'red' || rag === 'amber') && !isNoData
-    ? kpiAgentExplanation(dept, kpi)
-    : undefined;
-  const commentBlock = `<div class="ov-card__comments" style="padding:0 16px 12px">
-      ${commentThreadHTML({ deptId: dept.id, kpi, rag, author, collapsed, markNote })}
-    </div>`;
+function buildHeroCard(dept, kpi) {
+  const rag = kpiRag(kpi);
+  const { main, small } = heroValueParts(kpi);
+  const spark = sparkline(seriesNumbers(kpi), {
+    w: 380, h: 88, target: kpi.target,
+    name: `${kpi.name} weekly`, labels: seriesLabels(kpi), fmt: kpi.unit,
+  }).replace('<svg class="spark"', '<svg class="spark" style="width:100%;height:auto"');
+  const sourceNote = sourceNoteFor(kpi);
+  const explanation = kpiAgentExplanation(dept, kpi);
+  const paragraphs = explanation.split('\n\n').filter(Boolean).map((p) => `<p>${p}</p>`).join('');
 
   return `
-    <div class="ov-card ov-card--${rag}">
-      <div class="ov-card__head">
-        <div class="ov-card__name">${kpi.name}</div>
-        <span class="ov-card__rag ov-card__rag--${rag}">${ragLabels[rag]}</span>
-      </div>
-      <div class="ov-card__vals">
-        <div class="ov-card__actual ov-card__actual--${rag}">${actualDisplay}</div>
-        <div>
-          <div class="ov-card__target-label">vs target</div>
-          <div class="ov-card__target-val">${targetDisplay}</div>
+    <section class="card hero-kpi" aria-label="${kpi.name} headline KPI">
+      <div class="hero-kpi__main">
+        <div class="hero-kpi__label">
+          <h3>${kpi.name}</h3>
+          ${statusBadge(rag)}
+        </div>
+        <div class="hero-kpi__value">${main}${small ? `<small>${small}</small>` : ''}</div>
+        <div class="hero-kpi__vs">${heroVsLine(kpi)}</div>
+        <div style="flex:1; display:flex; align-items:center; min-height:80px">${spark}</div>
+        <div class="hero-kpi__foot">
+          ${sourceNote ? `<span class="source-note">${sourceNote}</span>` : '<span></span>'}
+          <button class="btn btn--ghost btn--sm" data-go="kpi">Open in KPI Boards →</button>
         </div>
       </div>
-      ${agentBlock}
-      ${commentBlock}
-      <div class="ov-card__footer">
-        <span class="ov-card__footer-source">${sourceText}</span>
-        <a class="ov-card__kpi-link" href="#/dept/${dept.id}/kpi">Open in KPI Boards →</a>
+      <div class="hero-kpi__side" data-kz-side="${dept.id}::${kpi.id}">
+        <div class="ai-note">
+          <div class="ai-note__avatar">M</div>
+          <div class="ai-note__body">
+            <div class="ai-note__head">
+              <b>Mark</b><span class="muted">AI Employee</span>
+              <span class="running-head" style="color:var(--accent-text)">What's driving this</span>
+            </div>
+            <div class="ai-note__text">${paragraphs}</div>
+          </div>
+        </div>
+      </div>
+    </section>`;
+}
+
+// ─── Stat tile (on-track / no-data KPI) ────────────────────────────────────
+
+function buildStatTile(dept, kpi) {
+  const rag = kpiRag(kpi);
+  const { main, small } = tileValueParts(kpi);
+  const spark = sparkline(seriesNumbers(kpi), {
+    w: 280, h: 40, target: kpi.target, name: kpi.name, labels: seriesLabels(kpi), fmt: kpi.unit,
+  });
+  const sourceNote = sourceNoteFor(kpi);
+
+  return `
+    <section class="card stat-tile">
+      <div class="stat-tile__top">
+        <span class="stat-tile__label">${kpi.name}</span>
+        ${statusBadge(rag)}
+      </div>
+      <div class="stat-tile__value">${main}${small ? `<small>${small}</small>` : ''}</div>
+      <div class="stat-tile__vs">${tileVsLine(kpi)}</div>
+      <div class="stat-tile__spark">${spark}</div>
+      <div class="hero-kpi__foot" style="padding-top:8px">
+        ${sourceNote ? `<span class="source-note">${sourceNote}</span>` : '<span></span>'}
+        <button class="btn btn--ghost btn--sm" data-go="kpi">Open in KPI Boards →</button>
+      </div>
+    </section>`;
+}
+
+// ─── "Review Draft 8-Step" note — deep-opens the dept's linked KZ ──────────
+//
+// Finds the open (not-closed) KZ record — from data/kz-records.json — linked
+// (via `linkedKpiId`) to this headline KPI or one of its contributors (sub-
+// KPIs). For Operations' OTP that resolves to KZ-346 (linked to the
+// otp_mexico contributor); most other departments have no such record, so
+// the note is simply omitted — never fabricated. When more than one open KZ
+// matches, the furthest-along draft (most steps confirmed) wins.
+function findLinkedKz(records, dept, kpi) {
+  const candidateIds = new Set([kpi.id, ...(kpi.contributors || [])]);
+  const matches = byDept(records, dept.id)
+    .filter((r) => !r.closed && r.linkedKpiId && candidateIds.has(r.linkedKpiId));
+  if (!matches.length) return null;
+  matches.sort((a, b) => progress(b).done - progress(a).done);
+  return matches[0];
+}
+
+function kzNoteHTML(kz) {
+  const p = progress(kz);
+  const title = kz.title || kz.item || kz.kzNumber;
+  const who = kz.who ? `owned by ${kz.who}, ` : '';
+  return `
+    <div class="ai-note">
+      <div class="ai-note__avatar">M</div>
+      <div class="ai-note__body">
+        <div class="ai-note__head"><b>Mark</b></div>
+        <div class="ai-note__text">
+          <p>I've pre-drafted an 8-step on this — <b>${kz.kzNumber}</b>, "${title}" (${who}${p.done}/8 steps confirmed). It's waiting in Problem-Solving.</p>
+        </div>
+        <div style="margin-top:8px">
+          <button class="btn btn--outline btn--sm" data-go-kz="${kz.kzNumber}" data-go-kpi="${kz.linkedKpiId || ''}">Review Draft 8-Step</button>
+        </div>
       </div>
     </div>`;
 }
 
-// ─── Escape HTML for agent text ───────────────────────────────────────────────
+// Fire-and-forget, same pattern as the old Hoshin-strip splice: the board
+// already painted synchronously (dispatchView() never awaits renderOverview),
+// so once data/kz-records.json resolves we splice the second note into the
+// matching hero card's `.hero-kpi__side`. No-ops gracefully with no `fetch`
+// global (Node tests) or if the mount has since been replaced/navigated away.
+async function injectKzDraftNotes(dept, mount, headlineKpis) {
+  if (!headlineKpis.length || typeof fetch !== 'function') return;
+  let records;
+  try {
+    const res = await fetch('data/kz-records.json');
+    records = await res.json();
+  } catch { return; }
+  if (!mount.isConnected) return;
 
-function escHtml(str) {
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+  headlineKpis.forEach((kpi) => {
+    const kz = findLinkedKz(records, dept, kpi);
+    if (!kz) return;
+    const host = mount.querySelector(`[data-kz-side="${dept.id}::${kpi.id}"]`);
+    if (host) host.insertAdjacentHTML('beforeend', kzNoteHTML(kz));
+  });
 }
 
-// ─── L2 main-KPI overview ─────────────────────────────────────────────────────
+// ─── L2 (+ default) main-KPI overview ──────────────────────────────────────
 
-function renderL2Overview(dept, mount, author) {
+function renderBoardOverview(dept, mount, role) {
   const kpiList = mains(dept);
-
-  // Sort: red → amber → green → nodata
   const order = { red: 0, amber: 1, green: 2, nodata: 3 };
-  const sorted = [...kpiList].sort((a, b) => {
-    const ragA = (a.nodata || a.actual == null)
-      ? 'nodata'
-      : ragStatus(a.actual, a.target, a.direction || 'higher_better');
-    const ragB = (b.nodata || b.actual == null)
-      ? 'nodata'
-      : ragStatus(b.actual, b.target, b.direction || 'higher_better');
-    return (order[ragA] ?? 9) - (order[ragB] ?? 9);
-  });
+  const withRag = kpiList
+    .map((kpi) => ({ kpi, rag: kpiRag(kpi) }))
+    .sort((a, b) => order[a.rag] - order[b.rag]);
 
-  // Group by RAG
-  const groups = { red: [], amber: [], green: [], nodata: [] };
-  sorted.forEach(kpi => {
-    const rag = (kpi.nodata || kpi.actual == null)
-      ? 'nodata'
-      : ragStatus(kpi.actual, kpi.target, kpi.direction || 'higher_better');
-    groups[rag].push(kpi);
-  });
+  const headline = withRag.filter((x) => x.rag === 'red' || x.rag === 'amber');
+  const rest     = withRag.filter((x) => x.rag === 'green' || x.rag === 'nodata');
 
-  const sectionOrder = [
-    { key: 'red',    label: 'Needs Attention' },
-    { key: 'amber',  label: 'At Risk'         },
-    { key: 'green',  label: 'On Track'        },
-    { key: 'nodata', label: 'No Data'         },
-  ];
-
-  let sections = '';
-  sectionOrder.forEach(({ key, label }) => {
-    if (!groups[key].length) return;
-    sections += `<div class="ov-section-label">${label}</div>
-      <div class="overview-grid">
-        ${groups[key].map(kpi => buildStatusCard(dept, kpi, 'L2', author)).join('')}
-      </div>`;
-  });
-
-  // Count reds for the headline
-  const redCount  = groups.red.length;
-  const subheading = redCount > 0
-    ? `${redCount} KPI${redCount > 1 ? 's' : ''} need${redCount === 1 ? 's' : ''} attention`
+  const redCount = headline.filter((x) => x.rag === 'red').length;
+  const attentionCount = headline.length;
+  const subheading = attentionCount > 0
+    ? `${attentionCount} KPI${attentionCount > 1 ? 's' : ''} need${attentionCount === 1 ? 's' : ''} attention`
     : 'All KPIs on track or no active issues';
 
-  mount.innerHTML = `
-    <div class="team-board">
-      <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:20px">
-        <div>
-          <h2>${dept.name} — Overview</h2>
-          <p class="text-muted text-small mt-1">
-            L2 · ${dept.lead || ''} · ${subheading}
-          </p>
-        </div>
-        <a href="#/dept/${dept.id}/kpi" class="btn btn--ghost" style="font-size:0.8rem">
-          KPI Boards →
-        </a>
-      </div>
-      ${sections || '<p class="text-muted">No KPI data available.</p>'}
-      <p class="text-muted text-small mt-4" style="border-top:1px solid var(--slate-100);padding-top:12px">
-        <strong>Overview</strong> shows department main KPIs by status. Every card carries a
-        <strong>comment thread</strong> — Mark posts what's driving the number, you and the team
-        add tracking notes. Use <strong>KPI Boards</strong> for the full level-by-level breakdown.
-      </p>
-    </div>`;
+  const needsAttentionHtml = headline.length ? `
+    <div class="section-head" style="margin-top:0"><span class="running-head">Needs attention</span></div>
+    ${headline.map((x) => buildHeroCard(dept, x.kpi)).join('')}` : '';
 
-  bindComments(mount);
+  const onTrackHtml = rest.length ? `
+    <div class="section-head"${headline.length ? '' : ' style="margin-top:0"'}><span class="running-head">On track</span></div>
+    <div class="stat-grid">${rest.map((x) => buildStatTile(dept, x.kpi)).join('')}</div>` : '';
+
+  mount.innerHTML = `
+    <div class="page-head">
+      <div>
+        <span class="running-head page-head__eyebrow">${dept.name} · Team Board</span>
+        <h1>Overview</h1>
+        <p class="page-head__sub">${role} · ${dept.lead || 'Lead'} · ${subheading}</p>
+      </div>
+      <div class="page-head__side">
+        <button class="btn btn--secondary" data-go="sources">Sources</button>
+        <button class="btn btn--primary" data-go="kpi">Open KPI Boards →</button>
+      </div>
+    </div>
+    ${needsAttentionHtml}
+    ${onTrackHtml}
+    ${!kpiList.length ? '<p class="muted">No KPI data available.</p>' : ''}
+    <p class="board-hint"><b>Overview</b> shows department main KPIs by status. Red and amber cards include Mark's grounded explanation. Use <b>KPI Boards</b> for the full level-by-level breakdown with trends and operator contributions.</p>`;
+
+  // Router hooks: data-go → view (kpi/sources); data-go-kz → solve, opening
+  // the linked KZ via the SAME `?kpi=<id>&kz=<kzNumber>` handoff Ask Mark's
+  // escalation flow already uses (views/problemsolving.js resolves the real
+  // KZ record and lands on its first unconfirmed step) — never a hardcoded
+  // step number.
+  mount.addEventListener('click', (e) => {
+    const goBtn = e.target.closest('[data-go]');
+    if (goBtn) {
+      location.hash = `#/dept/${dept.id}/${goBtn.dataset.go}`;
+      return;
+    }
+    const kzBtn = e.target.closest('[data-go-kz]');
+    if (kzBtn) {
+      const kzNumber = kzBtn.dataset.goKz;
+      const kpiId = kzBtn.dataset.goKpi || '';
+      location.hash = `#/dept/${dept.id}/solve?kpi=${encodeURIComponent(kpiId)}&kz=${encodeURIComponent(kzNumber)}`;
+    }
+  });
+
+  injectKzDraftNotes(dept, mount, headline.map((x) => x.kpi));
+
+  return { redCount };
 }
 
-// ─── L1 per-location target view (Operations path) ───────────────────────────
+// ─── L1 per-location target view (Operations path) ─────────────────────────
 
 /**
- * For an L1 Operations operator: show the location board KPIs they own.
- * Falls back to a compact summary if no location board is available.
+ * For an L1 Operations operator: show the location board KPIs they own. No
+ * reference layout exists for this surface (Task 15 covers the L1 home
+ * surfaces) — kept behaviorally identical to before, re-skinned only to
+ * replace the old left-color-bar status convention with the shared `.badge`
+ * (state lives in the badge everywhere else in the redesign; this surface
+ * shouldn't be the one holdout).
  */
 function renderL1OperationsOverview(dept, mount, persona) {
-  // Try to match persona location (persona.location or fallback to first active location)
   const locId = persona && persona.location
     ? persona.location.toLowerCase()
     : (dept.locations && dept.locations[0]) || null;
@@ -417,78 +400,57 @@ function renderL1OperationsOverview(dept, mount, persona) {
     : null;
 
   if (!locBoard) {
-    // Fallback: show L2 mains
-    renderL2Overview(dept, mount);
+    renderBoardOverview(dept, mount, 'L1');
     return;
   }
 
-  // Pull OTP + PPLH KPIs from the location board
-  const otpKpi  = locBoard.kpis.find(k => k.category === 'SERVICE/DELIVERY' && k.name.includes('OTP'));
-  const pplhKpi = locBoard.kpis.find(k => k.category === 'COST' && k.name === 'PPLH');
+  const otpKpi  = locBoard.kpis.find((k) => k.category === 'SERVICE/DELIVERY' && k.name.includes('OTP'));
+  const pplhKpi = locBoard.kpis.find((k) => k.category === 'COST' && k.name === 'PPLH');
 
-  const makeL1Card = (kpi) => {
+  const makeL1Tile = (kpi) => {
     if (!kpi) return '';
     const isNoData = kpi.nodata || kpi.actual == null;
-    const rag = isNoData
-      ? 'nodata'
-      : ragStatus(kpi.actual, kpi.target, kpi.direction || 'higher_better');
-
-    const ragColors = {
-      red:    { bg: '#fee2e2', fg: '#b91c1c', label: 'Off Track' },
-      amber:  { bg: '#fef3c7', fg: '#92400e', label: 'At Risk'   },
-      green:  { bg: '#dcfce7', fg: '#166534', label: 'On Track'  },
-      nodata: { bg: '#f1f5f9', fg: '#64748b', label: 'No Data'   },
-    };
-    const rc = ragColors[rag];
+    const rag = isNoData ? 'nodata' : ragStatus(kpi.actual, kpi.target, kpi.direction || 'higher_better');
 
     return `
-      <div class="ov-l1-card" style="border-left:4px solid ${rc.fg}">
-        <div class="ov-l1-card__label">${kpi.category}</div>
-        <div class="ov-l1-card__kpiname">${kpi.name}</div>
-        <div class="ov-l1-card__row">
-          <span class="ov-l1-card__val" style="color:${rc.fg}">
-            ${isNoData ? '—' : formatVal(kpi.actual, kpi.unit)}
-          </span>
-          <span style="font-size:0.72rem;padding:2px 8px;border-radius:999px;
-                       background:${rc.bg};color:${rc.fg};font-weight:700">${rc.label}</span>
+      <section class="card stat-tile">
+        <div class="stat-tile__top">
+          <span class="stat-tile__label">${kpi.category} · ${kpi.name}</span>
+          ${statusBadge(rag)}
         </div>
-        <div style="margin-top:6px;font-size:0.72rem;color:var(--slate-500)">
-          Target: ${kpi.target != null ? formatVal(kpi.target, kpi.unit) : '—'}
-          ${kpi.latestMonth ? ` · Latest: ${kpi.latestMonth}` : ''}
+        <div class="stat-tile__value">${isNoData ? '—' : formatVal(kpi.actual, kpi.unit)}</div>
+        <div class="stat-tile__vs">
+          Target: ${kpi.target != null ? formatVal(kpi.target, kpi.unit) : '—'}${kpi.latestMonth ? ` · Latest: ${kpi.latestMonth}` : ''}
         </div>
-        ${kpi.unitNote ? `<div style="margin-top:4px;font-size:0.68rem;color:#92400e">⚠ ${kpi.unitNote}</div>` : ''}
-      </div>`;
+        ${kpi.unitNote ? `<div class="stat-tile__vs" style="color:var(--amber-text)">${kpi.unitNote}</div>` : ''}
+      </section>`;
   };
 
   mount.innerHTML = `
-    <div class="team-board">
-      <div style="margin-bottom:20px">
-        <h2>${dept.name} — My Targets</h2>
-        <p class="text-muted text-small mt-1">
-          L1 · ${locBoard.label} · ${locBoard.productionLines ? locBoard.productionLines.length : '—'} production lines
-        </p>
+    <div class="page-head">
+      <div>
+        <span class="running-head page-head__eyebrow">${dept.name} · My Targets</span>
+        <h1>Overview</h1>
+        <p class="page-head__sub">L1 · ${locBoard.label} · ${locBoard.productionLines ? locBoard.productionLines.length : '—'} production lines</p>
       </div>
-
-      <div class="ov-l1-grid">
-        ${makeL1Card(otpKpi)}
-        ${makeL1Card(pplhKpi)}
+      <div class="page-head__side">
+        <button class="btn btn--primary" data-go="kpi">Open KPI Boards →</button>
       </div>
+    </div>
+    <div class="stat-grid" style="margin-top:0">
+      ${makeL1Tile(otpKpi)}
+      ${makeL1Tile(pplhKpi)}
+    </div>
+    ${locBoard.actualsNote ? `<p class="board-hint">${locBoard.actualsNote}</p>` : ''}
+    <p class="board-hint">Your targets for <b>${locBoard.label}</b>. Use <b>KPI Boards</b> for the full location breakdown.</p>`;
 
-      ${locBoard.actualsNote ? `
-        <div style="margin-top:16px;padding:10px 14px;background:var(--slate-50);
-             border:1px solid var(--slate-200);border-radius:4px;font-size:0.75rem;
-             color:var(--slate-600)">
-          ${locBoard.actualsNote}
-        </div>` : ''}
-
-      <p class="text-muted text-small mt-4" style="border-top:1px solid var(--slate-100);padding-top:12px">
-        Your targets for <strong>${locBoard.label}</strong>.
-        <a href="#/dept/${dept.id}/kpi" style="color:var(--accent)">Open KPI Boards</a> for the full location breakdown.
-      </p>
-    </div>`;
+  mount.addEventListener('click', (e) => {
+    const goBtn = e.target.closest('[data-go]');
+    if (goBtn) location.hash = `#/dept/${dept.id}/${goBtn.dataset.go}`;
+  });
 }
 
-// ─── Public entry point ───────────────────────────────────────────────────────
+// ─── Public entry point ─────────────────────────────────────────────────────
 
 /**
  * renderOverview(dept, mount, session)
@@ -497,18 +459,11 @@ function renderL1OperationsOverview(dept, mount, persona) {
  *   Pass null/undefined session to default to L2 rendering.
  */
 export function renderOverview(dept, mount, session) {
-  injectOverviewStyles();
-
   const role = session && session.role ? session.role : 'L2';
-  const persona = session && session.persona ? session.persona : null;
-  const author = persona && persona.name
-    ? `${persona.name} (${role})`
-    : `${dept.lead || 'Lead'} (${role})`;
 
   if (role === 'L1' && dept.id === 'operations') {
     renderL1OperationsOverview(dept, mount, session ? session.persona : null);
   } else {
-    // L2 for all departments (including Operations L2 Jim Kozel view)
-    renderL2Overview(dept, mount, author);
+    renderBoardOverview(dept, mount, role);
   }
 }

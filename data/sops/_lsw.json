@@ -1,4 +1,5 @@
 {
+  "id": "_lsw",
   "title": "Leader Standard Work (LSW) — ODG Role Cadence",
   "source": "ODG LSW - 10-2025.xlsx (role-based checklist) + Formato LSW-Exec-Dir-Mgr. Rev'01.xlsx (exec planner)",
   "note": "Cadence rows extracted from the ODG LSW sheet. Three roles present: VP of ODG, ODG Manager, ODG Specialist. ~36 recurring activities per role. Format: Activity | Daily | Weekly | Bi-Weekly | Monthly | Quarterly | Hours | Description. The exec planner adds Strategic/Tactical classification, Work Type, Focus, % Time allocation, and Hoshin linkage.",

@@ -144,10 +144,15 @@ test('svgFunnel: renders the step label under each bar', () => {
   labels.forEach(l => assert.ok(svg.includes(`>${l}<`), `expected label ${l} in svg`));
 });
 
-test('svgFunnel: RAG-graded — early full-reach steps are not red, tail steps with big drop are red', () => {
-  const counts = [120, 118, 110, 100, 90, 80, 70, 10]; // sharp fall at the tail
+test('svgFunnel: viz-palette only — steepest drop-off emphasized in rust, no RAG status hues', () => {
+  const counts = [120, 118, 110, 100, 90, 80, 70, 10]; // sharp fall at the tail (drop of 60 at D8)
   const svg = svgFunnel(counts, { labels: ['D1','D2','D3','D4','D5','D6','D7','D8'] });
-  assert.ok(svg.includes('#d92d3a'), 'expected red bar present for steep drop-off');
+  // Charts use the viz palette only — never a RAG status hue as a bar fill.
+  assert.ok(!/#d92d3a|#1f9d57|#e07a12/.test(svg), 'no RAG status hex in funnel bars');
+  assert.ok(!/var\(--red\)|var\(--green\)|var\(--amber\)/.test(svg), 'no RAG status token in funnel bars');
+  // The steepest drop-off bar is emphasized in the rust viz accent; the rest use viz single.
+  assert.ok(svg.includes('hsl(9 37% 56%)'), 'expected rust viz emphasis on the largest drop-off bar');
+  assert.ok(svg.includes('hsl(197 13% 52%)'), 'expected viz single on the non-emphasized bars');
 });
 
 test('svgFunnel: empty array returns no-data svg', () => {

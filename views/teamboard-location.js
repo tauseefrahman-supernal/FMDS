@@ -1,62 +1,117 @@
 /**
- * views/teamboard-location.js — Location-aware L2 Team Board
+ * views/teamboard-location.js — KPI Boards, location model (Operations · Mechanism B)
  *
- * renderLocationBoard(dept, mount)
+ * renderLocationBoard(dept, mount)   — unchanged public signature; app.js calls this
+ *                                       only for dept.id === 'operations'.
  *
- * Used for departments with layerModel:"location" (Operations — Mechanism B).
+ * Layout ported from docs/redesign/reference/view-kpi.js (§5.2 DESIGN-GUIDE) — the
+ * `.dt`-table KPI-board idiom (caret expander, `.status-cell`, `.chip` source/entry
+ * tags, `sparkline`/`lineChart` trends, category-band rows) — wired to OUR data
+ * throughout (lib/registry.js, lib/rag.js, lib/explain.js, dept.kpis,
+ * dept.locationBoards) instead of the reference's single global DATA object. The
+ * Hoshin strip + `H<n>` chips come from views/hoshin.js (Task 9), fed by
+ * lib/hoshin.js's loadHoshin() the same fire-and-forget way views/hoshin.js's own
+ * renderHoshin() loads it — this view paints synchronously without the strip, then
+ * repaints once data/hoshin.json resolves (graceful null handling).
  *
- * Features:
- *  - Location switcher: Mexico · Norcross · Houston · Canada
- *    + disabled "no data" chips for Dominican Republic and HPI
- *  - WE main = COO-board independently-entered number with a Mechanism B note
- *  - Location tab = per-location FMDS board (from dept.locationBoards[locId])
- *    - Each location has its own real KPI set (size differs: Mexico 11, others 8)
- *    - Formats values by unit/targetType; RAG respects direction
- *    - Flags unit mismatches (PPLH, External Remakes) inline
- *  - OTP row in WE view: info affordance surfaces the T3 story
+ * Two sub-views selected by the LOCATION `.seg`:
+ *   'we'      — the COO-board main KPIs (otp/pplh/materials), Mechanism B: WE Main is
+ *               entered independently, not summed/averaged from the location subs.
+ *               An adaptive chart card sits above the table (`.seg` KPI switcher):
+ *               OTP has real weekly per-location series (`kpi.weeklyActuals`) so it
+ *               renders as a multi-line chart with the location(s) whose computed RAG
+ *               is red emphasized in `VIZ.rust` (data-driven "story location"
+ *               detection — never a hardcoded "Mexico", even though Mexico is the
+ *               only location that currently qualifies); PPLH/Materials have only a
+ *               flat WE-level `kpi.series`, so they render single-series with no
+ *               legend per §4.
+ *   <location> — the location's own real FMDS board (dept.locationBoards[id]) —
+ *               different KPI set/category taxonomy per location, category-band rows,
+ *               `manual`/`formula` chips (derived from the KPI's real `rollup.
+ *               isManualRekey`/contribution `entryType` fields — the legacy `k.rekey`/
+ *               `k.formula` fields this file used to key off never exist in
+ *               data/operations.json, so those chips silently never rendered before;
+ *               fixed here to read the fields that actually exist), and expandable
+ *               operator/line `contributions`, `subLines`, `byBuilding`, and
+ *               `supervisors` (SRR) sub-rows — whichever of those four the KPI
+ *               actually carries; sections with none of them render no caret at all.
+ *
+ * Zero-invented-data notes:
+ *   - LOCATION tabs + labels come from dept.locations/dept.noDataLocations (not a
+ *     hardcoded list) — a display-label map is the only local lookup, since the
+ *     source JSON has no id→label field.
+ *   - The "expand <KPI> for operator and line contributions" sub-head lists every
+ *     main KPI that actually has `.contributors` (otp, pplh, AND materials in our
+ *     data — the reference's own hardcoded example only names OTP/PPLH because its
+ *     sample DATA only wired two).
+ *   - hou_quality_external_remakes carries a real `actualUnit: "count"` distinct
+ *     from its `unit: "rate"` target — the old code formatted the actual with the
+ *     target's unit (showing an absurd "260200.0%"); fixed to prefer `actualUnit`
+ *     for the actual-value cell, a field that already existed in source and was
+ *     simply never read.
+ *   - Per-KPI notes on expand prefer the KPI's own real fields (`note`/`unitNote`/
+ *     `flagDetail`/`flag`/`nodataNote`/`rollup.note`) in that order; only when a KPI
+ *     carries none of them does lib/explain.js's `explainKpi(...).why` (RAG-grounded,
+ *     still real — never templated filler beyond "actual vs target") fill the gap, so
+ *     every KPI stays click-in-able the way this board always has been.
+ *   - The OTP row's dedicated red-bordered "T3 story" card only renders the fields
+ *     `kpi.story` actually carries (title/denominatorNote/backlogNote/mechanismNote).
  */
 
-import { mains, byId } from '../lib/registry.js';
-import { ragStatus }    from '../lib/rag.js';
-import { svgLine }      from '../lib/charts.js';
-import { explainKpi }   from '../lib/explain.js';
+import { mains, byId }        from '../lib/registry.js';
+import { ragStatus }          from '../lib/rag.js';
+import { explainKpi }         from '../lib/explain.js';
+import { lineChart, sparkline, wireChartHover, meter, VIZ } from '../lib/charts.js';
+import { hoshinStrip, hoshinChips, wireHoshinStrip } from './hoshin.js';
+import { loadHoshin }         from '../lib/hoshin.js';
 
-// ─── Per-KPI explanation block (top of any expansion) ────────────────────────
-// Every KPI, when clicked open, leads with a short grounded explanation:
-// what it measures · what feeds it · why it's at this RAG right now.
-function renderExplainBlock(kpi, dept, opts = {}) {
-  const colspan = opts.colspan || 6;
-  const e = explainKpi(kpi, dept, opts);
-  return `
-    <tr class="kpi-explain-row">
-      <td colspan="${colspan}" style="padding:0">
-        <div class="kpi-explain">
-          <div class="kpi-explain__label">What this KPI means</div>
-          <div class="kpi-explain__grid">
-            <div><span class="kpi-explain__k">Measures</span> ${e.definition}</div>
-            <div><span class="kpi-explain__k">Source</span> ${e.source}</div>
-            <div><span class="kpi-explain__k">Why now</span> ${e.why}</div>
-          </div>
-        </div>
-      </td>
-    </tr>`;
+// ─── Small shared helpers ───────────────────────────────────────────────────
+
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 
-// ─── Location config ─────────────────────────────────────────────────────────
+function joinWithAnd(strs) {
+  if (!strs.length) return '';
+  if (strs.length === 1) return strs[0];
+  if (strs.length === 2) return strs.join(' and ');
+  return strs.slice(0, -1).join(', ') + ' and ' + strs[strs.length - 1];
+}
 
-const ACTIVE_LOCATIONS = [
-  { id: 'mexico',   label: 'Mexico' },
-  { id: 'norcross', label: 'Norcross' },
-  { id: 'houston',  label: 'Houston' },
-  { id: 'canada',   label: 'Canada' },
-];
+function joinWithOr(strs) {
+  if (!strs.length) return '';
+  if (strs.length === 1) return strs[0];
+  if (strs.length === 2) return strs.join(' or ');
+  return strs.slice(0, -1).join(', ') + ' or ' + strs[strs.length - 1];
+}
 
-const NO_DATA_LOCATIONS = [
-  { id: 'dr',  label: 'Dominican Republic' },
-  { id: 'hpi', label: 'HPI' },
-];
+// Right-chevron; `.kpi-name__caret.is-open` rotates it 90° to point down.
+const CARET_SVG = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 3l5 5-5 5"/></svg>';
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── Location labels (display-only — ids/membership come from dept.locations /
+//     dept.noDataLocations, the real fields; this is just id → human label) ──
+
+const LOCATION_LABELS = {
+  mexico: 'Mexico', norcross: 'Norcross', houston: 'Houston', canada: 'Canada',
+  dr: 'Dominican Republic', hpi: 'HPI',
+};
+
+function locLabel(id) {
+  if (!id) return id;
+  return LOCATION_LABELS[id] || (id.charAt(0).toUpperCase() + id.slice(1));
+}
+
+function activeLocations(dept) {
+  return (dept.locations || []).map((id) => ({ id, label: locLabel(id) }));
+}
+
+function noDataLocations(dept) {
+  return (dept.noDataLocations || []).map((id) => ({ id, label: locLabel(id) }));
+}
+
+// ─── Value formatting ────────────────────────────────────────────────────────
 
 function formatVal(v, unit) {
   if (v == null) return '—';
@@ -74,200 +129,10 @@ function formatVal(v, unit) {
   return v.toLocaleString(undefined, { maximumFractionDigits: 2 });
 }
 
-function ragChip(status) {
-  const label = {
-    green:  '● On Track',
-    amber:  '● At Risk',
-    red:    '● Off Track',
-    nodata: '— No Data',
-  }[status];
-  return `<span class="rag-chip rag-chip--${status}">${label}</span>`;
-}
-
-function sourceBadge(source, kpi) {
-  // Prefer targetSource (the FMDS OS sourcing plan) over current source
-  const ts = (kpi && kpi.targetSource) ? kpi.targetSource : source;
-  if (!ts) return '';
-  const isManual = kpi && kpi.manualOnly === true;
-  const label = ts.split(' / ')[0];
-  if (isManual) {
-    return `<span class="badge" title="Manual entry — no source system" style="background:#fee2e2;color:#991b1b;border:1px solid #fca5a5">${label}</span>`;
-  }
-  const wasReKeyed = source && source !== ts &&
-    ['manual', 'hand-keyed', 'coo board', 'literal', 'bowler'].some(tok => source.toLowerCase().includes(tok));
-  if (wasReKeyed) {
-    return `<span class="badge" title="Target: ${ts} (today: re-keyed from ${source})" style="background:#f0fdf4;color:#166534;border:1px solid #86efac">${label}</span>`;
-  }
-  return `<span class="badge" title="${ts}">${label}</span>`;
-}
-
-// ─── Find location-specific sub-KPI for a main ───────────────────────────────
-
-function getLocationSub(dept, mainKpi, locationId) {
-  if (!mainKpi.contributors || !mainKpi.contributors.length) return null;
-  return mainKpi.contributors
-    .map(cid => byId(dept, cid))
-    .filter(Boolean)
-    .find(k => k.location === locationId) || null;
-}
-
-// ─── OTP Story panel (T3 narrative) ──────────────────────────────────────────
-
-function renderStoryPanel(story) {
-  if (!story) return '';
-  return `
-    <div id="otp-story-panel" style="display:none;margin-top:12px;background:var(--slate-50);
-         border:1px solid var(--slate-200);border-radius:var(--radius);padding:16px 20px;
-         font-size:0.82rem;line-height:1.6;color:var(--slate-700)">
-      <div style="font-weight:700;margin-bottom:6px;color:var(--slate-900)">${story.title}</div>
-      <p style="margin:0 0 10px 0">${story.text}</p>
-      <ul style="margin:0;padding-left:18px;list-style:disc">
-        <li><strong>Denominator:</strong> ${story.denominatorNote}</li>
-        <li><strong>Backlog:</strong> ${story.backlogNote}</li>
-        <li><strong>Mechanism:</strong> ${story.mechanismNote}</li>
-      </ul>
-    </div>`;
-}
-
-// ─── Render a single main KPI row for the selected location ──────────────────
-
-function renderMainRow(dept, mainKpi, locationId, expandedIds) {
-  const sub       = getLocationSub(dept, mainKpi, locationId);
-  const isExpanded = expandedIds.has(mainKpi.id);
-
-  // Decide what actual + series to show
-  let displayActualVal, displaySeries, isNoData;
-  if (locationId === 'we') {
-    // WE main — use main KPI's own actual (independently entered)
-    displayActualVal = mainKpi.actual;
-    displaySeries    = mainKpi.series || [];
-    isNoData         = (displayActualVal == null);
-  } else if (sub) {
-    if (sub.nodata) {
-      displayActualVal = null;
-      displaySeries    = [];
-      isNoData         = true;
-    } else {
-      displayActualVal = sub.actual;
-      displaySeries    = sub.series || [];
-      isNoData         = false;
-    }
-  } else {
-    displayActualVal = null;
-    displaySeries    = [];
-    isNoData         = true;
-  }
-
-  const rag = isNoData
-    ? 'nodata'
-    : ragStatus(displayActualVal, mainKpi.target, mainKpi.direction || 'higher_better');
-
-  const chart = displaySeries.length
-    ? svgLine(displaySeries, { target: mainKpi.target, width: 220, height: 60, mini: false })
-    : '';
-
-  const hasContribs = mainKpi.contributors && mainKpi.contributors.length > 0;
-  // Every KPI is click-in — even those with no location subs expand to show
-  // the explanation block.
-  const isExpandable = true;
-
-  // Mechanism B note for WE main
-  const mechNote = locationId === 'we' && mainKpi.rollupMethod === 'independent'
-    ? `<span class="badge badge--info" style="font-size:0.68rem;margin-left:6px"
-         title="${dept.mechanismNote || 'Mechanism B'}">Mechanism B</span>`
-    : '';
-
-  // OTP story info button
-  const isOtp = mainKpi.id === 'otp';
-  const storyBtn = isOtp && mainKpi.story
-    ? `<button id="otp-story-toggle" class="btn btn--ghost"
-              style="padding:1px 7px;font-size:0.7rem;border-radius:3px;margin-left:6px"
-              title="Show T3 OTP context story">ⓘ story</button>`
-    : '';
-
-  const toggleBtn = `<button class="btn btn--ghost expand-btn" data-kpi-id="${mainKpi.id}"
-               style="padding:2px 6px;font-size:0.7rem;border-radius:3px">
-         ${isExpanded ? '▼' : '▶'}
-       </button>`;
-
-  let rows = `
-    <tr class="main-row ${isExpandable ? 'main-row--expandable' : ''}"
-        data-kpi-id="${mainKpi.id}" data-has-contribs="${hasContribs}">
-      <td>
-        <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">
-          ${toggleBtn}
-          <span style="font-weight:500">${mainKpi.name}</span>
-          ${mechNote}
-          ${storyBtn}
-          ${isNoData ? '<span class="badge badge--warning">no data</span>' : ''}
-        </div>
-        ${isOtp && mainKpi.story ? renderStoryPanel(mainKpi.story) : ''}
-        ${locationId === 'we' && mainKpi.rollupMethod === 'independent'
-          ? `<div style="font-size:0.7rem;color:var(--slate-500);padding-left:26px;margin-top:2px">
-               Mechanism B — main is entered, not summed from locations; roll-up rule to confirm with Jim.
-             </div>` : ''}
-      </td>
-      <td class="text-right text-mono">${formatVal(mainKpi.target, mainKpi.unit)}</td>
-      <td class="text-right text-mono">${isNoData ? '—' : formatVal(displayActualVal, mainKpi.unit)}</td>
-      <td>${ragChip(rag)}</td>
-      <td>${sourceBadge(mainKpi.source, mainKpi)}</td>
-      <td>${chart}</td>
-    </tr>`;
-
-  // Expanded: lead with the explanation block, then the location sub-rows.
-  if (isExpanded) {
-    rows += renderExplainBlock(mainKpi, dept, { rag, actualOverride: displayActualVal });
-  }
-  if (isExpanded && hasContribs) {
-    const subs = mainKpi.contributors
-      .map(cid => byId(dept, cid))
-      .filter(Boolean);
-
-    rows += subs.map(subKpi => {
-      const subAct   = subKpi.nodata ? null : subKpi.actual;
-      const subRag   = subKpi.nodata ? 'nodata'
-        : ragStatus(subAct, subKpi.target, subKpi.direction || 'higher_better');
-      const subChart = subKpi.series && subKpi.series.length
-        ? svgLine(subKpi.series, { target: subKpi.target, width: 200, height: 56, mini: true })
-        : '';
-
-      // Highlight the active location's sub row
-      const isActive = subKpi.location === locationId;
-      const rowStyle = isActive
-        ? 'background:var(--accent-light);'
-        : '';
-
-      return `
-        <tr class="contributor-row" style="${rowStyle}">
-          <td style="padding-left:36px">
-            <span class="text-muted" style="font-size:0.75rem">↳</span>
-            ${subKpi.name}
-            ${isActive ? `<span style="font-size:0.65rem;color:var(--accent);font-weight:600;margin-left:4px">◀ selected</span>` : ''}
-            ${subKpi.flag ? `<span class="flag-icon" title="${subKpi.flag.replace(/"/g,'&quot;')}">⚠</span>` : ''}
-            ${subKpi.nodata ? '<span class="badge badge--warning">no data</span>' : ''}
-          </td>
-          <td class="text-right text-mono">${formatVal(subKpi.target, subKpi.unit)}</td>
-          <td class="text-right text-mono">${subKpi.nodata ? '—' : formatVal(subAct, subKpi.unit)}</td>
-          <td>${ragChip(subRag)}</td>
-          <td>${sourceBadge(subKpi.source, subKpi)}</td>
-          <td>${subChart}</td>
-        </tr>`;
-    }).join('');
-  }
-
-  return rows;
-}
-
-// ─── Per-location FMDS board helpers ─────────────────────────────────────────
-
 /**
  * Format a value from a locationBoard KPI according to its unit/targetType.
- * Different from the COO-board formatVal because:
- *  - "ratio" / "rate" → percentage
- *  - "pcs_per_labor_hour" → show raw decimal (e.g. 1.089 pcs/hr)
- *  - "aggregate_labor_hours" → show with 1 decimal and "hrs"
- *  - "count" → integer (toLocaleString)
- *  - "not_set" → "—"
+ * See formatVal's header note in the old file for the per-unit rationale —
+ * unchanged from before this rebuild.
  */
 function formatLocVal(v, unit, targetType) {
   if (v == null) return '—';
@@ -276,682 +141,626 @@ function formatLocVal(v, unit, targetType) {
   if (u === 'ratio' || u === 'rate' || u === 'percent' || u === '%' || u === 'pct') {
     return (v * 100).toFixed(1) + '%';
   }
-  if (u === 'pcs_per_labor_hour') {
-    return v.toFixed(3) + ' pcs/hr';
-  }
-  if (u === 'aggregate_labor_hours') {
-    return v.toFixed(1) + ' hrs';
-  }
-  if (u === 'count') {
-    return Math.round(v).toLocaleString();
-  }
+  if (u === 'pcs_per_labor_hour') return v.toFixed(3) + ' pcs/hr';
+  if (u === 'aggregate_labor_hours') return v.toFixed(1) + ' hrs';
+  if (u === 'count') return Math.round(v).toLocaleString();
   if (u === 'not_set') return '—';
-  // fallback
   if (Math.abs(v) >= 1_000_000) return (v / 1_000_000).toFixed(2) + 'M';
   if (Math.abs(v) >= 1_000)     return v.toLocaleString(undefined, { maximumFractionDigits: 1 });
   return v.toLocaleString(undefined, { maximumFractionDigits: 3 });
 }
 
-/** RAG for a per-location KPI. Respects target===0 safety special case. */
-function locRag(kpi) {
-  if (kpi.nodata || kpi.actual == null || kpi.target == null) return 'nodata';
-  // Houston External Remakes: target is rate, actual is count — cannot auto-RAG
-  if (kpi.flag && kpi.flag.startsWith('unit_mismatch')) return 'nodata';
-  return ragStatus(kpi.actual, kpi.target, kpi.direction || 'higher_better');
+// ─── Status cell / chips ─────────────────────────────────────────────────────
+
+function statusCell(rag) {
+  const label = { green: 'On Track', amber: 'At Risk', red: 'Off Track', nodata: 'No Data' }[rag] || 'No Data';
+  return `<span class="status-cell status-cell--${rag}"><span class="dot"></span>${label}</span>`;
 }
 
-/** Category label bar */
-function categoryBadge(category) {
-  const colors = {
-    'SAFETY':           'background:#fee2e2;color:#991b1b;border:1px solid #fca5a5',
-    'QUALITY':          'background:#fef9c3;color:#854d0e;border:1px solid #fde047',
-    'SERVICE/DELIVERY': 'background:#dbeafe;color:#1e40af;border:1px solid #93c5fd',
-    'COST':             'background:#d1fae5;color:#065f46;border:1px solid #6ee7b7',
-    'HRD':              'background:#ede9fe;color:#4c1d95;border:1px solid #c4b5fd',
-  };
-  const style = colors[category] || 'background:var(--slate-100);color:var(--slate-700)';
-  return `<span style="font-size:0.65rem;font-weight:700;padding:1px 6px;border-radius:3px;${style}">${category}</span>`;
-}
-
-/** Unit badge shown when the unit is non-obvious or has a mismatch warning */
-function unitBadge(kpi) {
-  if (!kpi.unitLabel && !kpi.unit) return '';
-  const label = kpi.unitLabel || kpi.unit;
-  if (label === 'ratio' || label === 'rate' || label === 'count' || label === 'not_set') return '';
-  const warnStyle = (kpi.flag && kpi.flag.startsWith('unit_mismatch'))
-    ? 'background:#fef3c7;color:#92400e;border:1px solid #fcd34d'
-    : 'background:var(--slate-100);color:var(--slate-600)';
-  return `<span style="font-size:0.62rem;padding:1px 5px;border-radius:3px;${warnStyle}" title="${kpi.unitNote || ''}">${label}</span>`;
-}
-
-/** Month sparkline: simple fixed-width inline SVG for monthly actuals */
-function monthSparkline(monthlyActuals, target) {
-  if (!monthlyActuals) return '';
-  const MONTHS = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
-  const vals = MONTHS.map(m => monthlyActuals[m]).filter(v => v != null && typeof v === 'number');
-  if (vals.length < 2) return '';
-  const W = 200, H = 52, pad = 4;
-  const allVals = target != null ? [...vals, target] : vals;
-  const mn = Math.min(...allVals);
-  const mx = Math.max(...allVals);
-  const range = mx - mn || 1;
-  const px = (i) => pad + (i / (vals.length - 1)) * (W - 2 * pad);
-  const py = (v) => H - pad - ((v - mn) / range) * (H - 2 * pad);
-  const pts = vals.map((v, i) => `${px(i)},${py(v)}`).join(' ');
-  const targetY = target != null ? py(target) : null;
-  const tLine = targetY != null
-    ? `<line x1="${pad}" y1="${targetY}" x2="${W - pad}" y2="${targetY}" stroke="#94a3b8" stroke-width="1" stroke-dasharray="3,2"/>`
-    : '';
-  // Color the line by final value vs target
-  let lineColor = '#64748b';
-  if (target != null && vals.length) {
-    const last = vals[vals.length - 1];
-    // Simple: flag April OTP for Mexico (0.789 vs 0.985)
-    lineColor = '#3b82f6'; // blue default
-  }
-  return `<svg width="${W}" height="${H}" style="display:block">
-    ${tLine}
-    <polyline points="${pts}" fill="none" stroke="${lineColor}" stroke-width="1.5"/>
-    ${vals.map((v, i) => `<circle cx="${px(i)}" cy="${py(v)}" r="2" fill="${lineColor}"/>`).join('')}
-  </svg>`;
-}
-
-// ─── Manual / formula entry badge ────────────────────────────────────────────
-
-/**
- * Badge indicating how a value is entered in the source FMDS Excel board.
- *   manual  → hand-keyed literal (red-tinted)
- *   formula → computed by in-sheet formula (blue-tinted)
- */
-function entryBadge(entryType, formula) {
-  if (!entryType) return '';
-  if (entryType === 'formula') {
-    const title = formula ? `Formula: ${formula}` : 'Computed by in-sheet formula';
-    return `<span class="contrib-badge contrib-badge--formula" title="${title}">formula</span>`;
-  }
-  // manual
-  return `<span class="contrib-badge contrib-badge--manual" title="Hand-keyed literal (manual re-key)">manual</span>`;
-}
-
-/** Render rollup note for OTP or PPLH (from kpi.rollup object) */
-function rollupNote(kpi) {
-  if (!kpi.rollup) return '';
-  const r = kpi.rollup;
-  const color = r.isManualRekey === false
-    ? '#1e40af'  // formula roll-up — blue
-    : '#92400e'; // manual re-key — amber
-  const icon = r.isManualRekey === false ? '⊕' : '↵';
-  return `<div style="font-size:0.68rem;color:${color};padding-left:26px;margin-top:4px;line-height:1.5">
-    ${icon} <strong>${r.isManualRekey === false ? 'Formula roll-up' : 'Manual re-key'}:</strong>
-    ${r.note || (r.formula ? `${r.method} — ${r.formula}` : r.method || '')}
-  </div>`;
-}
-
-/** Render operator/line contribution rows for OTP or PPLH */
-function renderContribRows(kpi) {
-  if (!Array.isArray(kpi.contributions) || !kpi.contributions.length) return '';
-
-  return kpi.contributions.map(c => {
-    const hasVal  = c.value != null;
-    const valStr  = hasVal ? formatLocVal(c.value, c.unit || kpi.unit, kpi.targetType) : '—';
-    const tgtStr  = c.target != null ? formatLocVal(c.target, c.unit || kpi.unit, kpi.targetType) : '—';
-
-    // RAG for this line (only when actual value exists)
-    const lineRag = hasVal && c.target != null
-      ? ragStatus(c.value, c.target, kpi.direction || 'higher_better')
-      : 'nodata';
-
-    const nodataMark = (c.nodata || !hasVal)
-      ? '<span class="badge badge--warning" style="font-size:0.6rem">no data</span>'
-      : '';
-
-    const ownerHtml = c.owner
-      ? `<span style="font-size:0.63rem;color:var(--slate-400);margin-left:6px">${c.owner}</span>`
-      : '';
-
-    const formulaHtml = c.formula
-      ? `<div style="font-size:0.62rem;color:#1e40af;padding-left:62px;margin-top:2px;font-family:var(--font-mono,'IBM Plex Mono',monospace)">${c.formula}</div>`
-      : '';
-
-    // Monthly sparkline if monthlyActuals present on contribution
-    const cSpark = c.monthlyActuals
-      ? monthSparkline(c.monthlyActuals, c.target)
-      : '';
-
-    return `
-      <tr class="contrib-operator-row">
-        <td style="padding-left:56px">
-          <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">
-            <span style="color:var(--slate-300);font-size:0.7rem">├─</span>
-            <span style="font-size:0.8rem">${c.label}</span>
-            ${entryBadge(c.entryType, c.formula)}
-            ${nodataMark}
-            ${ownerHtml}
-          </div>
-          ${formulaHtml}
-        </td>
-        <td class="text-right text-mono" style="font-size:0.8rem">${tgtStr}</td>
-        <td class="text-right text-mono" style="font-size:0.8rem">${valStr}</td>
-        <td>${ragChip(lineRag)}</td>
-        <td></td>
-        <td>${cSpark}</td>
-      </tr>`;
-  }).join('');
-}
-
-/**
- * Source badge for a per-location FMDS board KPI.
- * Shows targetSource (WPS/Business Central/etc.) if present.
- * Safety (manualOnly) items get a distinct red badge.
- * Falls back to "FMDS Board" when no targetSource set.
- */
-function locSourceBadge(kpi) {
-  if (kpi.manualOnly === true) {
-    return `<span class="badge" title="Manual entry — no source system" style="font-size:0.65rem;background:#fee2e2;color:#991b1b;border:1px solid #fca5a5">Manual entry</span>`;
-  }
+/** Target-source `.chip` — plain mono chip per §3; the manual/no-source-system
+ *  distinction lives in the tooltip, not a borrowed status hue. */
+function sourceChip(kpi) {
   const ts = kpi.targetSource || kpi.source;
-  if (!ts) {
-    return `<span class="badge" style="font-size:0.65rem">FMDS Board</span>`;
-  }
+  if (!ts) return '';
   const label = ts.split(' / ')[0];
-  const wasReKeyed = kpi.source && kpi.source !== ts &&
-    ['manual', 'hand-keyed', 'coo board', 'literal', 'bowler'].some(tok => (kpi.source || '').toLowerCase().includes(tok));
-  if (wasReKeyed) {
-    return `<span class="badge" title="Target: ${ts} (today: re-keyed)" style="font-size:0.65rem;background:#f0fdf4;color:#166534;border:1px solid #86efac">${label}</span>`;
-  }
-  return `<span class="badge" title="${ts}" style="font-size:0.65rem">${label}</span>`;
+  return `<span class="chip" title="${esc(ts)}">${esc(label)}</span>`;
 }
 
-/** Render a single per-location KPI row */
-function renderLocKpiRow(kpi, expandedLocKpis) {
-  const rag       = locRag(kpi);
-  const isExpanded = expandedLocKpis.has(kpi.id);
+/** WE-main sub-row source chip — derives the real entry-method word ("hand-keyed",
+ *  "literal", …) from the sub's own `source` field instead of hardcoding it. */
+function subSourceChip(sub) {
+  if (!sub.source) return '';
+  const parts = sub.source.split(' / ');
+  const label = parts.length > 1 ? parts[parts.length - 1] : parts[0];
+  return `<span class="chip" title="${esc(sub.source)}">${esc(label)}</span>`;
+}
 
-  // Contributions (operator/line level) take priority over subLines for OTP/PPLH
-  const hasContribs  = Array.isArray(kpi.contributions) && kpi.contributions.length > 0;
-  const hasSubLines  = !hasContribs && Array.isArray(kpi.subLines) && kpi.subLines.length > 0;
-  const hasByBldg    = !hasContribs && !hasSubLines && Array.isArray(kpi.byBuilding) && kpi.byBuilding.length > 0;
-  const hasSups      = !hasContribs && !hasSubLines && !hasByBldg && Array.isArray(kpi.supervisors) && kpi.supervisors.length > 0;
-  const hasSubRows   = hasContribs || hasSubLines || hasByBldg || hasSups;
-  // Every KPI is click-in — those with no sub-rows still expand for the explanation.
-  const hasExpandable = true;
+/** manual/formula `.chip` — sage-tinted variant for formula, matching the
+ *  reference's own inline-style treatment (no new CSS class needed). */
+function entryChip(kind) {
+  if (kind === 'formula') {
+    return `<span class="chip" style="border-color:hsl(var(--action-4));background:hsl(var(--action-1));color:var(--accent-text)" title="Computed by in-sheet formula">formula</span>`;
+  }
+  if (kind === 'manual') {
+    return `<span class="chip" title="Hand-keyed literal">manual</span>`;
+  }
+  return '';
+}
 
-  const spark = kpi.monthlyActuals
-    ? monthSparkline(kpi.monthlyActuals, kpi.target)
+// ─── Monthly-series sparkline (shared by WE-main .note fallback + loc boards) ─
+
+const MONTH_ORDER = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+
+function monthlySeries(monthlyActuals) {
+  const keys = Object.keys(monthlyActuals || {});
+  const order = MONTH_ORDER.filter((m) => keys.includes(m) || keys.includes(m.toLowerCase()));
+  const values = order.map((m) => {
+    const v = monthlyActuals[m] != null ? monthlyActuals[m] : monthlyActuals[m.toLowerCase()];
+    return typeof v === 'number' ? v : null;
+  });
+  const labels = order.map((m) => m[0] + m.slice(1).toLowerCase());
+  return { values, labels };
+}
+
+function monthSparklineSvg(monthlyActuals, target, name, unit) {
+  const { values, labels } = monthlySeries(monthlyActuals);
+  if (values.filter((v) => v != null).length < 2) return '';
+  return sparkline(values, { w: 132, h: 34, target, name, labels, fmt: unit });
+}
+
+// ─── Deep-link hash params (read-once on mount, matching the `?kpi=&kz=`
+//     pattern views/problemsolving.js already uses) ──────────────────────────
+
+function currentHashParams() {
+  const hashQuery = location.hash.includes('?') ? location.hash.split('?')[1] : '';
+  return new URLSearchParams(hashQuery);
+}
+
+// ─── Per-KPI "why" notes on expand ───────────────────────────────────────────
+
+function weMainNoteLines(kpi, dept, rag) {
+  // OTP's dedicated red-bordered story card already carries this narrative —
+  // don't restate it a second time in the row's own flag-note.
+  if (kpi.story) return [];
+  const lines = [];
+  if (kpi.note) lines.push(kpi.note);
+  if (!lines.length) {
+    const why = explainKpi(kpi, dept, { rag }).why;
+    if (why) lines.push(why);
+  }
+  return lines;
+}
+
+function locNoteLines(kpi, dept, rag) {
+  const lines = [];
+  if (kpi.unitNote) lines.push(kpi.unitNote);
+  if (kpi.flagDetail) lines.push(kpi.flagDetail);
+  else if (kpi.flag && typeof kpi.flag === 'string') lines.push(kpi.flag);
+  if (kpi.nodataNote) lines.push(kpi.nodataNote);
+  if (kpi.rollup && kpi.rollup.note) lines.push(kpi.rollup.note);
+  if (!lines.length) {
+    const why = explainKpi(kpi, dept, { rag }).why;
+    if (why) lines.push(why);
+  }
+  return lines;
+}
+
+// ─── WE Main (COO board) — rows ──────────────────────────────────────────────
+
+function weMainSubRow(dept, mainKpi, sub) {
+  const isNoData = sub.nodata || sub.actual == null;
+  const rag = isNoData ? 'nodata' : ragStatus(sub.actual, mainKpi.target, mainKpi.direction || 'higher_better');
+  const label = locLabel(sub.location) || sub.name;
+  const series = sub.series || [];
+  const spark = series.length
+    ? sparkline(series, { w: 132, h: 34, target: mainKpi.target, name: `${label} ${mainKpi.name}`, labels: series.map((_, i) => 'Wk ' + (i + 1)), fmt: mainKpi.unit })
     : '';
+  return `
+    <tr class="kpi-sub">
+      <td>${esc(label)}${sub.flag ? `<div class="kpi-flag-note" style="margin-left:0">${esc(sub.flag)}</div>` : ''}</td>
+      <td class="num">${formatVal(mainKpi.target, mainKpi.unit)}</td>
+      <td class="num">${isNoData ? '—' : formatVal(sub.actual, mainKpi.unit)}</td>
+      <td>${statusCell(rag)}</td>
+      <td>${subSourceChip(sub)}</td>
+      <td>${spark}</td>
+    </tr>`;
+}
 
-  // Flag icons
-  const flagHtml = kpi.flag
-    ? `<span class="flag-icon" title="${String(kpi.flag).replace(/"/g, '&quot;')}">⚠</span>`
+function weMainRow(dept, kpi, hoshin, expandedIds) {
+  const isExpanded = expandedIds.has(kpi.id);
+  const isNoData = kpi.actual == null;
+  const rag = isNoData ? 'nodata' : ragStatus(kpi.actual, kpi.target, kpi.direction || 'higher_better');
+  const mechChip = kpi.rollupMethod === 'independent'
+    ? `<span class="chip" title="${esc(dept.mechanismNote || '')}">Mechanism B</span>`
     : '';
-  const mxOnlyBadge = kpi.mexicoOnly
-    ? `<span style="font-size:0.6rem;padding:1px 5px;border-radius:3px;background:#ede9fe;color:#5b21b6;border:1px solid #c4b5fd">Mexico only</span>`
-    : '';
-  const nodataBadge = kpi.nodata
-    ? `<span class="badge badge--warning">no data</span>`
-    : '';
-
-  const toggleBtn = hasExpandable
-    ? `<button class="btn btn--ghost loc-expand-btn" data-loc-kpi="${kpi.id}"
-               style="padding:2px 6px;font-size:0.7rem;border-radius:3px">${isExpanded ? '▼' : '▶'}</button>`
-    : '<span style="display:inline-block;width:22px"></span>';
-
-  // Contribution count badge (for OTP/PPLH with contributions)
-  const contribCountBadge = hasContribs && !isExpanded
-    ? `<span style="font-size:0.63rem;padding:1px 6px;border-radius:3px;background:var(--slate-100);
-           color:var(--slate-600);margin-left:4px">${kpi.contributions.length} lines</span>`
+  const hchips = hoshin ? hoshinChips(hoshin, dept) : '';
+  const series = kpi.series || [];
+  const spark = series.length
+    ? sparkline(series, { w: 132, h: 34, target: kpi.target, name: kpi.name + ' trend', labels: series.map((_, i) => 'Wk ' + (i + 1)), fmt: kpi.unit })
     : '';
 
   let rows = `
-    <tr class="main-row ${hasExpandable ? 'main-row--expandable' : ''}" data-loc-kpi-id="${kpi.id}">
+    <tr class="kpi-row">
       <td>
-        <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">
-          ${toggleBtn}
-          ${categoryBadge(kpi.category)}
-          <span style="font-weight:500">${kpi.name}</span>
-          ${unitBadge(kpi)}
-          ${flagHtml}
-          ${mxOnlyBadge}
-          ${nodataBadge}
-          ${contribCountBadge}
+        <div class="kpi-name">
+          <button class="kpi-name__caret ${isExpanded ? 'is-open' : ''}" data-row="${kpi.id}" aria-expanded="${isExpanded}" aria-label="Expand ${esc(kpi.name)}">${CARET_SVG}</button>
+          ${esc(kpi.name)}
+          ${mechChip}
+          ${hchips}
         </div>
-        ${kpi.unitNote ? `<div style="font-size:0.68rem;color:#92400e;padding-left:26px;margin-top:2px">⚠ ${kpi.unitNote}</div>` : ''}
-        ${kpi.nodataNote ? `<div style="font-size:0.68rem;color:var(--slate-500);padding-left:26px;margin-top:2px">${kpi.nodataNote}</div>` : ''}
-        ${kpi.flagDetail ? `<div style="font-size:0.68rem;color:#b91c1c;padding-left:26px;margin-top:2px">⚠ ${kpi.flagDetail}</div>` : ''}
-        ${hasContribs ? rollupNote(kpi) : ''}
+        ${isExpanded ? weMainNoteLines(kpi, dept, rag).map((n) => `<div class="kpi-flag-note">${esc(n)}</div>`).join('') : ''}
       </td>
-      <td class="text-right text-mono">${kpi.target == null ? '—' : formatLocVal(kpi.target, kpi.unit, kpi.targetType)}</td>
-      <td class="text-right text-mono">${kpi.nodata || kpi.actual == null ? '—' : formatLocVal(kpi.actual, kpi.unit, kpi.targetType)}</td>
-      <td>${ragChip(rag)}</td>
-      <td>${locSourceBadge(kpi)}</td>
+      <td class="num">${formatVal(kpi.target, kpi.unit)}</td>
+      <td class="num" style="font-weight:600">${isNoData ? '—' : formatVal(kpi.actual, kpi.unit)}</td>
+      <td>${statusCell(rag)}</td>
+      <td>${sourceChip(kpi)}</td>
       <td>${spark}</td>
     </tr>`;
 
-  // Expanded: lead with the explanation block, then operator contributions
-  // (OTP/PPLH) or sub-lines/buildings/supervisors where they exist.
   if (isExpanded) {
-    rows += renderExplainBlock(kpi, { id: 'operations' }, { rag });
-    if (kpi.rollup && !hasContribs) rows += `<tr class="kpi-explain-tail"><td colspan="6" style="padding:0">${rollupNote(kpi)}</td></tr>`;
+    const subs = (kpi.contributors || []).map((cid) => byId(dept, cid)).filter(Boolean);
+    rows += subs.map((sub) => weMainSubRow(dept, kpi, sub)).join('');
   }
-  if (isExpanded && hasSubRows) {
-    if (hasContribs) {
-      rows += renderContribRows(kpi);
-    } else {
-      const items = hasSubLines ? kpi.subLines
-        : hasByBldg ? kpi.byBuilding.map(b => ({
-            line: `Building ${b.building}`,
-            target: b.target, actual: b.actual
-          }))
-        : kpi.supervisors.map(s => ({
-            line: `${s.name} (${s.role})`,
-            target: s.target, actual: s.actual,
-            note: s.note
-          }));
-
-      rows += items.map(sub => {
-        const subActual = sub.actual != null ? sub.actual
-          : (sub.monthlyActuals ? Object.values(sub.monthlyActuals).filter(v => v != null).pop() : null);
-        const subRag = (subActual == null || sub.target == null)
-          ? 'nodata'
-          : ragStatus(subActual, sub.target, kpi.direction || 'higher_better');
-        const subMonthsSpark = sub.monthlyActuals
-          ? monthSparkline(sub.monthlyActuals, sub.target)
-          : '';
-        return `
-          <tr class="contributor-row">
-            <td style="padding-left:48px">
-              <span class="text-muted" style="font-size:0.75rem">↳</span>
-              ${sub.line || sub.name || ''}
-              ${sub.note ? `<span style="font-size:0.65rem;color:var(--slate-500);margin-left:4px">${sub.note}</span>` : ''}
-              ${subActual == null ? '<span class="badge badge--warning">no data</span>' : ''}
-            </td>
-            <td class="text-right text-mono">${sub.target == null ? '—' : formatLocVal(sub.target, kpi.unit, kpi.targetType)}</td>
-            <td class="text-right text-mono">${subActual == null ? '—' : formatLocVal(subActual, kpi.unit, kpi.targetType)}</td>
-            <td>${ragChip(subRag)}</td>
-            <td></td>
-            <td>${subMonthsSpark}</td>
-          </tr>`;
-      }).join('');
-    }
-  }
-
   return rows;
 }
 
-/** Build the per-location FMDS board table body */
-function buildLocBoardTable(locBoard, filterText, expandedLocKpis) {
-  if (!locBoard || !locBoard.kpis || !locBoard.kpis.length) {
-    return `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--slate-500)">
-      No per-location board data available.</td></tr>`;
-  }
-  let kpis = locBoard.kpis;
-  if (filterText) {
-    kpis = kpis.filter(k =>
-      k.name.toLowerCase().includes(filterText.toLowerCase()) ||
-      k.category.toLowerCase().includes(filterText.toLowerCase())
-    );
-  }
-  if (!kpis.length) {
-    return `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--slate-500)">
-      No KPIs match "${filterText}"</td></tr>`;
-  }
-  return kpis.map(k => renderLocKpiRow(k, expandedLocKpis)).join('');
+// ─── OTP "T3 story" card ─────────────────────────────────────────────────────
+
+function storyPanelHTML(story) {
+  if (!story) return '';
+  const fields = [
+    story.denominatorNote ? ['Denominator', story.denominatorNote] : null,
+    story.backlogNote ? ['Backlog', story.backlogNote] : null,
+    story.mechanismNote ? ['Mechanism', story.mechanismNote] : null,
+  ].filter(Boolean);
+  if (!fields.length) return '';
+  return `
+    <section class="card card--pad" style="margin-top:16px; border-left:3px solid var(--red)">
+      <span class="running-head">${esc(story.title || 'Context story')}</span>
+      <div class="field-list" style="margin-top:12px; grid-template-columns:repeat(auto-fit,minmax(260px,1fr))">
+        ${fields.map(([label, value]) => `<div class="field"><span class="field__label">${esc(label)}</span><span class="field__value">${esc(value)}</span></div>`).join('')}
+      </div>
+    </section>`;
 }
 
-/** Header strip shown above the per-location table */
-function buildLocBoardHeader(locBoard) {
-  if (!locBoard) return '';
+// ─── Adaptive chart card (WE Main) ───────────────────────────────────────────
+
+/** Contributor subs whose computed RAG is red — the data-driven "drag" set
+ *  (only ever Mexico today, but never hardcoded as such). */
+function dragSubsFor(dept, kpi) {
+  if (!(kpi.weeklyActuals && kpi.weeklyActuals.weeks)) return [];
+  const subs = (kpi.contributors || []).map((cid) => byId(dept, cid)).filter(Boolean);
+  return subs.filter((s) => !s.nodata && s.actual != null &&
+    ragStatus(s.actual, kpi.target, kpi.direction || 'higher_better') === 'red');
+}
+
+function chartMetaFor(dept, kpi) {
+  const isMulti = !!(kpi.weeklyActuals && kpi.weeklyActuals.weeks);
+  if (isMulti) {
+    const weeks = kpi.weeklyActuals.weeks;
+    const title = `${kpi.name} by location — weekly, weeks ${weeks[0]}–${weeks[weeks.length - 1]}`;
+    const subs = (kpi.contributors || []).map((cid) => byId(dept, cid)).filter(Boolean);
+    const dragSubs = dragSubsFor(dept, kpi);
+    const dragIds = new Set(dragSubs.map((s) => s.location));
+    const nearSubs = subs.filter((s) => !dragIds.has(s.location) && !s.nodata && s.actual != null);
+    let sub;
+    if (dragSubs.length) {
+      const dragNames = dragSubs.map((s) => locLabel(s.location));
+      const nearNames = nearSubs.map((s) => locLabel(s.location));
+      sub = `${joinWithAnd(dragNames)} ${dragNames.length > 1 ? 'are' : 'is'} the drag on the WE main.`
+        + (nearNames.length ? ` ${joinWithAnd(nearNames)} hold near target.` : '');
+    } else {
+      sub = 'All active locations report within range of target.';
+    }
+    return { title, sub, isMulti: true, dragIds };
+  }
+  const series = kpi.series || [];
+  return {
+    title: `${kpi.name} — weekly, weeks 1–${series.length}`,
+    sub: kpi.note || `${kpi.direction === 'lower_better' ? 'Lower is better.' : 'Higher is better.'} Target ${formatVal(kpi.target, kpi.unit)}.`,
+    isMulti: false,
+  };
+}
+
+function weMainChartSvg(kpi, meta) {
+  const isRatio = kpi.unit === 'ratio';
+  const fmtY = isRatio ? (v) => Math.round(v * 100) + '%' : (v) => v.toFixed(0);
+  if (meta.isMulti) {
+    const weeks = kpi.weeklyActuals.weeks;
+    const locKeys = Object.keys(kpi.weeklyActuals).filter((k) => k !== 'weeks');
+    const rank = (k) => (k === 'we' ? 1 : meta.dragIds.has(k) ? 2 : 0);
+    const ordered = locKeys.slice().sort((a, b) => rank(a) - rank(b));
+    const series = ordered.map((locKey) => {
+      const isWe = locKey === 'we';
+      const isDrag = meta.dragIds.has(locKey);
+      return {
+        name: isWe ? 'WE Main' : locLabel(locKey),
+        data: kpi.weeklyActuals[locKey],
+        color: isWe ? VIZ.single : isDrag ? VIZ.rust : VIZ.contextLine,
+        soft: isDrag ? VIZ.rustSoft : undefined,
+        emphasis: isDrag,
+      };
+    });
+    return lineChart({
+      w: 900, h: 280, target: kpi.target, fmt: kpi.unit, fmtY,
+      label: `Weekly ${kpi.name} by location`,
+      xLabels: weeks.map((w) => 'Wk ' + w),
+      series,
+    });
+  }
+  return lineChart({
+    w: 900, h: 240, target: kpi.target, fmt: kpi.unit, fmtY,
+    label: kpi.name + ' weekly actual vs target',
+    xLabels: (kpi.series || []).map((_, i) => 'Wk ' + (i + 1)),
+    series: [{ name: 'WE Main', data: kpi.series || [], color: VIZ.single, soft: VIZ.singleSoft, emphasis: true }],
+  });
+}
+
+function chartLegendHTML(meta, kpi) {
+  if (!meta.isMulti) return '';
+  const items = [];
+  [...meta.dragIds].forEach((id) => {
+    items.push(`<span class="legend__item"><span class="legend__line" style="background:${VIZ.rust}"></span>${esc(locLabel(id))}</span>`);
+  });
+  items.push(`<span class="legend__item"><span class="legend__line" style="background:${VIZ.single}"></span>WE Main</span>`);
+  const otherCount = Object.keys(kpi.weeklyActuals).filter((k) => k !== 'weeks' && k !== 'we' && !meta.dragIds.has(k)).length;
+  if (otherCount) items.push(`<span class="legend__item"><span class="legend__line" style="background:${VIZ.contextLine}"></span>Other locations</span>`);
+  return `<div class="legend">${items.join('')}</div>`;
+}
+
+function chartKpiSegHTML(kpiList, selectedId) {
+  const items = kpiList.map((k) => {
+    const label = k.name.split(' (')[0];
+    return `<button class="seg__item ${selectedId === k.id ? 'is-on' : ''}" data-chart-kpi="${k.id}">${esc(label)}</button>`;
+  }).join('');
+  return `<div class="seg" role="tablist" aria-label="Chart KPI">${items}</div>`;
+}
+
+// ─── WE Main section (chart card + table) ────────────────────────────────────
+
+function weMainSectionHTML(dept, hoshin, state) {
+  const allMains = mains(dept);
+  const selKpi = byId(dept, state.chartKpi) || allMains[0];
+
+  const chartHtml = selKpi ? (() => {
+    const meta = chartMetaFor(dept, selKpi);
+    const svg = weMainChartSvg(selKpi, meta);
+    const legend = chartLegendHTML(meta, selKpi);
+    return `
+    <section class="card" style="margin-bottom:24px">
+      <div style="padding:24px 24px 8px; display:flex; justify-content:space-between; gap:16px; align-items:flex-start; flex-wrap:wrap">
+        <div style="min-width:260px; flex:1">
+          <h3>${esc(meta.title)}</h3>
+          <p class="page-head__sub" style="margin-top:4px; max-width:72ch">${esc(meta.sub)}</p>
+        </div>
+        <div style="display:flex; flex-direction:column; align-items:flex-end; gap:10px">
+          ${chartKpiSegHTML(allMains, selKpi.id)}
+          ${legend}
+        </div>
+      </div>
+      <div style="padding:0 24px 20px">${svg}</div>
+    </section>`;
+  })() : '';
+
+  const tableKpis = state.filterText
+    ? allMains.filter((k) => k.name.toLowerCase().includes(state.filterText.toLowerCase()))
+    : allMains;
+
+  const rowsHtml = tableKpis.length
+    ? tableKpis.map((k) => weMainRow(dept, k, hoshin, state.expandedIds)).join('')
+    : `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-faint)">No KPIs match "${esc(state.filterText)}"</td></tr>`;
+
+  const storyKpi = allMains.find((k) => k.story && state.expandedIds.has(k.id));
+
+  return `
+  ${chartHtml}
+  <div class="table-wrap"><div class="table-scroll">
+    <table class="dt">
+      <thead><tr>
+        <th style="min-width:340px">KPI</th><th class="num">Target</th><th class="num">Actual</th>
+        <th>Status</th><th>Target source</th><th>Trend</th>
+      </tr></thead>
+      <tbody>${rowsHtml}</tbody>
+    </table>
+  </div></div>
+  ${storyKpi ? storyPanelHTML(storyKpi.story) : ''}
+  <p class="board-hint"><b>WE Main</b> is entered independently on the COO Board (${esc(dept.mechanismNote || 'Mechanism B')}). <b>Location tabs</b> open each per-location FMDS board — real KPI sets differ by location. <span class="chip">hand-keyed</span> marks a manual literal; a sage-tinted <span class="chip" style="border-color:hsl(var(--action-4));background:hsl(var(--action-1));color:var(--accent-text)">formula</span> chip marks a computed roll-up. Click a row's caret to expand.</p>`;
+}
+
+// ─── Per-location FMDS board ──────────────────────────────────────────────────
+
+function locSummaryStripHTML(locBoard) {
   const lines = locBoard.productionLines || [];
   return `
-    <div style="background:var(--slate-50);border:1px solid var(--slate-200);border-radius:var(--radius);
-         padding:10px 16px;margin-bottom:12px;font-size:0.78rem;line-height:1.6">
-      <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:baseline">
-        <span><strong>${locBoard.label}</strong> FMDS Board</span>
-        <span class="text-muted">${locBoard.kpiCount} KPI column-pairs in source</span>
-        <span class="text-muted">${locBoard.productionLines ? locBoard.productionLines.length : 0} production lines</span>
-        ${locBoard.weeklyLabel === 'DAYS' ? '<span class="badge">Cadence: DAYS</span>' : ''}
-      </div>
-      ${lines.length
-        ? `<div style="margin-top:6px;color:var(--slate-500);font-size:0.7rem">
-             Lines: ${lines.join(' · ')}
-           </div>` : ''}
-      ${locBoard.actualsNote
-        ? `<div style="margin-top:4px;color:var(--slate-600);font-size:0.7rem;font-style:italic">
-             ${locBoard.actualsNote}
-           </div>` : ''}
-    </div>`;
+    <section class="loc-note" style="margin-bottom:16px">
+      <span class="loc-note__stat"><b>${esc(locBoard.label)}</b> FMDS board</span>
+      <span class="loc-note__stat"><b>${locBoard.kpiCount}</b> KPI column-pairs in source</span>
+      <span class="loc-note__stat"><b>${lines.length}</b> production line${lines.length === 1 ? '' : 's'}</span>
+      ${locBoard.buildings != null ? `<span class="loc-note__stat"><b>${locBoard.buildings}</b> building${locBoard.buildings > 1 ? 's' : ''}</span>` : ''}
+      ${locBoard.weeklyLabel === 'DAYS' ? '<span class="badge badge--neutral">Cadence: DAYS</span>' : ''}
+      ${lines.length ? `<span class="loc-note__stat faint" style="flex-basis:100%; font-size:12.5px">Lines: ${esc(lines.join(' · '))}</span>` : ''}
+      ${locBoard.actualsNote ? `<span class="loc-note__stat faint" style="flex-basis:100%; font-size:12.5px">${esc(locBoard.actualsNote)}</span>` : ''}
+    </section>`;
 }
 
-// ─── Full table ───────────────────────────────────────────────────────────────
+function lastNonNull(obj) {
+  if (!obj) return null;
+  const vals = Object.values(obj).filter((v) => typeof v === 'number');
+  return vals.length ? vals[vals.length - 1] : null;
+}
 
-function buildTable(dept, locationId, filterText, expandedIds) {
-  const mainKpis = mains(dept).filter(k =>
-    !filterText || k.name.toLowerCase().includes(filterText.toLowerCase())
-  );
+function genericSubRowHTML(kpi, label, target, actual) {
+  const hasVal = actual != null;
+  const rag = hasVal && target != null ? ragStatus(actual, target, kpi.direction || 'higher_better') : 'nodata';
+  return `
+    <tr class="kpi-sub">
+      <td>${esc(label)}</td>
+      <td class="num">${target == null ? '—' : formatLocVal(target, kpi.unit, kpi.targetType)}</td>
+      <td class="num">${hasVal ? formatLocVal(actual, kpi.unit, kpi.targetType) : '—'}</td>
+      <td>${statusCell(rag)}</td>
+      <td></td>
+      <td></td>
+    </tr>`;
+}
 
-  if (!mainKpis.length) {
-    return `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--slate-500)">
-      No KPIs match "${filterText}"</td></tr>`;
+function contribRowHTML(kpi, c) {
+  const hasVal = c.value != null;
+  const rag = hasVal && c.target != null ? ragStatus(c.value, c.target, kpi.direction || 'higher_better') : 'nodata';
+  const ownerHtml = c.owner ? ` <span class="faint" style="font-size:11px">${esc(c.owner)}</span>` : '';
+  const spark = c.monthlyActuals ? monthSparklineSvg(c.monthlyActuals, c.target, `${c.label} monthly`, c.unit || kpi.unit) : '';
+  return `
+    <tr class="kpi-sub">
+      <td>${esc(c.label)} ${entryChip(c.entryType)}${ownerHtml}</td>
+      <td class="num">${c.target != null ? formatLocVal(c.target, c.unit || kpi.unit, kpi.targetType) : '—'}</td>
+      <td class="num">${hasVal ? formatLocVal(c.value, c.unit || kpi.unit, kpi.targetType) : '—'}</td>
+      <td>${statusCell(rag)}</td>
+      <td></td>
+      <td>${spark}</td>
+    </tr>`;
+}
+
+function supervisorRowHTML(kpi, p) {
+  const hasVal = p.actual != null;
+  const target = p.target != null ? p.target : kpi.target;
+  const rag = hasVal && target != null ? ragStatus(p.actual, target, kpi.direction || 'higher_better') : 'nodata';
+  const tone = rag === 'green' ? 'green' : rag === 'amber' ? 'amber' : 'red';
+  return `
+    <tr class="kpi-sub">
+      <td>${esc(p.name)} <span class="faint" style="font-weight:400">· ${esc(p.role || '')}</span></td>
+      <td class="num">${target != null ? formatLocVal(target, kpi.unit, kpi.targetType) : '—'}</td>
+      <td class="num">${hasVal ? formatLocVal(p.actual, kpi.unit, kpi.targetType) : '—'}</td>
+      <td>${statusCell(rag)}</td>
+      <td></td>
+      <td style="min-width:120px">${hasVal && target != null ? meter(Math.min(p.actual / target, 1), tone) : ''}</td>
+    </tr>`;
+}
+
+/** Expandable sub-rows for a per-location KPI — whichever of these four real
+ *  shapes the KPI actually carries (never more than one is populated). */
+function subRowsForLocKpi(kpi) {
+  if (Array.isArray(kpi.contributions) && kpi.contributions.length) {
+    return kpi.contributions.map((c) => contribRowHTML(kpi, c)).join('');
   }
-
-  return mainKpis
-    .map(kpi => renderMainRow(dept, kpi, locationId, expandedIds))
-    .join('');
+  if (Array.isArray(kpi.subLines) && kpi.subLines.length) {
+    return kpi.subLines.map((s) => genericSubRowHTML(kpi, s.line, s.target, lastNonNull(s.monthlyActuals))).join('');
+  }
+  if (Array.isArray(kpi.byBuilding) && kpi.byBuilding.length) {
+    return kpi.byBuilding.map((b) => genericSubRowHTML(kpi, `Building ${b.building}`, b.target, b.actual)).join('');
+  }
+  if (Array.isArray(kpi.supervisors) && kpi.supervisors.length) {
+    return kpi.supervisors.map((p) => supervisorRowHTML(kpi, p)).join('');
+  }
+  return '';
 }
 
-// ─── Location switcher HTML ───────────────────────────────────────────────────
+function hasSubRows(kpi) {
+  return (Array.isArray(kpi.contributions) && kpi.contributions.length > 0)
+    || (Array.isArray(kpi.subLines) && kpi.subLines.length > 0)
+    || (Array.isArray(kpi.byBuilding) && kpi.byBuilding.length > 0)
+    || (Array.isArray(kpi.supervisors) && kpi.supervisors.length > 0);
+}
 
-function buildSwitcher(activeLocation) {
-  const activeChips = ACTIVE_LOCATIONS.map(loc => {
-    const isActive = activeLocation === loc.id;
-    return `<button class="loc-chip ${isActive ? 'loc-chip--active' : ''}" data-loc="${loc.id}">
-      ${loc.label}
-    </button>`;
+function locRowHTML(dept, kpi, expandedLocIds) {
+  const isNoData = kpi.nodata || kpi.actual == null;
+  const unitMismatch = kpi.flag && String(kpi.flag).startsWith('unit_mismatch');
+  const rag = (isNoData || unitMismatch) ? 'nodata' : ragStatus(kpi.actual, kpi.target, kpi.direction || 'higher_better');
+  const isExpanded = expandedLocIds.has(kpi.id);
+  const entryKind = kpi.rollup ? (kpi.rollup.isManualRekey ? 'manual' : 'formula') : null;
+  const spark = kpi.monthlyActuals ? monthSparklineSvg(kpi.monthlyActuals, kpi.target, kpi.name + ' monthly', kpi.unit) : '';
+  // hou_quality_external_remakes: target unit is 'rate', actual is a raw count
+  // (real `actualUnit` field) — format the actual with its own real unit.
+  const actualUnit = kpi.actualUnit || kpi.unit;
+
+  let rows = `
+    <tr class="kpi-row">
+      <td>
+        <div class="kpi-name">
+          <button class="kpi-name__caret ${isExpanded ? 'is-open' : ''}" data-loc-row="${kpi.id}" aria-expanded="${isExpanded}" aria-label="Expand ${esc(kpi.name)}">${CARET_SVG}</button>
+          ${esc(kpi.name)}
+          ${entryKind ? entryChip(entryKind) : ''}
+        </div>
+        ${isExpanded ? locNoteLines(kpi, dept, rag).map((n) => `<div class="kpi-flag-note">${esc(n)}</div>`).join('') : ''}
+      </td>
+      <td class="num">${kpi.target == null ? '—' : formatLocVal(kpi.target, kpi.unit, kpi.targetType)}</td>
+      <td class="num" style="font-weight:600">${isNoData ? '—' : formatLocVal(kpi.actual, actualUnit, kpi.targetType)}</td>
+      <td>${statusCell(rag)}</td>
+      <td>${sourceChip(kpi)}</td>
+      <td>${spark}</td>
+    </tr>`;
+
+  if (isExpanded) rows += subRowsForLocKpi(kpi);
+  return rows;
+}
+
+function buildLocRows(dept, kpis, expandedLocIds) {
+  let currentCat = null;
+  return kpis.map((k) => {
+    const catRow = k.category !== currentCat
+      ? `<tr class="kpi-cat"><td colspan="6"><span>${esc(k.category || '')}</span></td></tr>`
+      : '';
+    currentCat = k.category;
+    return catRow + locRowHTML(dept, k, expandedLocIds);
   }).join('');
+}
 
-  const noDataChips = NO_DATA_LOCATIONS.map(loc =>
-    `<button class="loc-chip loc-chip--disabled" disabled title="No data available for this location">
-      ${loc.label} <span style="font-size:0.65rem;opacity:0.7">no data</span>
-    </button>`
-  ).join('');
-
-  const weChip = `<button class="loc-chip ${activeLocation === 'we' ? 'loc-chip--active' : ''} loc-chip--we" data-loc="we">
-    WE Main
-  </button>`;
+function locBoardSectionHTML(dept, locBoard, state) {
+  if (!locBoard) {
+    return `<div class="table-wrap"><div class="table-scroll"><table class="dt"><tbody>
+      <tr><td style="text-align:center;padding:24px;color:var(--text-faint)">No per-location board data available.</td></tr>
+    </tbody></table></div></div>`;
+  }
+  let kpis = locBoard.kpis || [];
+  if (state.filterText) {
+    const f = state.filterText.toLowerCase();
+    kpis = kpis.filter((k) => k.name.toLowerCase().includes(f) || (k.category || '').toLowerCase().includes(f));
+  }
+  const rowsHtml = kpis.length
+    ? buildLocRows(dept, kpis, state.expandedLocIds)
+    : `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-faint)">No KPIs match "${esc(state.filterText)}"</td></tr>`;
 
   return `
-    <div class="loc-switcher" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;
-         margin-bottom:16px;padding:12px 16px;background:var(--slate-50);
-         border:1px solid var(--slate-200);border-radius:var(--radius)">
-      <span style="font-size:0.7rem;font-weight:700;letter-spacing:0.06em;
-                   text-transform:uppercase;color:var(--slate-500);margin-right:4px">Location</span>
-      ${weChip}
-      <span style="color:var(--slate-300);font-size:0.8rem">|</span>
-      ${activeChips}
-      <span style="color:var(--slate-300);font-size:0.8rem">|</span>
-      ${noDataChips}
-    </div>`;
+  ${locSummaryStripHTML(locBoard)}
+  <div class="table-wrap"><div class="table-scroll">
+    <table class="dt">
+      <thead><tr>
+        <th style="min-width:320px">KPI</th><th class="num">Target</th><th class="num">Actual</th>
+        <th>Status</th><th>Target source</th><th>Trend</th>
+      </tr></thead>
+      <tbody>${rowsHtml}</tbody>
+    </table>
+  </div></div>
+  <p class="board-hint"><span class="chip">manual</span> = hand-keyed literal; <span class="chip" style="border-color:hsl(var(--action-4));background:hsl(var(--action-1));color:var(--accent-text)">formula</span> = computed by in-sheet formula. Click a caret to expand line contributions. Data flags are shown inside the expanded row.</p>`;
 }
 
-// ─── Switcher styles (injected once) ─────────────────────────────────────────
+// ─── Location switcher ────────────────────────────────────────────────────────
 
-let stylesInjected = false;
-function injectStyles() {
-  if (stylesInjected) return;
-  stylesInjected = true;
-  const style = document.createElement('style');
-  style.textContent = `
-    .loc-chip {
-      padding: 5px 12px;
-      border-radius: 999px;
-      border: 1px solid var(--slate-300);
-      background: #fff;
-      font-size: 0.8rem;
-      color: var(--slate-700);
-      cursor: pointer;
-      transition: background 0.1s, border-color 0.1s, color 0.1s;
-      line-height: 1.4;
-    }
-    .loc-chip:hover:not(:disabled) {
-      background: var(--slate-100);
-      border-color: var(--slate-400);
-    }
-    .loc-chip--active {
-      background: var(--accent);
-      border-color: var(--accent);
-      color: #fff;
-      font-weight: 600;
-    }
-    .loc-chip--we {
-      border-style: dashed;
-    }
-    .loc-chip--we.loc-chip--active {
-      border-style: solid;
-    }
-    .loc-chip--disabled {
-      opacity: 0.45;
-      cursor: not-allowed;
-      background: var(--slate-50);
-      color: var(--slate-400);
-    }
-    .badge--info {
-      background: var(--accent-light);
-      color: var(--accent);
-      border: 1px solid var(--accent);
-      opacity: 0.85;
-    }
-    /* Operator contribution row */
-    .contrib-operator-row {
-      background: #f8fafc;
-    }
-    .contrib-operator-row:hover {
-      background: #f1f5f9;
-    }
-    /* Entry type badges: manual vs formula */
-    .contrib-badge {
-      display: inline-block;
-      font-size: 0.6rem;
-      font-weight: 700;
-      letter-spacing: 0.04em;
-      padding: 1px 5px;
-      border-radius: 3px;
-      vertical-align: middle;
-      cursor: default;
-    }
-    .contrib-badge--manual {
-      background: #fff7ed;
-      color: #9a3412;
-      border: 1px solid #fed7aa;
-    }
-    .contrib-badge--formula {
-      background: #eff6ff;
-      color: #1e40af;
-      border: 1px solid #bfdbfe;
-    }
-    /* Per-KPI explanation block (top of any expansion) */
-    .kpi-explain {
-      background: var(--accent-light, #eef3ff);
-      border-left: 3px solid var(--accent, #2f6bff);
-      padding: 10px 16px 10px 22px;
-      margin: 2px 0;
-    }
-    .kpi-explain__label {
-      font-size: 0.62rem;
-      font-weight: 700;
-      letter-spacing: 0.07em;
-      text-transform: uppercase;
-      color: var(--accent, #2f6bff);
-      margin-bottom: 6px;
-    }
-    .kpi-explain__grid {
-      display: grid;
-      gap: 4px;
-      font-size: 0.8rem;
-      line-height: 1.55;
-      color: var(--slate-700, #334155);
-    }
-    .kpi-explain__k {
-      display: inline-block;
-      min-width: 66px;
-      font-weight: 700;
-      color: var(--slate-500, #64748b);
-      font-size: 0.68rem;
-      text-transform: uppercase;
-      letter-spacing: 0.03em;
-      margin-right: 6px;
-    }
-  `;
-  document.head.appendChild(style);
+function locationSegHTML(dept, state) {
+  const items = [
+    { id: 'we', label: 'WE Main' },
+    ...activeLocations(dept),
+    ...noDataLocations(dept).map((l) => ({ ...l, disabled: true })),
+  ];
+  return items.map((l) => `
+    <button class="seg__item ${state.locationId === l.id ? 'is-on' : ''}" data-loc="${l.id}" ${l.disabled ? `disabled title="${esc(dept.noDataNote || 'No data')}"` : ''}>
+      ${esc(l.label)}${l.disabled ? ' <span class="faint" style="font-size:10px">no data</span>' : ''}
+    </button>`).join('');
 }
 
 // ─── Public entry point ───────────────────────────────────────────────────────
 
 export function renderLocationBoard(dept, mount) {
-  injectStyles();
+  const hashParams = currentHashParams();
+  const allLocIds = new Set(['we', ...activeLocations(dept).map((l) => l.id)]);
+  const mainList = mains(dept);
 
-  let locationId     = 'we';   // default: WE main (COO board)
-  let filterText     = '';
-  let expandedIds    = new Set(); // for WE-main COO-board rows
-  let expandedLocIds = new Set(); // for per-location FMDS board rows
+  const state = {
+    locationId: allLocIds.has(hashParams.get('loc')) ? hashParams.get('loc') : 'we',
+    chartKpi: mainList.some((k) => k.id === hashParams.get('chart')) ? hashParams.get('chart') : (mainList[0] ? mainList[0].id : null),
+    filterText: '',
+    expandedIds: new Set(),
+    expandedLocIds: new Set(),
+  };
+  let hoshin = null;
 
-  /** True when a specific location is selected and has a locationBoard */
-  function hasLocBoard(locId) {
-    return locId !== 'we' && dept.locationBoards && dept.locationBoards[locId];
+  const expandableNames = mainList
+    .filter((k) => k.contributors && k.contributors.length)
+    .map((k) => k.name.split(' (')[0]);
+
+  function fullHTML() {
+    const hasLocBoard = state.locationId !== 'we' && dept.locationBoards && dept.locationBoards[state.locationId];
+    const body = hasLocBoard
+      ? locBoardSectionHTML(dept, dept.locationBoards[state.locationId], state)
+      : weMainSectionHTML(dept, hoshin, state);
+
+    return `
+    <div class="page-head">
+      <div>
+        <span class="running-head page-head__eyebrow">${esc(dept.name)} · Mechanism B</span>
+        <h1>KPI Boards</h1>
+        <p class="page-head__sub">L2 · ${esc(dept.lead || '')} · Location model — expand ${esc(joinWithOr(expandableNames))} for operator and line contributions</p>
+      </div>
+      <div class="page-head__side">
+        <button class="btn btn--secondary" data-go="team">Back to Overview</button>
+      </div>
+    </div>
+
+    ${hoshin ? hoshinStrip(hoshin, dept) : ''}
+
+    <div class="flex" style="align-items:center; gap:16px; flex-wrap:wrap; margin:24px 0">
+      <span class="running-head">Location</span>
+      <div class="seg" role="tablist" aria-label="Location">${locationSegHTML(dept, state)}</div>
+      <div style="flex:1"></div>
+      <input class="input" id="lb-filter" style="max-width:220px" type="search" placeholder="Filter KPIs" aria-label="Filter KPIs" value="${esc(state.filterText)}">
+    </div>
+
+    <div id="loc-body">${body}</div>
+    <div class="chart-tip" id="chart-tip"></div>`;
   }
 
-  function renderTable() {
-    const tbody = document.getElementById('lb-tbody');
-    const locHeader = document.getElementById('lb-loc-header');
-    if (!tbody) return;
+  function paint() {
+    const prevFilter = mount.querySelector('#lb-filter');
+    const hadFocus = !!prevFilter && document.activeElement === prevFilter;
+    const selStart = hadFocus ? prevFilter.selectionStart : null;
 
-    if (hasLocBoard(locationId)) {
-      const locBoard = dept.locationBoards[locationId];
-      if (locHeader) locHeader.innerHTML = buildLocBoardHeader(locBoard);
-      tbody.innerHTML = buildLocBoardTable(locBoard, filterText, expandedLocIds);
-      bindLocEvents();
-    } else {
-      if (locHeader) locHeader.innerHTML = '';
-      tbody.innerHTML = buildTable(dept, locationId, filterText, expandedIds);
-      bindEvents();
+    mount.innerHTML = fullHTML();
+
+    if (hadFocus) {
+      const inp = mount.querySelector('#lb-filter');
+      if (inp) {
+        inp.focus();
+        try { inp.setSelectionRange(selStart, selStart); } catch { /* no-op */ }
+      }
     }
+    const tip = mount.querySelector('#chart-tip');
+    if (tip) wireChartHover(mount, tip);
   }
 
-  function renderSwitcher() {
-    const sw = document.getElementById('lb-switcher');
-    if (sw) {
-      sw.innerHTML = buildSwitcher(locationId);
-      bindSwitcherEvents();
-    }
-  }
+  mount.addEventListener('click', (e) => {
+    const backBtn = e.target.closest('[data-go]');
+    if (backBtn) { location.hash = `#/dept/${dept.id}/${backBtn.dataset.go}`; return; }
 
-  function bindSwitcherEvents() {
-    mount.querySelectorAll('.loc-chip[data-loc]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        locationId = btn.dataset.loc;
-        expandedIds.clear();
-        expandedLocIds.clear();
-        renderSwitcher();
-        renderTable();
-      });
-    });
-  }
-
-  /** Bind expand/collapse for per-location FMDS KPI rows */
-  function bindLocEvents() {
-    mount.querySelectorAll('.loc-expand-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const id = btn.dataset.locKpi;
-        if (expandedLocIds.has(id)) expandedLocIds.delete(id);
-        else expandedLocIds.add(id);
-        renderTable();
-      });
-    });
-
-    mount.querySelectorAll('[data-loc-kpi-id]').forEach(row => {
-      row.addEventListener('click', () => {
-        const id = row.dataset.locKpiId;
-        if (expandedLocIds.has(id)) expandedLocIds.delete(id);
-        else expandedLocIds.add(id);
-        renderTable();
-      });
-    });
-  }
-
-  function bindEvents() {
-    // Story panel toggle
-    const storyBtn = mount.querySelector('#otp-story-toggle');
-    const storyPanel = mount.querySelector('#otp-story-panel');
-    if (storyBtn && storyPanel) {
-      storyBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const hidden = storyPanel.style.display === 'none' || !storyPanel.style.display;
-        storyPanel.style.display = hidden ? 'block' : 'none';
-        storyBtn.textContent = hidden ? 'ⓘ hide' : 'ⓘ story';
-      });
+    const locBtn = e.target.closest('[data-loc]');
+    if (locBtn) {
+      state.locationId = locBtn.dataset.loc;
+      state.expandedIds.clear();
+      state.expandedLocIds.clear();
+      paint();
+      return;
     }
 
-    // Expand/collapse buttons
-    mount.querySelectorAll('.expand-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const id = btn.dataset.kpiId;
-        if (expandedIds.has(id)) expandedIds.delete(id);
-        else expandedIds.add(id);
-        renderTable();
-      });
-    });
+    const chartBtn = e.target.closest('[data-chart-kpi]');
+    if (chartBtn) { state.chartKpi = chartBtn.dataset.chartKpi; paint(); return; }
 
-    // Row click expand
-    mount.querySelectorAll('.main-row--expandable').forEach(row => {
-      row.addEventListener('click', () => {
-        const id = row.dataset.kpiId;
-        if (expandedIds.has(id)) expandedIds.delete(id);
-        else expandedIds.add(id);
-        renderTable();
-      });
-    });
-  }
+    const rowBtn = e.target.closest('[data-row]');
+    if (rowBtn) {
+      const id = rowBtn.dataset.row;
+      if (state.expandedIds.has(id)) state.expandedIds.delete(id); else state.expandedIds.add(id);
+      paint();
+      return;
+    }
 
-  // ─── Initial paint ────────────────────────────────────────────────────────
-  mount.innerHTML = `
-    <div class="team-board">
-      <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:16px">
-        <div>
-          <h2>${dept.name} — KPI Boards</h2>
-          <p class="text-muted text-small mt-1">L2 · ${dept.lead || ''} · Location model (Mechanism B) · Click OTP or PPLH to expand operator/line contributions</p>
-        </div>
-        <a href="#/dept/${dept.id}/team" class="btn btn--ghost" style="font-size:0.8rem">
-          ← Overview
-        </a>
-      </div>
-
-      <div id="lb-switcher">
-        ${buildSwitcher(locationId)}
-      </div>
-
-      <div id="lb-loc-header"></div>
-
-      <div class="filter-row" style="margin-bottom:16px">
-        <input id="lb-filter" type="search" placeholder="Filter KPIs…" style="width:240px">
-      </div>
-
-      <div class="table-wrap">
-        <table id="lb-table">
-          <thead>
-            <tr>
-              <th style="min-width:260px">KPI</th>
-              <th class="text-right">Target</th>
-              <th class="text-right">Actual</th>
-              <th style="min-width:110px">Status</th>
-              <th>Source</th>
-              <th style="min-width:230px">Trend</th>
-            </tr>
-          </thead>
-          <tbody id="lb-tbody">
-            ${buildTable(dept, locationId, filterText, expandedIds)}
-          </tbody>
-        </table>
-      </div>
-
-      <p class="text-muted text-small mt-4">
-        <strong>WE Main</strong> = COO Board independently entered (Mechanism B).
-        <strong>Location tabs</strong> = per-location FMDS board (real KPI sets differ by location).
-        OTP and PPLH rows show operator/line contributions when expanded —
-        <span style="background:#fff7ed;color:#9a3412;border:1px solid #fed7aa;font-size:0.65rem;padding:1px 5px;border-radius:3px">manual</span>
-        = hand-keyed literal;
-        <span style="background:#eff6ff;color:#1e40af;border:1px solid #bfdbfe;font-size:0.65rem;padding:1px 5px;border-radius:3px">formula</span>
-        = computed by in-sheet formula. ⚠ = data flag. Click a row to expand.
-      </p>
-    </div>`;
-
-  // Bind filter input
-  const filterInput = mount.querySelector('#lb-filter');
-  filterInput.addEventListener('input', (e) => {
-    filterText = e.target.value;
-    renderTable();
+    const locRowBtn = e.target.closest('[data-loc-row]');
+    if (locRowBtn) {
+      const id = locRowBtn.dataset.locRow;
+      if (state.expandedLocIds.has(id)) state.expandedLocIds.delete(id); else state.expandedLocIds.add(id);
+      paint();
+    }
   });
 
-  bindSwitcherEvents();
-  bindEvents();
+  mount.addEventListener('input', (e) => {
+    if (e.target && e.target.id === 'lb-filter') {
+      state.filterText = e.target.value;
+      paint();
+    }
+  });
+
+  wireHoshinStrip(mount);
+
+  paint();
+
+  loadHoshin().then((h) => {
+    if (!h) return;
+    hoshin = h;
+    paint();
+  });
 }

@@ -1,77 +1,88 @@
 /**
- * views/sources.js — "Where your numbers come from" (SOURCING PLAN view)
+ * views/sources.js — "Sourcing Plan" (where every number comes from)
  *
  * renderSources(dept, mount)
  *
- * Reframed to present the TARGET sourcing model — where FMDS OS will pull
- * each number from once integrated. The current manual re-key situation is
- * shown as a "today: re-keyed → target: <system>" hint, not the headline.
+ * Markup rebuilt to the §5.7 Sources idiom (docs/redesign/DESIGN-GUIDE.md +
+ * docs/redesign/reference/view-rest.js's `VIEWS.sources`) — `.page-head`,
+ * a target-systems summary `.card--pad`, an amber-left-border banner, a
+ * `.grid` of `.card`s "By source system" (each real KPI row wearing a
+ * `.badge--amber` "re-keyed today" or `.badge--green` "direct pull"), a
+ * 3-node `.flow` (Source system → FMDS vault → FMDS board, middle node
+ * `.flow__node--accent`), and a `.board-hint`. Every class here is already
+ * ported into styles.css by the Phase-1 tasks — no local `<style>`
+ * injection, unlike the pre-rebuild file, which shipped ~50 lines of scoped
+ * CSS for one-off `.src-*` classes.
  *
- * Sections:
- *   1. Header: source-system badges, headline stat (N KPIs · M systems · K manual-only)
- *   2. Source plan grouped by TARGET system — each KPI shows a green "sourced ← <system>" pill
- *   3. Manual-only safety group (no source system exists — human reported)
- *   4. Per-KPI table: KPI · Target Source · Today (re-keyed?) · Action
- *   5. Data flow diagram
+ * Data lookups are unchanged in *behavior* from the pre-rebuild file — only
+ * the markup moved, plus one real classification fix:
+ *
+ *   - `hasNoSystem(kpi)` generalizes the old `isManualOnly(kpi)` (which only
+ *     checked `kpi.manualOnly === true`) to also catch KPIs whose
+ *     `targetSource` literally says there isn't one yet. data/hr.json's
+ *     `bench_strength` has `targetSource: "TBD — no source system"` and
+ *     `manualOnly` unset — the pre-rebuild file's `groupByTargetSource`
+ *     would have put it in its own "BY SOURCE SYSTEM" card literally titled
+ *     "TBD — no source system" wearing a green/amber pull badge, which is
+ *     nonsense for a KPI that has no system to pull from. It now buckets
+ *     with HR's 6 real `manualOnly` TRIR items into one "No source system"
+ *     card, same treatment the pre-rebuild file already gave manualOnly
+ *     KPIs. Not new data — `bench_strength`'s own `targetSource` string is
+ *     what triggers it.
+ *   - `INTEGRATED_SYSTEMS` (a large hardcoded system-name allowlist) is
+ *     dropped — grep confirms it was dead code in the pre-rebuild file
+ *     (defined, never referenced). Grouping always ran off `targetSource`/
+ *     `source` directly, not that set.
+ *   - The old file's standalone "Per-KPI Detail" `.src-table` (KPI · Target
+ *     Source · Sourcing Status · Today · Action, five columns duplicating
+ *     what each source-system card row already shows) is gone. The
+ *     reference's Sources page has no equivalent section, and once every
+ *     KPI already appears once in its source-system card with its
+ *     re-keyed/direct-pull badge, a second full table restating the same
+ *     KPI→system→status facts is exactly the "banner restating what a chip
+ *     can say" §6 anti-pattern.
+ *
+ * Zero-invented-data / generalization notes (every dept's source mapping is
+ * real, pulled from data/<dept>.json's kpi.targetSource / kpi.source /
+ * kpi.manualOnly — nothing here is Operations-specific):
+ *   - "BY SOURCE SYSTEM" renders one card per *distinct* `targetSource`
+ *     string the department's KPIs actually carry — Operations gets WPS +
+ *     Business Central (2 cards); Finance gets Business Central alone (1);
+ *     IT gets its two literal Azure DevOps variants (2, kept distinct
+ *     because "Azure DevOps" and "Azure DevOps / monitoring" are different
+ *     recorded strings — collapsing them would be inventing a merge the
+ *     data doesn't state); ODG gets "ODG FMDS Board" (1); Sales/Service/HR/
+ *     Logistics/Marketing get however many distinct strings their KPIs use
+ *     (Marketing has 19 — every one renders, no cap, no invented grouping).
+ *   - Depts with zero manual/no-system KPIs (Operations, Finance, IT,
+ *     Marketing, ODG, Sales) simply render no "No source system" card and
+ *     no amber double-entry banner if `reKeyedKpis.length` is 0 — both
+ *     sections are conditional on real counts, never rendered empty.
+ *   - The flow diagram's first node lists the department's own real system
+ *     names (joined) as its sub-line — never a fixed "WPS · BC" placeholder.
  */
 
-// ─── Source group classification ──────────────────────────────────────────────
+// ─── Small shared helpers ───────────────────────────────────────────────────
 
-/**
- * Target source systems that have real integrations possible.
- * Used to display a green "sourced ← <system>" pill.
- */
-const INTEGRATED_SYSTEMS = new Set([
-  'WPS',
-  'Business Central',
-  'HubSpot',
-  'NetSuite',
-  'Power BI',
-  'ADP',
-  'Azure DevOps',
-  'Azure DevOps / monitoring',
-  'Ask Nicely',
-  'AskNicely',
-  'Trust Pilot',
-  'TrustPilot',
-  'ODG',
-  'ODG FMDS Board',
-  'Glassdoor',
-  'Indeed',
-  'Google Search Console',
-  'GA4',
-  'Meta Ads Manager',
-  'Meta Business Suite',
-  'LinkedIn Analytics',
-  'LinkedIn Campaign Manager',
-  'Google Ads',
-  'Rhythm 2025',
-  'Amazon Seller Central',
-  'Walmart Marketplace',
-  'Carrier / Customs portal',
-  'Ecomm platform',
-  'Survey (internal)',
-  'Survey',
-  'Agency report',
-  'Agency social report',
-  'DxD HPI',
-  'Ecomm-CM',
-  'HubSpot / CRM',
-  'HubSpot / NetSuite',
-  'Power BI / NetSuite',
-  'Ecomm platform / NetSuite',
-  'Ecomm platform / CRM',
-  'GA4 / Ecomm platform',
-  'Rhythm 2025 / Ecomm platform',
-  'Ad platforms + HubSpot',
-]);
-
-/** True when the targetSource is not a real system (safety-incident manual items). */
-function isManualOnly(kpi) {
-  return kpi.manualOnly === true;
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 
-/** Canonical target source from kpi.targetSource (preferred) or kpi.source (fallback) */
+// Right-pointing arrow — ported verbatim from reference/app.js's `ICONS.arrow`
+// (this file's only use of it; not worth adding to app.js's shared ICONS set
+// for a single flow diagram two views away from the shell).
+const ARROW_SVG = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 8h10M9 4l4 4-4 4"/></svg>';
+
+function levelLabel(level) {
+  if (level === 1) return 'Main';
+  if (level === 2) return 'Contributor';
+  if (level === 3) return 'Rep / Sub';
+  return `L${level}`;
+}
+
+/** Canonical target source from kpi.targetSource (preferred) or kpi.source. */
 function targetSource(kpi) {
   if (kpi.targetSource) return kpi.targetSource;
   if (kpi.source && kpi.source !== '—') return kpi.source;
@@ -79,9 +90,25 @@ function targetSource(kpi) {
 }
 
 /**
- * True when today's data is re-keyed (the elimination story).
- * Heuristic: source field contains hand-keyed tokens, OR no targetSource was
- * previously set (meaning the field used to say "Manual" / "COO Board" etc.)
+ * True when a KPI has no real source system to connect — either explicitly
+ * flagged (`manualOnly: true`, e.g. HR's safety TRIR items — human-reported
+ * incident counts) or its `targetSource` string itself says there isn't one
+ * yet (e.g. "TBD — no source system", "—", empty). See file header.
+ */
+function hasNoSystem(kpi) {
+  if (kpi.manualOnly === true) return true;
+  const ts = kpi.targetSource;
+  if (!ts || ts === '—') return true;
+  if (/\btbd\b|no source system/i.test(ts)) return true;
+  return false;
+}
+
+/**
+ * True when today's number is re-keyed by hand into the board rather than
+ * pulled directly from its target system — the double-entry FMDS OS
+ * eliminates. Heuristic: `kpi.source` names a hand-keyed board/spreadsheet
+ * token, or `source`/`targetSource` differ (today's path isn't the target
+ * path yet).
  */
 function isTodayReKeyed(kpi) {
   const src = (kpi.source || '').toLowerCase();
@@ -93,360 +120,150 @@ function isTodayReKeyed(kpi) {
   for (const tok of handKeyedTokens) {
     if (src.includes(tok)) return true;
   }
-  // If source and targetSource differ, today's number is being re-keyed
   if (kpi.source && kpi.targetSource && kpi.source !== kpi.targetSource) return true;
   return false;
 }
 
-// ─── Group KPIs by targetSource ───────────────────────────────────────────────
-
+/** Groups the department's real (has-a-system) KPIs by their targetSource string. */
 function groupByTargetSource(kpis) {
   const groups = {};
+  const order = [];
   for (const kpi of kpis) {
     const ts = targetSource(kpi);
-    if (!groups[ts]) groups[ts] = [];
+    if (!groups[ts]) { groups[ts] = []; order.push(ts); }
     groups[ts].push(kpi);
   }
-  return groups;
+  return { groups, order };
 }
 
-function distinctTargetSources(kpis) {
-  return [...new Set(kpis.map(k => targetSource(k)))];
+// ─── By-source-system card ────────────────────────────────────────────────
+
+function sourceSystemRowHTML(kpi) {
+  const reKeyed = isTodayReKeyed(kpi);
+  return `
+    <div class="src-sys-row" style="display:flex; align-items:center; gap:10px; padding:7px 0; border-bottom:1px solid var(--border-soft); font-size:13px">
+      <span style="flex:1; min-width:0">
+        ${esc(kpi.name)}
+        <span class="faint" style="font-size:11.5px"> · ${esc(levelLabel(kpi.level || 1))}</span>
+      </span>
+      ${reKeyed
+        ? '<span class="badge badge--amber"><span class="dot"></span>re-keyed today</span>'
+        : '<span class="badge badge--green"><span class="dot"></span>direct pull</span>'}
+    </div>`;
 }
 
-function levelLabel(level) {
-  if (level === 1) return 'Main';
-  if (level === 2) return 'Contributor';
-  if (level === 3) return 'Rep / Sub';
-  return `L${level}`;
+function sourceSystemCardHTML(ts, kpis) {
+  return `
+    <section class="card">
+      <div style="display:flex; align-items:baseline; justify-content:space-between; padding:16px 24px; border-bottom:1px solid var(--border-soft)">
+        <h3>${esc(ts)}</h3><span class="muted" style="font-size:12.5px">${kpis.length} KPI${kpis.length !== 1 ? 's' : ''}</span>
+      </div>
+      <div style="padding:12px 24px 16px">
+        ${kpis.map(sourceSystemRowHTML).join('')}
+      </div>
+    </section>`;
 }
 
-// ─── Pills and badges ─────────────────────────────────────────────────────────
-
-/** Green "sourced ← <system>" pill for integrated KPIs */
-function sourcedPill(ts) {
-  if (!ts || ts === '—') {
-    return `<span class="src-pill src-pill--manual">⚠ No source system</span>`;
-  }
-  return `<span class="src-pill src-pill--pulled">● sourced ← ${ts}</span>`;
-}
-
-/** "today: re-keyed" hint (amber, subtle) */
-function reKeyedHint(kpi) {
-  if (!isTodayReKeyed(kpi)) return '';
-  const src = kpi.source ? kpi.source.split(' / ')[0] : 'spreadsheet';
-  return `<span class="src-pill src-pill--rekey" title="Today this number is re-keyed from ${src} into the board. FMDS OS eliminates this double-entry.">today: re-keyed</span>`;
-}
-
-/** Manual-only badge (safety items) */
-function manualOnlyPill() {
-  return `<span class="src-pill src-pill--manual-only">⚡ Manual entry</span>`;
-}
-
-// ─── Source system card ───────────────────────────────────────────────────────
-
-function renderSourceCard(ts, kpis) {
-  const isManual = ts === 'Manual — reported';
-  const cardClass = isManual ? 'src-card src-card--manual-only' : 'src-card src-card--pulled';
-  const headIcon  = isManual ? '⚡' : '⊙';
-
-  const kpiRows = kpis.map(k => `
-    <div class="src-card__kpi-row">
-      <span class="src-card__kpi-name">${k.name}</span>
-      <span class="src-card__kpi-level text-muted">${levelLabel(k.level || 1)}</span>
-      ${isManual ? manualOnlyPill() : sourcedPill(ts)}
-      ${isTodayReKeyed(k) && !isManual ? reKeyedHint(k) : ''}
+function noSystemCardHTML(kpis) {
+  const rows = kpis.map((k) => `
+    <div class="src-sys-row" style="display:flex; align-items:center; gap:10px; padding:7px 0; border-bottom:1px solid var(--border-soft); font-size:13px">
+      <span style="flex:1; min-width:0">
+        ${esc(k.name)}
+        <span class="faint" style="font-size:11.5px"> · ${esc(levelLabel(k.level || 1))}</span>
+      </span>
+      <span class="badge badge--outline">no source system</span>
     </div>`).join('');
 
-  const cardNote = isManual
-    ? `<div class="src-card__note text-muted text-small" style="margin-top:8px;padding-top:8px;border-top:1px solid var(--slate-200)">
-         No source system exists for these items. They are human-reported incident counts and rates — the only remaining manual entry in FMDS OS.
-       </div>`
-    : '';
-
   return `
-    <div class="${cardClass}">
-      <div class="src-card__head">
-        <span class="src-card__icon">${headIcon}</span>
-        <span class="src-card__name text-mono">${ts}</span>
-        <span class="src-card__count text-muted">${kpis.length} KPI${kpis.length !== 1 ? 's' : ''}</span>
+    <section class="card">
+      <div style="display:flex; align-items:baseline; justify-content:space-between; padding:16px 24px; border-bottom:1px solid var(--border-soft)">
+        <h3>No source system</h3><span class="muted" style="font-size:12.5px">${kpis.length} KPI${kpis.length !== 1 ? 's' : ''}</span>
       </div>
-      <div class="src-card__kpis">${kpiRows}</div>
-      ${cardNote}
-    </div>`;
-}
-
-// ─── Per-KPI table ────────────────────────────────────────────────────────────
-
-function renderKpiTable(kpis) {
-  const rows = kpis.map(k => {
-    const ts = targetSource(k);
-    const isManual = isManualOnly(k);
-    const todayIsReKeyed = isTodayReKeyed(k);
-
-    const statusCol = isManual
-      ? manualOnlyPill()
-      : sourcedPill(ts);
-
-    const todayCol = isManual
-      ? `<span class="text-muted text-small">Human-reported — no system</span>`
-      : todayIsReKeyed
-        ? `<span class="src-table-flag">⚠ re-keyed today → eliminated by FMDS OS</span>`
-        : `<span class="src-table-ok">✓ direct pull</span>`;
-
-    const actionCol = isManual
-      ? `<span class="text-muted text-small">Keep — no system to connect</span>`
-      : todayIsReKeyed
-        ? `<span class="text-small">Connect ${ts} → vault</span>`
-        : `<span class="src-table-ok">Already sourced</span>`;
-
-    return `
-      <tr>
-        <td>
-          <div class="src-table-kpi-name">${k.name}</div>
-          <div class="text-muted text-small">${levelLabel(k.level || 1)}</div>
-        </td>
-        <td class="text-mono" style="font-size:0.8rem">${ts}</td>
-        <td>${statusCol}</td>
-        <td>${todayCol}</td>
-        <td>${actionCol}</td>
-      </tr>`;
-  }).join('');
-
-  return `
-    <div class="table-wrap">
-      <table class="src-table">
-        <thead>
-          <tr>
-            <th>KPI</th>
-            <th>Target Source System</th>
-            <th>Sourcing Status</th>
-            <th>Today (re-keyed?)</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody>${rows}</tbody>
-      </table>
-    </div>`;
-}
-
-// ─── Data flow visual ─────────────────────────────────────────────────────────
-
-function renderFlowLine(kpis) {
-  const reKeyedKpis  = kpis.filter(k => isTodayReKeyed(k) && !isManualOnly(k));
-  const manualKpis   = kpis.filter(k => isManualOnly(k));
-  const doubleEntryN = reKeyedKpis.length;
-
-  const doubleEntryBlock = doubleEntryN > 0
-    ? `<div class="src-flow-flag">
-         <span class="src-flow-flag__icon">⚠</span>
-         <span><strong>${doubleEntryN} KPI${doubleEntryN !== 1 ? 's' : ''}</strong> are re-keyed today — FMDS OS eliminates this double-entry once integrated:
-           <span class="text-mono" style="font-size:0.72rem">
-             ${reKeyedKpis.map(k => k.name).join(', ')}
-           </span>
-         </span>
-       </div>`
-    : `<div class="src-flow-flag src-flow-flag--ok">
-         <span class="src-flow-flag__icon">✓</span>
-         <span>All KPIs in this department are on a direct pull path — no re-keying to eliminate.</span>
-       </div>`;
-
-  const manualBlock = manualKpis.length > 0
-    ? `<div class="src-flow-flag src-flow-flag--manual" style="margin-top:8px;border-color:#fca5a5">
-         <span class="src-flow-flag__icon">⚡</span>
-         <span><strong>${manualKpis.length} safety item${manualKpis.length !== 1 ? 's' : ''}</strong> remain manual — no source system exists for incident reporting:
-           <span class="text-mono" style="font-size:0.72rem">
-             ${manualKpis.map(k => k.name).join(', ')}
-           </span>
-         </span>
-       </div>`
-    : '';
-
-  return `
-    <div class="src-flow card">
-      <div class="src-flow__head">Target data flow — single entry point</div>
-      <div class="src-flow__diagram">
-        <div class="src-flow__node src-flow__node--source">
-          <div class="src-flow__node-icon">⛁</div>
-          <div class="src-flow__node-label">Source System</div>
-          <div class="src-flow__node-sub text-mono">WPS · BC · HubSpot · etc.</div>
-        </div>
-        <div class="src-flow__arrow">→</div>
-        <div class="src-flow__node src-flow__node--vault">
-          <div class="src-flow__node-icon">🗄</div>
-          <div class="src-flow__node-label">FMDS Vault</div>
-          <div class="src-flow__node-sub text-mono">single entry point</div>
-        </div>
-        <div class="src-flow__arrow">→</div>
-        <div class="src-flow__node src-flow__node--board">
-          <div class="src-flow__node-icon">▤</div>
-          <div class="src-flow__node-label">FMDS Board</div>
-          <div class="src-flow__node-sub text-mono">reads vault — never re-keys</div>
-        </div>
+      <div style="padding:12px 24px 16px">
+        ${rows}
+        <p class="faint" style="margin:10px 0 0; font-size:12px; line-height:1.5">No source system identified for these KPIs — entered manually where a number exists.</p>
       </div>
-      <p class="src-flow__note text-muted text-small">
-        The number comes from the source system. Boards read from the vault directly —
-        no manual re-entry. Where today's process re-keys a number that already exists
-        in a source system, FMDS OS eliminates that double-entry. The only remaining
-        manual entry is safety-incident counts (human-reported — no system to connect).
-      </p>
-      ${doubleEntryBlock}
-      ${manualBlock}
-    </div>`;
+    </section>`;
 }
 
-// ─── Inline styles for new pills ─────────────────────────────────────────────
-
-function injectSourceStyles(doc) {
-  if (doc.getElementById('sources-v2-styles')) return;
-  const style = doc.createElement('style');
-  style.id = 'sources-v2-styles';
-  style.textContent = `
-    .src-pill--rekey {
-      display: inline-flex;
-      align-items: center;
-      gap: 3px;
-      padding: 1px 7px;
-      border-radius: 999px;
-      font-size: 0.67rem;
-      font-weight: 600;
-      font-family: var(--font-mono, 'IBM Plex Mono', monospace);
-      background: #fff7ed;
-      color: #9a3412;
-      border: 1px solid #fed7aa;
-      vertical-align: middle;
-    }
-    .src-pill--manual-only {
-      display: inline-flex;
-      align-items: center;
-      gap: 3px;
-      padding: 1px 7px;
-      border-radius: 999px;
-      font-size: 0.67rem;
-      font-weight: 600;
-      font-family: var(--font-mono, 'IBM Plex Mono', monospace);
-      background: #fee2e2;
-      color: #991b1b;
-      border: 1px solid #fca5a5;
-      vertical-align: middle;
-    }
-    .src-card--manual-only {
-      border-left: 3px solid #fca5a5;
-      background: #fff5f5;
-    }
-    .src-card__icon {
-      margin-right: 4px;
-    }
-    .src-flow-flag--manual {
-      border-color: #fca5a5 !important;
-      background: #fff5f5;
-    }
-  `;
-  doc.head.appendChild(style);
-}
-
-// ─── Public entry point ───────────────────────────────────────────────────────
+// ─── Public entry point ───────────────────────────────────────────────────
 
 export function renderSources(dept, mount) {
-  if (typeof document !== 'undefined') injectSourceStyles(document);
+  const kpis        = dept.kpis || [];
+  const noSystem     = kpis.filter(hasNoSystem);
+  const realKpis     = kpis.filter((k) => !hasNoSystem(k));
+  const { groups, order: systems } = groupByTargetSource(realKpis);
+  const reKeyedKpis  = realKpis.filter(isTodayReKeyed);
+  const totalKpis    = kpis.length;
 
-  const kpis           = dept.kpis || [];
-  const allSources     = distinctTargetSources(kpis);
-  const grouped        = groupByTargetSource(kpis);
-  const manualOnlyKpis = kpis.filter(k => isManualOnly(k));
-  const reKeyedKpis    = kpis.filter(k => isTodayReKeyed(k) && !isManualOnly(k));
-  const totalKpis      = kpis.length;
+  const statLine = `${totalKpis} KPI${totalKpis !== 1 ? 's' : ''} · ${systems.length} source system${systems.length !== 1 ? 's' : ''} · ${noSystem.length} manual-only`;
 
-  // Non-manual sources for headline count
-  const realSystems = allSources.filter(s => s !== 'Manual — reported' && s !== '—');
-
-  // Headline stat: N KPIs · M source systems · K manual-only (safety)
-  const statLine = `${totalKpis} KPI${totalKpis !== 1 ? 's' : ''} · ${realSystems.length} source system${realSystems.length !== 1 ? 's' : ''} · ${manualOnlyKpis.length} manual-only (safety)`;
-
-  // System badges — grouped: integrated first, then manual-only
-  const integratedBadges = realSystems.map(ts => {
-    return `<span class="src-sys-badge src-sys-badge--pulled text-mono">${ts}</span>`;
-  }).join('');
-
-  const manualBadge = manualOnlyKpis.length
-    ? `<span class="src-sys-badge src-sys-badge--manual text-mono">Manual entry (safety only)</span>`
+  const sysBadges = systems.map((ts) => `<span class="badge badge--neutral">${esc(ts)}</span>`).join('');
+  const manualBadge = noSystem.length
+    ? `<span class="badge badge--outline">${noSystem.length} manual-only</span>`
     : '';
 
-  // Source cards: integrated systems first, manual-only group last
-  const integratedCards = realSystems
-    .map(ts => renderSourceCard(ts, grouped[ts]))
-    .join('');
+  const amberBanner = reKeyedKpis.length ? `
+    <section class="card card--pad" style="border-left:3px solid var(--amber); margin-bottom:32px">
+      <b style="font-size:13.5px; color:var(--amber-text)">Double-entry being eliminated.</b>
+      <span style="font-size:13.5px; color:var(--text-secondary)"> ${reKeyedKpis.length} KPI${reKeyedKpis.length !== 1 ? 's are' : ' is'} currently re-keyed from a source system into the board today — FMDS OS replaces ${reKeyedKpis.length !== 1 ? 'these' : 'this'} with a direct pull from the source, removing the manual step entirely.</span>
+    </section>` : '';
 
-  const manualOnlyCard = manualOnlyKpis.length
-    ? renderSourceCard('Manual — reported', manualOnlyKpis)
-    : '';
+  const systemCards = systems.map((ts) => sourceSystemCardHTML(ts, groups[ts])).join('');
+  const noSystemCard = noSystem.length ? noSystemCardHTML(noSystem) : '';
 
-  // Per-KPI table
-  const kpiTable = renderKpiTable(kpis);
+  const bySourceSection = (systems.length || noSystem.length) ? `
+    <div class="section-head"><span class="running-head">By source system</span></div>
+    <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(320px,1fr))">
+      ${systemCards}${noSystemCard}
+    </div>` : `<p class="muted">No source data defined for this department yet.</p>`;
 
-  // Flow diagram
-  const flowLine = renderFlowLine(kpis);
-
-  // Re-keyed elimination note
-  const eliminationNote = reKeyedKpis.length
-    ? `<div class="src-elimination-note" style="background:#fffbeb;border:1px solid #fde68a;border-radius:var(--radius);
-           padding:10px 14px;margin-bottom:18px;font-size:0.8rem;line-height:1.5">
-         <strong style="color:#92400e">Double-entry being eliminated:</strong>
-         <span class="text-muted" style="margin-left:6px">${reKeyedKpis.length} KPI${reKeyedKpis.length !== 1 ? 's' : ''} currently re-keyed from source systems into the board —
-         FMDS OS replaces these with direct pulls from the source, removing the manual step entirely.</span>
-       </div>`
-    : '';
+  const sourceNodeSub = systems.length ? esc(systems.join(' · ')) : 'No connected systems yet';
+  const flowNote = reKeyedKpis.length
+    ? `${reKeyedKpis.length} KPI${reKeyedKpis.length !== 1 ? 's' : ''} above ${reKeyedKpis.length !== 1 ? 'are' : 'is'} re-keyed today — FMDS OS eliminates that double-entry once the vault connects directly to the source system.${noSystem.length ? ` ${noSystem.length} item${noSystem.length !== 1 ? 's remain' : ' remains'} manual — no source system exists to connect.` : ''}`
+    : (noSystem.length
+      ? `All connected KPIs in this department are already on a direct-pull path. ${noSystem.length} item${noSystem.length !== 1 ? 's remain' : ' remains'} manual — no source system exists to connect.`
+      : `All KPIs in this department are on a direct-pull path — no re-keying left to eliminate.`);
 
   mount.innerHTML = `
-    <div class="sources-view reveal-1">
-
-      <!-- ── Header ── -->
-      <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:20px">
-        <div>
-          <h2>${dept.name} — Sourcing Plan</h2>
-          <p class="text-muted text-small mt-1">Where each number comes from. The number is sourced — not re-keyed.</p>
-        </div>
-        <a href="#/dept/${dept.id}/kpi" class="btn btn--ghost" style="font-size:0.8rem">
-          ← KPI Boards
-        </a>
+    <div class="page-head">
+      <div>
+        <span class="running-head page-head__eyebrow">${esc(dept.name)} · Data Lineage</span>
+        <h1>Sourcing Plan</h1>
+        <p class="page-head__sub">Where each number comes from. The number is sourced — not re-keyed.</p>
       </div>
+      <div class="page-head__side"><button class="btn btn--secondary" data-go="kpi">KPI Boards</button></div>
+    </div>
 
-      <!-- ── Connected systems summary ── -->
-      <div class="src-header card reveal-2" style="margin-bottom:24px">
-        <div class="src-header__label text-muted text-small" style="margin-bottom:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;font-size:0.68rem">Target Source Systems</div>
-        <div class="src-sys-badges" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">
-          ${integratedBadges}
-          ${manualBadge}
-        </div>
-        <div class="src-stat text-mono" style="font-size:0.82rem;color:var(--text-muted)">
-          ${statLine}
-        </div>
+    <section class="card card--pad" style="display:flex; align-items:center; gap:20px; flex-wrap:wrap; margin-bottom:16px">
+      <span class="running-head">Target source systems</span>
+      ${sysBadges}
+      ${manualBadge}
+      <span class="muted" style="font-size:13px; margin-left:auto">${statLine}</span>
+    </section>
+
+    ${amberBanner}
+
+    ${bySourceSection}
+
+    <div class="section-head"><span class="running-head">Target data flow — single entry point</span></div>
+    <section class="flow">
+      <div class="flow__node">
+        <h4>Source system</h4><p>${sourceNodeSub}</p>
       </div>
-
-      <!-- ── Re-keyed elimination note (only shown if any exist) ── -->
-      ${eliminationNote}
-
-      <!-- ── Source system cards ── -->
-      <div class="src-section reveal-3" style="margin-bottom:28px">
-        <div class="src-section-label" style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:12px">By Source System</div>
-        <div class="src-cards">
-          ${integratedCards || ''}
-          ${manualOnlyCard}
-          ${(!integratedCards && !manualOnlyCard) ? '<p class="text-muted">No source data defined for this department.</p>' : ''}
-        </div>
+      <span class="flow__arrow">${ARROW_SVG}</span>
+      <div class="flow__node flow__node--accent">
+        <h4>FMDS vault</h4><p>Single entry point</p>
       </div>
-
-      <!-- ── Per-KPI table ── -->
-      <div class="src-section reveal-4" style="margin-bottom:28px">
-        <div class="src-section-label" style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:12px">Per-KPI Detail</div>
-        ${kpiTable}
+      <span class="flow__arrow">${ARROW_SVG}</span>
+      <div class="flow__node">
+        <h4>FMDS board</h4><p>Reads the vault — never re-keys</p>
       </div>
+    </section>
+    <p class="board-hint">${flowNote}</p>`;
 
-      <!-- ── Data flow ── -->
-      <div class="src-section">
-        <div class="src-section-label" style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:12px">Data Flow</div>
-        ${flowLine}
-      </div>
-
-    </div>`;
+  mount.addEventListener('click', (e) => {
+    const goBtn = e.target.closest('[data-go]');
+    if (goBtn) location.hash = `#/dept/${dept.id}/${goBtn.dataset.go}`;
+  });
 }

@@ -3,7 +3,7 @@
  *
  * Routes:
  *   #/                       → home (placeholder)
- *   #/dept/:id/:view         → one of: team | kpi | my | solve | sop | mark
+ *   #/dept/:id/:view         → one of: team | kpi | hoshin | my | solve | sop | sources | mark
  *
  * Left-rail views per department:
  *   Team Board      — always visible
@@ -11,12 +11,35 @@
  *   My Board        — only when dept.hasL1 === true
  *   Problem-Solving — always visible
  *   Standard Work   — always visible
+ *
+ * Deep-link params: our hash is path-based (#/dept/:id/:view), NOT the
+ * reference's flat query-string scheme (#view=kpi&loc=...) — that stays the
+ * router model. Extra deep-link data rides as a query string appended to the
+ * view segment, e.g. "#/dept/operations/solve?kpi=rev_jc&kz=346" or
+ * "#/dept/operations/kpi?loc=houston&chart=otp". route() only strips that
+ * suffix to resolve the view id (`parts[2].split('?')[0]`) — it never
+ * mutates `location.hash` itself, so the full query string survives
+ * unmangled all the way to the rendered view. Each view is responsible for
+ * reading the params it cares about off `location.hash` directly (the
+ * pattern views/problemsolving.js and views/askmark.js already use for
+ * `kpi`/`kz`). Full vocabulary this scheme supports, per the redesign spec:
+ *   kpi, kz      — ALREADY consumed (problemsolving.js R3 handoff, askmark.js)
+ *   loc, chart   — reserved for the KPI-board location/chart-switcher deep
+ *                  link (Task 8/8b — teamboard-location.js etc.)
+ *   step         — reserved for opening the 8-step A3 on a specific step
+ *                  (Task 11 — problemsolving.js wizard)
+ *   sop          — reserved for opening a specific Standard Work SOP detail
+ *                  (Task 12 — standardwork.js)
+ *   respond      — reserved for opening the Ask Mark response modal (Task 14
+ *                  — askmark.js)
+ * No app.js change is needed to "unlock" the reserved params — they already
+ * pass through; the consuming views just don't parse them yet.
  */
 
 import { createStore }            from './lib/store.js';
-import { renderTeamBoard }        from './views/teamboard.js';
 import { renderLocationBoard }    from './views/teamboard-location.js';
 import { renderOverview }         from './views/overview.js';
+import { renderHoshin }           from './views/hoshin.js';
 import { renderOdgHub }           from './views/odg-hub.js';
 import { renderKpi }              from './views/kpi.js';
 import { renderMyBoard }          from './views/myboard.js';
@@ -26,7 +49,6 @@ import { renderStandardWork }     from './views/standardwork.js';
 import { renderSources }          from './views/sources.js';
 import { renderAskMark }          from './views/askmark.js';
 import { renderLogin, resolvePersona } from './views/login.js';
-import { bakedReply }             from './lib/agent.js';
 import { redKpisNeedingResponse, getResponse } from './lib/accountability.js';
 
 const app   = document.getElementById('app');
@@ -131,26 +153,54 @@ async function loadDeptView(deptId, view) {
   renderLayout(deptFull, view);
 }
 
+// ─── SVG nav/topbar icons ───────────────────────────────────────────────────
+// Ported from docs/redesign/reference/app.js's ICONS set (1.5px stroke,
+// 16x16 viewBox, currentColor) — replaces the old single-character glyph
+// icons per the redesign spec (no glyph nav icons).
+const ICONS = {
+  overview: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1.5" y="1.5" width="13" height="13" rx="2"/><path d="M1.5 6h13M6 6v9"/></svg>',
+  kpi:      '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 13.5V9M6 13.5V5.5M10 13.5V8M14 13.5V3"/></svg>',
+  hoshin:   '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><circle cx="8" cy="8" r="2.25"/></svg>',
+  solve:    '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 14V2.5M3 2.5h9.5l-2 3.5 2 3.5H3"/></svg>',
+  sop:      '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 1.5h6.5L13.5 4.5V14.5h-9.5z"/><path d="M6 6.5h4M6 9h4M6 11.5h2.5"/></svg>',
+  sources:  '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><ellipse cx="8" cy="3.5" rx="5.5" ry="2"/><path d="M2.5 3.5v9c0 1.1 2.5 2 5.5 2s5.5-.9 5.5-2v-9M2.5 8c0 1.1 2.5 2 5.5 2s5.5-.9 5.5-2"/></svg>',
+  mark:     '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 1.5l1.8 4.7L14.5 8l-4.7 1.8L8 14.5 6.2 9.8 1.5 8l4.7-1.8z"/></svg>',
+  myday:    '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6.5"/><path d="M8 4.5V8l2.5 1.5"/></svg>',
+  search:   '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5L14 14"/></svg>',
+  bell:     '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2a4 4 0 0 0-4 4c0 3-1.5 4.5-1.5 4.5h11S12 10.5 12 6a4 4 0 0 0-4-4zM6.5 13a1.5 1.5 0 0 0 3 0"/></svg>',
+  up:       '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 13V3M4 7l4-4 4 4"/></svg>',
+};
+
 // ─── Nav definitions per role ──────────────────────────────────────────────
+// `icon` is a key into ICONS above (rendered as inline SVG in renderLayout).
+// Item ids/labels/gating (which items appear per dept/role, incl. the
+// frozen-dept solve/sop/mark cut) are UNCHANGED from before this rebuild —
+// only the icon representation moved from a glyph char to an ICONS key.
 function navFor(dept, role) {
   const isFrozen = dept.frozen === true;
   if (role === 'L1') {
     return [
-      { id: 'my',    label: 'My Day',          icon: '◎' },
-      { id: 'kpi',   label: 'My Targets',      icon: '◆' },
-      { id: 'solve', label: 'Problem-Solving', icon: '⚑' },
-      { id: 'sop',   label: 'Standard Work',   icon: '≣' },
-      { id: 'mark',  label: 'Ask Mark',        icon: '◇' },
+      { id: 'my',    label: 'My Day',          icon: 'myday' },
+      { id: 'kpi',   label: 'My Targets',      icon: 'kpi' },
+      { id: 'solve', label: 'Problem-Solving', icon: 'solve' },
+      { id: 'sop',   label: 'Standard Work',   icon: 'sop' },
+      { id: 'mark',  label: 'Ask Mark',        icon: 'mark' },
     ];
   }
   // L2
   return [
-    { id: 'team',  label: 'Overview',        icon: '▤' },
-    { id: 'kpi',   label: 'KPI Boards',      icon: '◆' },
-    ...(!isFrozen ? [{ id: 'solve', label: 'Problem-Solving', icon: '⚑' }] : []),
-    ...(!isFrozen ? [{ id: 'sop',   label: 'Standard Work',   icon: '≣' }] : []),
-    { id: 'sources', label: 'Sources', icon: '⛁' },
-    ...(!isFrozen ? [{ id: 'mark', label: 'Ask Mark', icon: '◇' }] : []),
+    { id: 'team',  label: 'Overview',        icon: 'overview' },
+    { id: 'kpi',   label: 'KPI Boards',      icon: 'kpi' },
+    // Hoshin: informational policy-deployment surface, gated like Overview/KPI
+    // Boards/Sources (visible even on frozen depts) rather than like the
+    // operational tools (solve/sop/mark) — a frozen dept still has a real
+    // Hoshin page (objective cards + functional lead), it just has no active
+    // 8-step/SOP/Ask-Mark workflows.
+    { id: 'hoshin', label: 'Hoshin',         icon: 'hoshin' },
+    ...(!isFrozen ? [{ id: 'solve', label: 'Problem-Solving', icon: 'solve' }] : []),
+    ...(!isFrozen ? [{ id: 'sop',   label: 'Standard Work',   icon: 'sop' }] : []),
+    { id: 'sources', label: 'Sources', icon: 'sources' },
+    ...(!isFrozen ? [{ id: 'mark', label: 'Ask Mark', icon: 'mark' }] : []),
   ];
 }
 
@@ -170,78 +220,90 @@ function askMarkActionRequiredCount(dept) {
   ).length;
 }
 
-// ─── Layout: dark command rail + light canvas + top bar ────────────────────
+// ─── Layout: light sidebar + topbar + canvas ────────────────────────────────
 function renderLayout(dept, activeView) {
   const session = store.get().session;
   const persona = session.persona || resolvePersona(dept, session.role) || { name: dept.name, label: '' };
   const role    = session.role;
   const nav     = navFor(dept, role);
 
-  const railLinks = nav.map(v => `
-    <a href="#/dept/${dept.id}/${v.id}"
-       class="rail-link ${activeView === v.id ? 'rail-link--active' : ''}">
-      <span class="rail-link__icon">${v.icon}</span>${v.label}
-    </a>`).join('');
+  // Both the bell and the topbar "Ask Mark" button open the Ask Mark
+  // queue/view — gated the same way the "Ask Mark" nav item is (off on
+  // frozen departments), so neither ever routes somewhere unreachable from
+  // the sidebar nav.
+  const canAskMark   = nav.some(v => v.id === 'mark');
+  const askMarkCount = canAskMark ? askMarkActionRequiredCount(dept) : 0;
+
+  const navHtml = nav.map(v => {
+    const icon = ICONS[v.icon] || '';
+    // 6px red flag: the reference puts this on the "Overview" nav item
+    // (its id 'overview'; ours 'team') when a KPI needs attention. L1's
+    // home item is "My Day" — a different surface, not an Overview — so it
+    // intentionally does not carry this flag.
+    const flag = (v.id === 'team' && askMarkCount > 0)
+      ? `<span class="nav-flag" title="${askMarkCount} KPI${askMarkCount === 1 ? '' : 's'} need attention"></span>`
+      : '';
+    return `
+      <a href="#/dept/${dept.id}/${v.id}" class="nav-item ${activeView === v.id ? 'is-active' : ''}">
+        ${icon}${v.label}${flag}
+      </a>`;
+  }).join('');
 
   const roleBadgeClass = role === 'L1' ? 'role-badge role-badge--l1' : 'role-badge';
   const initials = persona.name.split(/[\s/]+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase();
 
-  // 🔔 is a shortcut into the Ask Mark queue — gated the same way the "Ask
-  // Mark" nav item is (off on frozen departments), so it never routes
-  // somewhere that isn't reachable from the rail.
-  const canAskMark  = nav.some(v => v.id === 'mark');
-  const inboxCount  = canAskMark ? askMarkActionRequiredCount(dept) : 0;
-  const inboxBtnHtml = canAskMark ? `
-          <button class="inbox-btn" id="inbox-btn" title="Ask Mark — action required">
-            🔔${inboxCount > 0 ? `<span class="inbox-btn__count" id="inbox-btn-count">${inboxCount}</span>` : ''}
+  const askMarkBtnHtml = canAskMark ? `
+          <button class="btn btn--outline btn--sm" id="assistant-btn" title="Mark — your AI employee">${ICONS.mark} Ask Mark</button>` : '';
+  const bellHtml = canAskMark ? `
+          <button class="icon-btn" id="inbox-btn" aria-label="Ask Mark — action required" title="Ask Mark — action required">
+            ${ICONS.bell}${askMarkCount > 0 ? `<span class="icon-btn__count" id="inbox-btn-count">${askMarkCount}</span>` : ''}
           </button>` : '';
 
   app.innerHTML = `
-    <div class="app-shell">
-      <nav class="rail">
-        <div class="rail__brand">
-          <div class="rail__mark">FM</div>
-          <div class="rail__wordmark">FMDS OS<small>World Emblem</small></div>
-        </div>
-
-        <div class="rail__context">
-          <div class="rail__ctx-label">Department</div>
-          <div class="rail__ctx-dept">${dept.name}</div>
-          <div class="rail__ctx-row">
-            <span class="${roleBadgeClass}">${role}</span>
-            <span class="rail__persona">${persona.name}</span>
+    <div class="shell">
+      <nav class="sidebar" aria-label="Board navigation">
+        <div class="brand">
+          <div class="brand__mark">FM</div>
+          <div>
+            <div class="brand__name">FMDS OS</div>
+            <div class="brand__sub">World Emblem</div>
           </div>
         </div>
 
-        <div class="rail__nav">
-          <div class="rail__nav-label">Resources</div>
-          ${railLinks}
+        <div class="dept-block">
+          <span class="running-head">Department</span>
+          <div class="dept-block__name">${dept.name}</div>
+          <div class="dept-block__meta">
+            <span class="${roleBadgeClass}">${role}</span>
+            ${persona.name}
+          </div>
         </div>
 
-        <div class="rail__footer">
-          <div class="rail__footer-persona">
-            <div class="rail__avatar">${initials}</div>
-            <div class="rail__footer-meta">
-              <div class="rail__footer-name">${persona.name}</div>
-              <div class="rail__footer-sub">${persona.label || ''}</div>
+        <div class="nav">
+          <span class="running-head">Boards</span>
+          ${navHtml}
+        </div>
+
+        <div class="sidebar__footer">
+          <div class="persona">
+            <div class="persona__avatar">${initials}</div>
+            <div>
+              <div class="persona__name">${persona.name}</div>
+              <div class="persona__role">${persona.label || ''}</div>
             </div>
           </div>
-          <button class="rail__signout" id="rail-signout">⤺ Switch role / Sign out</button>
+          <button class="signout" id="rail-signout">Switch Role / Sign Out</button>
         </div>
       </nav>
 
-      <div class="app-main">
+      <div class="content-area">
         <header class="topbar">
-          <div class="crumb">
-            <span class="crumb__dept">${dept.name}</span>
-            <span class="crumb__sep">▸</span>
-            <span class="crumb__view">${viewLabel(dept, role, activeView)}</span>
-          </div>
-          <button class="topbar-btn assistant-btn" id="assistant-btn" title="Mark — your AI employee">◇ Ask Mark</button>${inboxBtnHtml}
-          <div class="topbar__search">
-            <input type="search" placeholder="Search this board…" aria-label="Search">
-          </div>
-          <span class="rollup-tag">▲ rolls up to <b>Leadership OS</b></span>
+          <div class="crumb"><b>${dept.name}</b><span class="crumb__sep">/</span>${viewLabel(dept, role, activeView)}</div>
+          <div class="topbar__spacer"></div>
+          ${askMarkBtnHtml}
+          ${bellHtml}
+          <div class="topbar__search">${ICONS.search}<input type="search" placeholder="Search this board…" aria-label="Search this board"></div>
+          <span class="rollup-tag">${ICONS.up}Rolls up to <b>Leadership OS</b></span>
         </header>
 
         <main class="canvas">
@@ -253,15 +315,15 @@ function renderLayout(dept, activeView) {
   const mount = document.getElementById('view-mount');
   dispatchView(dept, activeView, mount);
 
-  // Rail sign-out
+  // Sidebar sign-out
   const signoutBtn = document.getElementById('rail-signout');
   if (signoutBtn) signoutBtn.addEventListener('click', signOut);
 
-  // 🔔 → Ask Mark queue shortcut (standalone Chief-of-Staff popover retired;
-  // the bell now routes into the same queue the "Ask Mark" nav item opens,
-  // with a live badge kept in sync by polling — the queue can change from
-  // inside the Ask Mark view itself, which repaints only its own mount, not
-  // this topbar).
+  // 🔔 → Ask Mark queue shortcut (standalone Chief-of-Staff popover stays
+  // retired; the bell routes into the same queue the "Ask Mark" nav item
+  // opens, with a live badge kept in sync by polling — the queue can change
+  // from inside the Ask Mark view itself, which repaints only its own
+  // mount, not this topbar).
   const inboxBtn = document.getElementById('inbox-btn');
   if (inboxBtn) {
     inboxBtn.addEventListener('click', () => { location.hash = `#/dept/${dept.id}/mark`; });
@@ -270,9 +332,11 @@ function renderLayout(dept, activeView) {
     stopInboxBadgePoll();
   }
 
-  // AI Assistant drawer toggle
+  // Topbar "Ask Mark" button → same destination as the bell/nav item (the
+  // full Ask Mark workspace). This replaces the old mini AI-assistant
+  // drawer this button used to toggle (see task report for why).
   const assistantBtn = document.getElementById('assistant-btn');
-  if (assistantBtn) assistantBtn.addEventListener('click', () => toggleAssistant(dept));
+  if (assistantBtn) assistantBtn.addEventListener('click', () => { location.hash = `#/dept/${dept.id}/mark`; });
 }
 
 // ─── 🔔 live badge poll ─────────────────────────────────────────────────────
@@ -296,7 +360,7 @@ function startInboxBadgePoll(dept) {
     if (count > 0) {
       if (!countEl) {
         countEl = document.createElement('span');
-        countEl.className = 'inbox-btn__count';
+        countEl.className = 'icon-btn__count';
         countEl.id = 'inbox-btn-count';
         btn.appendChild(countEl);
       }
@@ -305,73 +369,6 @@ function startInboxBadgePoll(dept) {
       countEl.remove();
     }
   }, 800);
-}
-
-// ─── AI Assistant right drawer ──────────────────────────────────────────────
-function toggleAssistant(dept) {
-  const existing = document.getElementById('assistant-drawer');
-  if (existing) { existing.remove(); return; }
-
-  const pokeBtn = dept.id === 'hr'
-    ? `<button class="assistant-shortcut assistant-shortcut--poke" data-intent="agent-poke">Ping Clarissa (ADP poke)</button>`
-    : '';
-
-  const drawer = document.createElement('div');
-  drawer.id = 'assistant-drawer';
-  drawer.className = 'assistant-drawer';
-  drawer.innerHTML = `
-    <div class="assistant-drawer__head">
-      <div class="assistant-drawer__ident">
-        <div class="assistant-drawer__avatar">M</div>
-        <div>
-          <div class="assistant-drawer__name">Mark</div>
-          <div class="assistant-drawer__role">AI Employee · <span class="assistant-drawer__dept">${dept.name}</span></div>
-        </div>
-      </div>
-      <button class="assistant-drawer__close" id="assistant-close">×</button>
-    </div>
-
-    <div class="assistant-drawer__reads">
-      Mark reasons over your <b>KPI data</b> and the <b>meeting record</b> — weekly
-      <b>T2</b> (leadership), <b>T3</b> (exec review) and team <b>huddles</b> — to explain
-      what's driving each number and track the actions coming out of those meetings.
-    </div>
-
-    <div class="assistant-drawer__shortcuts">
-      <button class="assistant-shortcut" data-intent="explain-red">Why is the headline KPI red?</button>
-      <button class="assistant-shortcut" data-intent="find-sop">Find governing SOP</button>
-      ${pokeBtn}
-    </div>
-
-    <div class="assistant-drawer__reply" id="assistant-reply"></div>
-
-    <div class="assistant-drawer__ask">
-      <textarea id="assistant-input" rows="3" placeholder="Ask about this board…"></textarea>
-      <button class="btn btn--primary assistant-ask-btn" id="assistant-ask">Ask</button>
-    </div>`;
-
-  document.querySelector('.app-main').appendChild(drawer);
-
-  // Close button
-  document.getElementById('assistant-close').addEventListener('click', () => {
-    document.getElementById('assistant-drawer')?.remove();
-  });
-
-  // Shortcut buttons
-  document.querySelectorAll('.assistant-shortcut').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const reply = bakedReply(dept.id, btn.dataset.intent, {});
-      document.getElementById('assistant-reply').textContent = reply;
-    });
-  });
-
-  // Ask button
-  document.getElementById('assistant-ask').addEventListener('click', () => {
-    const input = document.getElementById('assistant-input').value.trim();
-    if (!input) return;
-    const reply = bakedReply(dept.id, 'explain-red', { kpi: input });
-    document.getElementById('assistant-reply').textContent = reply;
-  });
 }
 
 // ─── View dispatcher ────────────────────────────────────────────────────────
@@ -399,6 +396,9 @@ function dispatchView(dept, view, mount) {
         : renderKpi(dept, mount);
       break;
 
+    case 'hoshin':
+      renderHoshin(dept, mount);
+      break;
     case 'sources': renderSources(dept, mount); break;
     case 'my': {
       if (session && session.role === 'L1') {

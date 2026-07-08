@@ -44,11 +44,11 @@ export function renderLogin(mount, onEnter, departments) {
     <div class="login">
       <div class="login__brandside">
         <div class="login__brand">
-          <div class="rail__mark">FM</div>
-          <div class="login__brand-word">FMDS OS<small>World Emblem</small></div>
+          <div class="brand__mark">FM</div>
+          <div class="login__brand-word" style="font-family:var(--font-serif)">FMDS OS<small style="font-family:var(--font-sans)">World Emblem</small></div>
         </div>
         <div class="login__lead">
-          <div class="login__headline">The operating layer<br>for department leaders.</div>
+          <div class="login__headline" style="font-family:var(--font-serif)">The operating layer<br>for department leaders.</div>
           <p class="login__sub">
             Live KPI boards, problem-solving, and standard work — every metric
             traced to target, every board rolling up to Leadership OS.
