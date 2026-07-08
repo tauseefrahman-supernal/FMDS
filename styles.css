@@ -1294,21 +1294,23 @@ input[type="text"]:focus, input[type="search"]:focus, select:focus {
   min-height: 100vh;
   display: grid;
   grid-template-columns: 1.05fr 1fr;
-  background: var(--ink-900);
+  background: hsl(var(--action-10));
 }
 .login__brandside {
   position: relative;
   padding: 56px;
-  color: var(--rail-fg-bright);
+  color: hsl(var(--action-1));
   display: flex; flex-direction: column;
   /* Dark brand panel kept as an intentional contrast moment against the
      otherwise all-light Supernal canvas (the delta list calls this "our
-     call"). The glow was the old electric-blue accent (#2f6bff) — re-themed
-     to sage (--action-7) so it reads as this app's brand, not the retired
-     IBM-Plex-era blue. */
+     call") — a deep SAGE panel (action scale stops 9 → 10, the bottom of the
+     same action scale every button/link on this app draws from) rather than
+     the old neutral dark-rail token pair (deleted in Task 2), so the one
+     dark surface left in the app reads as this app's own brand, not a
+     leftover command-rail holdover. */
   background:
     radial-gradient(1200px 600px at -10% -10%, hsl(var(--action-7) / 0.30), transparent 60%),
-    linear-gradient(160deg, var(--ink-900), var(--ink-800));
+    linear-gradient(160deg, hsl(var(--action-9)), hsl(var(--action-10)));
   overflow: hidden;
 }
 .login__brandside::after {
@@ -1323,29 +1325,36 @@ input[type="text"]:focus, input[type="search"]:focus, select:focus {
 .login__brand {
   display: flex; align-items: center; gap: 12px; position: relative; z-index: 1;
 }
-/* The login brand-mark override tied to the old dark-rail base rule was
-   removed here (Task 3) — login's brand mark is already unstyled pending
-   Task 15's re-skin (which will use .brand__mark from the ported shell). */
-.login__brand-word { font-size: 1.15rem; font-weight: 600; color: var(--rail-fg-bright); }
-.login__brand-word small { display: block; font-size: 0.62rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--rail-fg); font-weight: 500; }
+/* Task 15: login's brand mark now reuses the shell's real `.brand__mark`
+   (32px sage rounded square, serif "FM") — no override needed here, its
+   sage-fill/white-text pair reads fine on this dark panel too. The word mark
+   next to it stays a login-local class since it sits on the dark panel
+   (the sidebar's `.brand__name`/`.brand__sub` are dark-on-light and would be
+   invisible here) — now tokened off the same sage action scale as the panel
+   background instead of the deleted dark-rail token pair. */
+.login__brand-word { font-size: 1.15rem; font-weight: 600; color: hsl(var(--action-1)); }
+.login__brand-word small { display: block; font-size: 0.62rem; letter-spacing: 0.16em; text-transform: uppercase; color: hsl(var(--action-4)); font-weight: 500; }
 
 .login__lead {
   margin-top: auto; position: relative; z-index: 1; max-width: 460px;
 }
 .login__headline {
   font-size: 2rem; font-weight: 600; letter-spacing: -0.02em;
-  color: var(--rail-fg-bright); line-height: 1.15;
+  color: hsl(var(--action-1)); line-height: 1.15;
 }
-.login__sub { margin-top: 14px; color: var(--rail-fg); font-size: 0.95rem; line-height: 1.6; }
+.login__sub { margin-top: 14px; color: hsl(var(--action-4)); font-size: 0.95rem; line-height: 1.6; }
 .login__stats { display: flex; gap: 28px; margin-top: 30px; position: relative; z-index: 1; }
 .login__stat-val {
   font-family: var(--font-mono); font-size: 1.5rem; font-weight: 600;
-  color: var(--rail-fg-bright); font-variant-numeric: tabular-nums;
+  color: hsl(var(--action-1)); font-variant-numeric: tabular-nums;
 }
-.login__stat-lbl { font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--rail-fg); margin-top: 2px; }
+.login__stat-lbl { font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase; color: hsl(var(--action-4)); margin-top: 2px; }
 
 .login__formside {
-  background: var(--panel);
+  /* Warm off-white page bg (--bg), not pure white --panel — this side IS the
+     page for the sign-in form, not a card floating on one; the opt-chips and
+     persona-preview beneath still layer --panel/--bg-subtle on top of it. */
+  background: var(--bg);
   display: flex; flex-direction: column; justify-content: center;
   padding: 56px min(9vw, 88px);
 }

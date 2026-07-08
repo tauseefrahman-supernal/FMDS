@@ -44,7 +44,7 @@ export function renderLogin(mount, onEnter, departments) {
     <div class="login">
       <div class="login__brandside">
         <div class="login__brand">
-          <div class="rail__mark">FM</div>
+          <div class="brand__mark">FM</div>
           <div class="login__brand-word" style="font-family:var(--font-serif)">FMDS OS<small style="font-family:var(--font-sans)">World Emblem</small></div>
         </div>
         <div class="login__lead">

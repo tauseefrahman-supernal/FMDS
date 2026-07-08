@@ -4,177 +4,138 @@
  * renderOdgHub(dept, mount)
  *
  * ODG is the method hub, not a plain KPI table. This dedicated board shows:
- *  1. Headline adoption gap — FMDS 93.2% vs 8-Step 18.9% — as prominent stats
- *  2. SRR-by-department as bars (Operations ~50%, others 0)
- *  3. Training-plan-vs-actual by the 8 programs as bars
+ *  1. Headline adoption gap — FMDS vs 8-Step — as `.stat-tile` cards
+ *  2. SRR-by-department as a comparison bar chart
+ *  3. Training-plan-vs-actual by the 8 programs as a comparison bar chart
  *  4. Link to KZ tracker (#/dept/odg/solve)
  *
- * Data is read from dept (odg.json) — no invented numbers.
- * Design: $150M-clean; reuses shared CSS classes.
+ * Data is read from dept (data/odg.json) — no invented numbers.
  *
- * Task 7 re-skin note: these adoption/SRR/training bars are comparisons
- * across departments/programs against a single ramp target — not a per-row
- * on/off-track gate — so per design-system principle "RAG is reserved for
- * status, full stop" they render in the viz palette (identity/decoration)
- * rather than red/amber/green. vizBars() below is a small local renderer
- * (mirrors lib/charts.js svgBars()'s layout math) that resolves bar fill
- * from a viz token instead of the RAG palette; the shared svgBars() stays
- * untouched since other, already-migrated boards legitimately use it for
- * real per-row RAG status.
+ * Re-skinned per §5.9 of docs/redesign/DESIGN-GUIDE.md ("apply the same
+ * card/table/badge idiom to odg-hub.js") onto the shared `.page-head`,
+ * `.card`/`.card--pad`, `.running-head`, `.section-head`, `.badge`, and
+ * `.stat-tile` classes — the old custom `.odg-section`/`.odg-stat-*` CSS
+ * (injected via a runtime <style> tag) is gone; every rule now comes from
+ * the ported design-system classes in styles.css.
+ *
+ * SRR-by-department and training-by-program stay as comparison bar charts
+ * (not a `.dt` status table): both are readings of many entities against
+ * ONE shared reference point, not a per-row on/off-track gate, and — for
+ * training specifically — the "target" (0.1 = a 10%/month RAMP RATE) is not
+ * even the same kind of number as the "actual" (a CUMULATIVE adoption
+ * percentage), so a naive ragStatus(actual, target) ratio would read every
+ * program as wildly "green" regardless of how it's really doing. SRR's
+ * contributors do carry a real, comparable target (1.0 = 100% per
+ * department), but its own `note` field flags real doubt about whether the
+ * five departments reading exactly 0% are truly non-adopters or simply
+ * not-yet-scored — grading that as a hard "Off Track" would overstate
+ * confidence the source data itself doesn't have. Both charts therefore
+ * render via the shared `svgBars()` export from lib/charts.js with NO
+ * per-row `rag` (a single identity color, not a status hue) rather than the
+ * RAG-only `meter()`/`.status-cell` idiom used for the app's real per-row
+ * status pages — same conclusion the pre-rebuild file reached, now drawn
+ * from the shared chart library instead of a private `vizBars()` clone.
  */
 
+import { svgBars } from '../lib/charts.js';
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
 
 function pct(ratio) {
   if (ratio == null) return '—';
   return (ratio * 100).toFixed(1) + '%';
 }
 
-// Resolve a CSS custom property from the live document (falls back to a
-// plain hex when no DOM is present, e.g. under node --check / tests) —
-// same pattern as lib/charts.js's _cssVar().
-function _cssVar(name, fallback) {
-  if (typeof document === 'undefined') return fallback;
-  const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-  return v || fallback;
-}
-
-// Local bar renderer using the viz-identity palette (never RAG hues) —
-// see module header. `rows` is [{label, value}]; every bar in a given call
-// shares one viz token (a single comparable metric across categories, like
-// the artifact's default single-series line color), not a per-row status.
-function vizBars(rows, { width = 480, barHeight = 22, gap = 7, vizVar = '--viz-single' } = {}) {
-  const PAD_L = 90, PAD_R = 40, PAD_T = 8;
-  const trackW = width - PAD_L - PAD_R;
-  const totalH = PAD_T + rows.length * (barHeight + gap);
-  const numeric = rows.map(r => r.value).filter(v => typeof v === 'number' && !Number.isNaN(v));
-  const maxV = numeric.length ? Math.max(...numeric) : 1;
-
-  // --muted / --text-dim are already complete `hsl(...)` values in
-  // styles.css; the --viz-* tokens are bare "H S% L%" triples that still
-  // need the hsl() wrapper (same distinction lib/charts.js's RAG_COLORS vs.
-  // its viz usage draws).
-  const trackFill = _cssVar('--muted', '#e9e5df');
-  const labelFill = _cssVar('--text-dim', '#5f594e');
-  const barFill   = `hsl(${_cssVar(vizVar, '197 13% 52%')})`;
-
-  const bars = rows.map((row, i) => {
-    const y    = PAD_T + i * (barHeight + gap);
-    const cx   = PAD_L;
-    const cy   = y + barHeight / 2 + 4;
-    const val  = (typeof row.value === 'number' && !Number.isNaN(row.value)) ? row.value : null;
-    const barW = val !== null ? Math.max(2, (val / maxV) * trackW) : 0;
-    const valStr = val !== null ? (val >= 1000 ? (val / 1000).toFixed(0) + 'k' : val.toFixed(1)) : '—';
-
-    return `
-    <text x="${cx - 4}" y="${cy}" text-anchor="end" font-size="10" fill="${labelFill}" dominant-baseline="middle">${row.label.slice(0, 14)}</text>
-    <rect x="${cx}" y="${y}" width="${trackW}" height="${barHeight}" rx="3" fill="${trackFill}"/>
-    ${val !== null ? `<rect x="${cx}" y="${y}" width="${barW.toFixed(1)}" height="${barHeight}" rx="3" fill="${barFill}" opacity="0.9"/>` : ''}
-    <text x="${cx + trackW + 4}" y="${cy}" font-size="10" fill="${labelFill}" dominant-baseline="middle">${valStr}</text>`;
-  }).join('');
-
-  return `<svg width="${width}" height="${totalH}" xmlns="http://www.w3.org/2000/svg">${bars}</svg>`;
-}
-
-// ─── Adoption headline section ───────────────────────────────────────────────
+// ─── Adoption headline — `.stat-tile` cards, no badge (these two numbers are
+// descriptive headline stats, not target-graded KPIs in the source data). ──
 
 function renderAdoptionHeadline(dept) {
   const h = dept.headline || {};
-  const fmds      = h.fmdsAdoption     ?? null;
+  const fmds      = h.fmdsAdoption      ?? null;
   const eightStep = h.eightStepAdoption ?? null;
   const gap       = (fmds != null && eightStep != null) ? fmds - eightStep : null;
 
   return `
-    <section class="odg-section card" style="margin-bottom:24px">
-      <div class="odg-section-label">Adoption Gap — the Product Thesis</div>
-      <p class="text-muted text-small mt-1 mb-4" style="max-width:560px;line-height:1.55">
-        FMDS awareness is near-universal; 8-Step problem-solving is barely started.
-        Closing this gap is what the OS exists to do.
-      </p>
-      <div style="display:flex;gap:32px;flex-wrap:wrap;align-items:flex-end">
-        <div class="odg-stat-block">
-          <div class="odg-stat-label">FMDS Adoption</div>
-          <div class="odg-stat-value" style="color:hsl(var(--viz-single))">${pct(fmds)}</div>
-          <div class="odg-stat-sub text-muted">93.2% trained on FMDS framework</div>
-        </div>
-        <div class="odg-stat-block">
-          <div class="odg-stat-label">8-Step Usage</div>
-          <div class="odg-stat-value" style="color:hsl(var(--viz-2))">${pct(eightStep)}</div>
-          <div class="odg-stat-sub text-muted">18.9% actively using 8-Step</div>
-        </div>
-        ${gap != null ? `
-        <div class="odg-stat-block">
-          <div class="odg-stat-label">Adoption Gap</div>
-          <div class="odg-stat-value" style="color:hsl(var(--viz-7))">${pct(gap)}</div>
-          <div class="odg-stat-sub text-muted">method awareness vs method use</div>
-        </div>` : ''}
-      </div>
-    </section>`;
+    <div class="section-head" style="margin-top:0"><span class="running-head">Adoption gap — the product thesis</span></div>
+    <p class="muted" style="max-width:70ch; margin-bottom:16px; line-height:1.55">
+      FMDS awareness is near-universal; 8-Step problem-solving is barely started.
+      Closing this gap is what the OS exists to do.
+    </p>
+    <div class="stat-grid" style="margin-bottom:32px">
+      <section class="card stat-tile">
+        <div class="stat-tile__top"><span class="stat-tile__label">FMDS Adoption</span></div>
+        <div class="stat-tile__value">${pct(fmds)}</div>
+        <div class="stat-tile__vs">Trained on the FMDS framework</div>
+      </section>
+      <section class="card stat-tile">
+        <div class="stat-tile__top"><span class="stat-tile__label">8-Step Usage</span></div>
+        <div class="stat-tile__value">${pct(eightStep)}</div>
+        <div class="stat-tile__vs">Actively using 8-Step problem-solving</div>
+      </section>
+      ${gap != null ? `
+      <section class="card stat-tile">
+        <div class="stat-tile__top"><span class="stat-tile__label">Adoption Gap</span></div>
+        <div class="stat-tile__value">${pct(gap)}</div>
+        <div class="stat-tile__vs">Method awareness vs method use</div>
+      </section>` : ''}
+    </div>`;
 }
 
-// ─── SRR by department (bar chart) ───────────────────────────────────────────
+// ─── SRR by department (comparison bar chart) ───────────────────────────────
 
 function renderSrrBars(dept) {
-  // Pull srr sub-KPIs from kpis array
-  const srrKpi = dept.kpis.find(k => k.id === 'srr_overall');
-  const subs = srrKpi ? srrKpi.contributors : [];
-
-  const rows = subs.map(cid => {
-    const k = dept.kpis.find(x => x.id === cid);
+  const srrKpi = dept.kpis.find((k) => k.id === 'srr_overall');
+  const contributorIds = srrKpi ? srrKpi.contributors : [];
+  const rows = contributorIds.map((cid) => {
+    const k = dept.kpis.find((x) => x.id === cid);
     if (!k) return null;
-    return { label: k.name.replace('SRR — ', ''), value: k.actual };
+    return { label: k.name.replace('SRR — ', ''), value: typeof k.actual === 'number' ? Math.round(k.actual * 100) : null };
   }).filter(Boolean);
-
   if (!rows.length) return '';
 
-  const overallActual = srrKpi ? srrKpi.actual : null;
+  const targetPct = srrKpi && srrKpi.target != null ? pct(srrKpi.target) : '100%';
 
   return `
-    <section class="odg-section card" style="margin-bottom:24px">
-      <div class="odg-section-label">Strategic Review Rhythm (SRR) — by Department</div>
-      <p class="text-muted text-small mt-1 mb-3" style="line-height:1.55">
-        Overall: <strong>${pct(overallActual)}</strong> adoption (target 100%).
-        Operations is the only department running SRR (~50%). All others read 0 —
-        confirm whether true non-adoption or not-yet-scored.
-        <span class="badge badge--warning" style="margin-left:6px">Source: ODG FMDS Board</span>
+    <section class="card card--pad" style="margin-bottom:24px">
+      <span class="running-head">Strategic Review Rhythm (SRR) — by department</span>
+      <p class="muted" style="margin:8px 0 16px; font-size:13.5px; line-height:1.55">
+        Overall: <b class="tnum">${pct(srrKpi ? srrKpi.actual : null)}</b> adoption (target ${targetPct}).
+        Operations is the only department running SRR (~50%); all others read 0% —
+        confirm whether that is true non-adoption or not-yet-scored.
+        <span class="badge badge--amber" style="margin-left:6px">Source: ODG FMDS Board</span>
       </p>
-      <div style="overflow-x:auto">
-        ${vizBars(rows.map(r => ({
-          label: r.label,
-          value: typeof r.value === 'number' ? Math.round(r.value * 100) : null,
-        })), { width: 480, barHeight: 22, gap: 7 })}
-      </div>
-      <p class="text-muted" style="font-size:0.68rem;margin-top:4px">Values shown as % (0–100)</p>
+      <div style="overflow-x:auto">${svgBars(rows, { width: 520, barHeight: 22, gap: 7 })}</div>
+      <p class="faint" style="font-size:11.5px; margin-top:6px">Values shown as % (0–100).</p>
     </section>`;
 }
 
-// ─── Training plan vs actual by program (bar chart) ──────────────────────────
+// ─── Training plan vs actual by program (comparison bar chart) ─────────────
 
 function renderTrainingBars(dept) {
-  // Use the structured trainingPrograms array from odg.json.
-  // (Target for all programs is 10% monthly ramp, per the data note in the
-  // prose below — these are progress-vs-ramp comparison bars across
-  // programs, not a per-program RAG gate, so they render on the viz palette.)
   const programs = dept.trainingPrograms || [];
   if (!programs.length) return '';
 
-  const rows = programs.map(p => ({
+  const rows = programs.map((p) => ({
     label: p.name,
     value: typeof p.adoption === 'number' ? Math.round(p.adoption * 100) : null,
   }));
 
   return `
-    <section class="odg-section card" style="margin-bottom:24px">
-      <div class="odg-section-label">Training Plan vs Actual — by Program</div>
-      <p class="text-muted text-small mt-1 mb-3" style="line-height:1.55">
-        Monthly ramp target 10% per program. Cumulative adoption (latest wk24) shown.
-        FMDS and SRR (program) outperform; 8-Step and JIT/IDMP lag.
-        <span class="badge" style="margin-left:6px">Source: ODG FMDS Board</span>
+    <section class="card card--pad" style="margin-bottom:24px">
+      <span class="running-head">Training plan vs actual — by program</span>
+      <p class="muted" style="margin:8px 0 16px; font-size:13.5px; line-height:1.55">
+        Monthly ramp target 10% per program; cumulative adoption (latest week) shown.
+        FMDS and SRR (as a program) outperform; 8-Step and JIT/IDMP lag.
+        <span class="badge badge--neutral" style="margin-left:6px">Source: ODG FMDS Board</span>
       </p>
-      <div style="overflow-x:auto">
-        ${vizBars(rows, { width: 480, barHeight: 22, gap: 7, vizVar: '--viz-5' })}
-      </div>
-      <p class="text-muted" style="font-size:0.68rem;margin-top:4px">Values shown as % (0–100). Target: 10%.</p>
+      <div style="overflow-x:auto">${svgBars(rows, { width: 520, barHeight: 22, gap: 7 })}</div>
+      <p class="faint" style="font-size:11.5px; margin-top:6px">Values shown as % (0–100). Monthly ramp target: 10%.</p>
     </section>`;
 }
 
@@ -182,104 +143,46 @@ function renderTrainingBars(dept) {
 
 function renderKzLink(dept) {
   return `
-    <section class="odg-section card" style="margin-bottom:24px">
-      <div class="odg-section-label">KZ / 8-Step Tracker</div>
-      <p class="text-muted text-small mt-1 mb-3" style="line-height:1.55">
-        The KZ tracker covers all departments (~34 real records). ODG provides support
-        and oversight. Use the Problem-Solving view to browse by department, review
-        progress, or open a new 8-step.
+    <section class="card card--pad" style="margin-bottom:24px">
+      <span class="running-head">KZ / 8-step tracker</span>
+      <p class="muted" style="margin:8px 0 16px; font-size:13.5px; line-height:1.55">
+        The KZ tracker covers all departments. ODG provides support and oversight.
+        Use Problem-Solving to browse by department, review progress, or open a new 8-step.
       </p>
-      <a href="#/dept/${dept.id}/solve" class="btn btn--primary" style="display:inline-block">
-        Open KZ Tracker &amp; 8-Step Wizard →
-      </a>
+      <a href="#/dept/${esc(dept.id)}/solve" class="btn btn--primary">Open KZ Tracker &amp; 8-Step Wizard →</a>
     </section>`;
 }
 
-// ─── Gaps note ───────────────────────────────────────────────────────────────
+// ─── Known data gaps ─────────────────────────────────────────────────────────
 
 function renderGaps(dept) {
   if (!dept.gaps || !dept.gaps.length) return '';
-  const items = dept.gaps.map(g => `<li>${g}</li>`).join('');
+  const items = dept.gaps.map((g) => `<li>${esc(g)}</li>`).join('');
   return `
-    <section class="odg-section card" style="margin-bottom:24px;border-left:3px solid var(--amber)">
-      <div class="odg-section-label" style="color:var(--amber)">Known Data Gaps</div>
-      <ul class="text-muted text-small mt-2" style="padding-left:18px;line-height:1.7">${items}</ul>
+    <section class="card card--pad" style="border-left:3px solid var(--amber)">
+      <b style="font-size:13px; color:var(--amber-text)">Known data gaps</b>
+      <ul class="muted" style="margin:10px 0 0; padding-left:18px; font-size:13px; line-height:1.7">${items}</ul>
     </section>`;
 }
-
-// ─── Inline styles ────────────────────────────────────────────────────────────
-
-const ODG_STYLES = `
-  .odg-section-label {
-    font-size: 0.65rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--accent);
-    margin-bottom: 4px;
-  }
-
-  .odg-stat-block {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    min-width: 140px;
-  }
-
-  .odg-stat-label {
-    font-size: 0.7rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--text-dim);
-  }
-
-  .odg-stat-value {
-    font-size: 2.4rem;
-    font-weight: 700;
-    letter-spacing: -0.02em;
-    line-height: 1;
-  }
-
-  .odg-stat-sub {
-    font-size: 0.72rem;
-    margin-top: 2px;
-    max-width: 160px;
-    line-height: 1.4;
-  }
-`;
 
 // ─── Public entry point ───────────────────────────────────────────────────────
 
 export function renderOdgHub(dept, mount) {
-  // Inject styles once
-  if (!document.getElementById('odg-hub-styles')) {
-    const el = document.createElement('style');
-    el.id = 'odg-hub-styles';
-    el.textContent = ODG_STYLES;
-    document.head.appendChild(el);
-  }
-
-  const html = `
-    <div>
-      <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:20px">
-        <div>
-          <h2 style="margin:0">${dept.name} — Method Hub</h2>
-          <p class="text-muted text-small mt-1">
-            Organizational Development Group · Training adoption, SRR, KZ tracker, SOP library
-          </p>
-        </div>
-        <a href="#/dept/${dept.id}/kpi" class="btn btn--ghost" style="font-size:0.8rem">
-          KPI View →
-        </a>
+  mount.innerHTML = `
+    <div class="page-head">
+      <div>
+        <span class="running-head page-head__eyebrow">${esc(dept.name)} · Adoption &amp; SRR</span>
+        <h1>Method Hub</h1>
+        <p class="page-head__sub">Training adoption, SRR, KZ tracker, SOP library</p>
       </div>
+      <div class="page-head__side">
+        <a href="#/dept/${esc(dept.id)}/kpi" class="btn btn--secondary">KPI View →</a>
+      </div>
+    </div>
 
-      ${renderAdoptionHeadline(dept)}
-      ${renderSrrBars(dept)}
-      ${renderTrainingBars(dept)}
-      ${renderKzLink(dept)}
-      ${renderGaps(dept)}
-    </div>`;
-
-  mount.innerHTML = html;
+    ${renderAdoptionHeadline(dept)}
+    ${renderSrrBars(dept)}
+    ${renderTrainingBars(dept)}
+    ${renderKzLink(dept)}
+    ${renderGaps(dept)}`;
 }
