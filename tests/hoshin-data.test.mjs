@@ -82,30 +82,24 @@ test('activitiesFor(hoshin, "service") resolves through the alias to Sales\'s sa
   assert.deepEqual(serviceActs, salesActs);
 });
 
-test('objectives: all 5 carry a real, non-empty description (4 verbatim-from-deck; acquisitions synthesized from its real activities, flagged)', () => {
+test('objectives: all 5 carry a real, non-empty description (canonical 2026 slide; none synthesized)', () => {
   const byId = Object.fromEntries(hoshin.objectives.map(o => [o.id, o]));
   const allIds = ['financial-performance', 'organizational-development', 'branding-solution', 'new-customer-acquisition-lifetime-journey', 'acquisitions'];
   allIds.forEach((id) => {
     assert.equal(typeof byId[id].description, 'string', `${id}.description should be a non-null string`);
     assert.ok(byId[id].description.length > 0, `${id}.description should not be empty`);
+    // Descriptions now come verbatim from the owner's canonical slide — nothing is synthesized/flagged anymore.
+    assert.equal('descriptionProvenance' in byId[id], false, `${id} should carry no descriptionProvenance`);
   });
-  // acquisitions is the one synthesized description — it must carry a provenance flag so it's not mistaken for a verbatim deck quote.
-  assert.equal(typeof byId['acquisitions'].descriptionProvenance, 'string', 'acquisitions.description is synthesized and must record its provenance');
-  assert.match(byId['acquisitions'].descriptionProvenance, /SYNTHESIZED/, 'acquisitions provenance must flag it as synthesized, not verbatim');
 });
 
-test('objective descriptions are copied verbatim from the matching Marketing-block activity (objectiveId cross-check)', () => {
-  const marketing = hoshin.departments.marketing.activities;
+test('objective descriptions match the canonical 2026 1-Year Hoshin Priorities slide (verbatim content + corrected figures)', () => {
   const byId = Object.fromEntries(hoshin.objectives.map(o => [o.id, o]));
-  const expectations = [
-    { objectiveId: 'financial-performance', activityIndex: 0 },
-    { objectiveId: 'organizational-development', activityIndex: 2 },
-    { objectiveId: 'new-customer-acquisition-lifetime-journey', activityIndex: 3 },
-    { objectiveId: 'branding-solution', activityIndex: 4 },
-  ];
-  expectations.forEach(({ objectiveId, activityIndex }) => {
-    const activity = marketing[activityIndex];
-    assert.equal(activity.objectiveId, objectiveId, `marketing.activities[${activityIndex}].objectiveId should match ${objectiveId}`);
-    assert.equal(byId[objectiveId].description, activity.hoshinPriority, `${objectiveId}.description should be verbatim-equal to the source activity's hoshinPriority`);
-  });
+  assert.match(byId['financial-performance'].description, /\$150M revenue, 55% GM/, 'financial-performance uses the corrected $150M / 55% GM figures');
+  assert.match(byId['branding-solution'].description, /Lock down IL market \(70%\+\)/, 'branding-solution uses the corrected 70%+ IL figure');
+  assert.match(byId['acquisitions'].description, /Fully integrate HPI\/EEI/, 'acquisitions uses the real slide wording');
+  assert.match(byId['organizational-development'].description, /Complete RACI/, 'org-dev uses the slide wording');
+  assert.match(byId['new-customer-acquisition-lifetime-journey'].description, /5-min onboarding/, 'new-customer uses the slide wording');
+  // Guard against regressing to the old V-3 figures.
+  hoshin.objectives.forEach(o => assert.doesNotMatch(o.description, /\$200m|\(85%\)/i, `${o.id} must not carry the old V-3 figures`));
 });
