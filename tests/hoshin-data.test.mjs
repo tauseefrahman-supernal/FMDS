@@ -82,14 +82,16 @@ test('activitiesFor(hoshin, "service") resolves through the alias to Sales\'s sa
   assert.deepEqual(serviceActs, salesActs);
 });
 
-test('objectives: 4 of 5 carry a real, non-null description; acquisitions stays null (no source text exists)', () => {
+test('objectives: all 5 carry a real, non-empty description (4 verbatim-from-deck; acquisitions synthesized from its real activities, flagged)', () => {
   const byId = Object.fromEntries(hoshin.objectives.map(o => [o.id, o]));
-  const withDescription = ['financial-performance', 'organizational-development', 'branding-solution', 'new-customer-acquisition-lifetime-journey'];
-  withDescription.forEach((id) => {
+  const allIds = ['financial-performance', 'organizational-development', 'branding-solution', 'new-customer-acquisition-lifetime-journey', 'acquisitions'];
+  allIds.forEach((id) => {
     assert.equal(typeof byId[id].description, 'string', `${id}.description should be a non-null string`);
     assert.ok(byId[id].description.length > 0, `${id}.description should not be empty`);
   });
-  assert.equal(byId['acquisitions'].description, null, 'acquisitions.description must stay null — no real source text exists');
+  // acquisitions is the one synthesized description — it must carry a provenance flag so it's not mistaken for a verbatim deck quote.
+  assert.equal(typeof byId['acquisitions'].descriptionProvenance, 'string', 'acquisitions.description is synthesized and must record its provenance');
+  assert.match(byId['acquisitions'].descriptionProvenance, /SYNTHESIZED/, 'acquisitions provenance must flag it as synthesized, not verbatim');
 });
 
 test('objective descriptions are copied verbatim from the matching Marketing-block activity (objectiveId cross-check)', () => {
