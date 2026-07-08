@@ -1,5 +1,11 @@
 # Design-System Migration (Phase A) — match the "Supernal standard" artifact
 
+> **⚠️ SUPERSEDED (2026-07-08):** Phase A (re-skin) + Phase C (layout rollout) are replaced by
+> `2026-07-08-layout-match-redesign.md`, which rebuilds each page's LAYOUT against the artifact's real source in
+> `docs/redesign/reference/` (this plan only recolored the old layouts — the wrong altitude). Phase B (Hoshin data)
+> is done (`data/hoshin.json` + `lib/hoshin.js`). Kept for history only.
+
+
 > **For agentic workers:** REQUIRED SUB-SKILL: superpowers:subagent-driven-development. Steps use `- [ ]`.
 > **Plan style (owner pref):** files + interfaces + verify intent + commits; no inline code bodies.
 

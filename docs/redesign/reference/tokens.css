@@ -1,0 +1,147 @@
+/* ═══════════════════════════════════════════════════════════════════
+   FMDS OS — Supernal design system tokens
+   Brand anchors from World Emblem Leadership OS (shared identity).
+   Light theme committed deliberately: FMDS OS and Leadership OS run
+   light; explicit values below keep the design stable in any viewer.
+   ═══════════════════════════════════════════════════════════════════ */
+:root {
+  /* Action — hand-tuned sage (seed #436F65); stop 7 is default action */
+  --action-1: 161 33% 98%;
+  --action-2: 161 28% 93%;
+  --action-3: 162 27% 85%;
+  --action-4: 163 25% 73%;
+  --action-5: 164 22% 60%;
+  --action-6: 164 20% 48%;
+  --action-7: 166 28% 36%;
+  --action-8: 167 38% 25%;
+  --action-9: 169 54% 15%;
+  --action-10: 168 74% 6%;
+
+  /* Secondary accent — viz blue-gray, decorative (Hoshin supports, quarter chips) */
+  --we-sky: 197 13% 52%;
+  --we-sky-bg: 197 9% 93%;
+
+  /* Surface — warm-neutral ladder */
+  --surface-1: 40 20% 97%;
+  --surface-2: 36 19% 95%;
+  --surface-3: 26 19% 93%;
+  --surface-4: 30 20% 90%;
+  --surface-5: 30 10% 80%;
+  --surface-6: 32 10% 72%;
+  --surface-7: 33 9% 56%;
+  --surface-7a: 35 9% 37%;
+  --surface-8: 38 6% 26%;
+  --surface-10: 30 2% 10%;
+  --surface-11: 30 7% 6%;
+
+  /* Semantic — surfaces */
+  --bg: hsl(var(--surface-1));
+  --bg-subtle: hsl(var(--surface-2));
+  --panel: #ffffff;               /* surface-card: pure white lifts off warm page */
+  --muted: hsl(var(--surface-3));
+  --surface-hover: hsl(var(--surface-4));
+  --table-header-bg: hsl(var(--surface-2));
+
+  /* Semantic — borders (foreground stop at low alpha, hairline pattern) */
+  --border-soft: hsl(var(--surface-11) / 0.08);
+  --border: hsl(var(--surface-11) / 0.10);
+  --border-input: hsl(var(--surface-11) / 0.12);
+  --border-strong: hsl(var(--surface-11) / 0.15);
+
+  /* Semantic — text */
+  --text: hsl(var(--surface-11));
+  --text-secondary: hsl(var(--surface-10));
+  --text-dim: hsl(var(--surface-7a));
+  --text-faint: hsl(var(--surface-7));
+  --text-disabled: hsl(var(--surface-5));
+
+  /* Semantic — action */
+  --accent: hsl(var(--action-7));
+  --accent-hover: hsl(var(--action-8));
+  --accent-active: hsl(var(--action-9));
+  --accent-text: hsl(var(--action-8));       /* ghost/outline label color */
+  --accent-subtle-bg: hsl(var(--action-3));
+  --accent-soft: hsl(var(--action-7) / 0.10);
+  --accent-fg: #ffffff;
+
+  /* Secondary button ladder */
+  --secondary: hsl(var(--surface-4));
+  --secondary-hover: hsl(var(--surface-5));
+  --secondary-active: hsl(var(--surface-6));
+
+  /* Status — calibrated; semantic only, never decorative */
+  --green: hsl(145 63% 42%);
+  --green-text: hsl(142 72% 29%);
+  --green-bg: hsl(139 76% 97%);
+  --green-border: hsl(141 79% 85%);
+  --amber: hsl(28 80% 52%);
+  --amber-text: hsl(26 91% 37%);
+  --amber-bg: hsl(48 100% 96%);
+  --amber-border: hsl(48 97% 77%);
+  --red: hsl(6 63% 46%);
+  --red-text: hsl(6 63% 46%);
+  --red-bg: hsl(0 86% 97%);
+  --red-border: hsl(0 96% 89%);
+  --info: hsl(204 64% 44%);
+  --info-text: hsl(204 64% 44%);
+  --info-bg: hsl(214 99% 97%);
+  --info-border: hsl(213 97% 87%);
+
+  /* Viz — identity palette; charts + measured accents only */
+  --viz-single: 197 13% 52%;
+  --viz-1: 30 58% 64%;
+  --viz-2: 9 37% 56%;
+  --viz-3: 64 13% 45%;
+  --viz-4: 345 22% 48%;
+  --viz-5: 166 13% 54%;
+  --viz-6: 19 45% 72%;
+  --viz-7: 210 2% 49%;
+  --viz-single-bg: hsl(197 9% 93%);
+
+  /* Sidebar (light spec: surface-3 fill, sage active) */
+  --sidebar-bg: hsl(var(--surface-3));
+  --sidebar-fg: hsl(var(--surface-7a));
+  --sidebar-border: hsl(var(--surface-11) / 0.08);
+  --sidebar-accent: hsl(var(--surface-4));
+  --sidebar-active-bg: hsl(var(--surface-4));
+  --sidebar-active-fg: hsl(var(--action-7));
+
+  /* Radius — Balanced posture */
+  --radius-sm: 4px;
+  --radius: 8px;
+  --radius-lg: 12px;
+  --radius-full: 9999px;
+
+  /* Spacing scale */
+  --sp-1: 4px;  --sp-2: 8px;   --sp-3: 12px; --sp-4: 16px;
+  --sp-5: 24px; --sp-6: 32px;  --sp-7: 48px; --sp-8: 64px;
+
+  /* Elevation — palette-derived shadow color */
+  --shadow-color: 30 2% 10%;
+  --shadow-xs: 0 1px 1px 0 hsl(var(--shadow-color) / 0.05);
+  --shadow-sm: 0 1px 2px 0 hsl(var(--shadow-color) / 0.07);
+  --shadow: 0 1px 3px 0 hsl(var(--shadow-color) / 0.10), 0 1px 2px -1px hsl(var(--shadow-color) / 0.08);
+  --shadow-md: 0 4px 6px -1px hsl(var(--shadow-color) / 0.10), 0 2px 4px -2px hsl(var(--shadow-color) / 0.08);
+  --shadow-lg: 0 10px 15px -3px hsl(var(--shadow-color) / 0.10), 0 4px 6px -4px hsl(var(--shadow-color) / 0.08);
+  --shadow-ring: inset 0 0 0 1px hsl(var(--surface-11) / 0.07);
+  --ring: 0 0 0 2px var(--bg), 0 0 0 4px hsl(var(--action-7) / 0.55);
+
+  /* Motion */
+  --duration-instant: 100ms;
+  --duration-fast: 150ms;
+  --duration-standard: 200ms;
+  --duration-expressive: 300ms;
+  --ease-fluid: cubic-bezier(0.3, 0, 0, 1);
+
+  /* Type */
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-serif: "Lora", Georgia, "Times New Roman", serif;
+  --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+
+  /* Shell */
+  --nav-width: 248px;
+  --top-bar-height: 56px;
+  --width-content: 1440px;
+
+  color-scheme: light;
+}
