@@ -1,19 +1,41 @@
 /* ============================================================================
-   FMDS OS — Design System  (R1 redesign: "Operations Console")
+   FMDS OS — Design System  (R2: Supernal design-system migration, foundation)
    A $150M Toyota-Lean manufacturer's operating layer for department leaders.
-   DARK graphite command rail + LIGHT off-white work canvas. One electric-blue
-   accent. RAG reserved strictly for status.
+   Migrating onto the Supernal brand palette — sage action scale, warm-neutral
+   surface scale, Inter/Lora/JetBrains Mono type system. RAG reserved strictly
+   for status; the viz palette is for decoration/identity only.
 
-   Type: IBM Plex Sans (UI/body) + IBM Plex Mono (every metric / target / KPI
-   value / KZ number / code) — loaded via <link> in index.html.
+   This file currently holds BOTH the new Supernal primitive/semantic tokens
+   AND the legacy token names the existing views/*.js still read — every old
+   name is aliased onto a new value (never deleted) so nothing goes unstyled
+   mid-migration. Component classes (.rail, .rag-chip, .badge, etc.) have NOT
+   been restructured yet — that is later migration work; this pass is tokens
+   + fonts only. The command rail therefore stays dark graphite for now (its
+   --ink-* ramp is untouched) even though the target system's sidebar is
+   light — see docs/superpowers/specs/2026-07-08-artifact-design-system.md §5.
 
-   NOTE: legacy token + class names (--slate-*, --accent, .card, .badge,
-   .rag-chip--*, .btn--*, table styles) are KEPT and remapped so every existing
-   board upgrades automatically.
+   Type: Inter (UI/body) + Lora (h1/h2 + hero KPI numerals) + JetBrains Mono
+   (every metric / target / KPI value / KZ number / code) — loaded via <link>
+   in index.html for LOCAL DEV (serve.py has no CSP, so Google Fonts is fine).
+   NOTE — CSP-locked hosted bundle: that target cannot fetch Google Fonts at
+   runtime and must instead inline these three families as base64 @font-face
+   (data: URIs). The woff2 payloads are already embedded in the reference
+   Leadership OS artifact saved at:
+   ~/.claude/projects/-Users-tauseef-Documents-World-Emblem-AI-Strategy-fmds-os-prototype/
+   7204a86f-62ea-46bb-b6a9-8d861ae8609b/tool-results/artifact-f97b357a-*.html
+   Lift the four @font-face blocks from there at bundle-rebuild time — do NOT
+   paste base64 into this file now, it would bloat the source for no local-dev
+   benefit.
+
+   NOTE: legacy token + class names (--slate-*, --accent, --canvas, --line,
+   --radius, .card, .badge, .rag-chip--*, .btn--*, table styles) are KEPT and
+   remapped so every existing board upgrades automatically.
    ========================================================================== */
 
 :root {
-  /* ── Command rail (dark graphite) ─────────────────────────────── */
+  color-scheme: light;
+
+  /* ── Command rail (dark graphite) — unchanged, out of scope this pass ── */
   --ink-900: #0e1116;
   --ink-800: #161c24;
   --ink-700: #212a35;
@@ -22,31 +44,150 @@
   --rail-fg-bright: #eef3f8;   /* bright rail text */
   --rail-line:      #232c38;   /* hairline on dark */
 
+  /* ══════════════════════════════════════════════════════════════════════
+     SUPERNAL PRIMITIVES — action + surface scales (exact palette values)
+     ══════════════════════════════════════════════════════════════════════ */
+
+  /* ── Action scale — hand-tuned sage, seed #436F65. Stop 7 = default action. ── */
+  --action-1: 161 33% 98%;
+  --action-2: 161 28% 93%;
+  --action-3: 162 27% 85%;
+  --action-4: 163 25% 73%;
+  --action-5: 164 22% 60%;
+  --action-6: 164 20% 48%;
+  --action-7: 166 28% 36%;   /* default action: buttons, links, focus rings */
+  --action-8: 167 38% 25%;
+  --action-9: 169 54% 15%;
+  --action-10: 168 74% 6%;
+
+  /* ── Surface scale — warm-neutral ladder, hues drift 26–40° across stops ── */
+  --surface-1: 40 20% 97%;    /* page background */
+  --surface-2: 36 19% 95%;    /* bg-subtle, table header, card-hover */
+  --surface-3: 26 19% 93%;    /* muted, code-block-bg, sidebar-background */
+  --surface-4: 30 20% 90%;    /* secondary (default), surface-hover */
+  --surface-5: 30 10% 80%;    /* secondary-hover, text-disabled */
+  --surface-6: 32 10% 72%;    /* secondary-active */
+  --surface-7: 33 9% 56%;     /* text-placeholder / text-faint */
+  --surface-7a: 35 9% 37%;    /* tertiary text (muted-foreground) */
+  --surface-8: 38 6% 26%;     /* indicator-default text */
+  --surface-10: 30 2% 10%;    /* text-secondary (light mode) */
+  --surface-11: 30 7% 6%;     /* text-primary / foreground; border alpha base */
+
+  /* ── Semantic — surfaces ── */
+  --bg: hsl(var(--surface-1));
+  --bg-subtle: hsl(var(--surface-2));
+  --panel: #ffffff;                 /* surface-card: pure white lifts off warm page */
+  --surface-card: var(--panel);
+  --muted: hsl(var(--surface-3));
+  --surface-hover: hsl(var(--surface-4));
+  --table-header-bg: hsl(var(--surface-2));
+
+  /* ── Semantic — borders (foreground-stop-at-low-alpha hairline pattern) ── */
+  --border-soft: hsl(var(--surface-11) / 0.08);
+  --border: hsl(var(--surface-11) / 0.10);
+  --border-input: hsl(var(--surface-11) / 0.12);
+  --border-strong: hsl(var(--surface-11) / 0.15);
+
+  /* ── Semantic — text ── */
+  --text-secondary: hsl(var(--surface-10));
+  --text-dim: hsl(var(--surface-7a));
+  --text-faint: hsl(var(--surface-7));
+  --text-disabled: hsl(var(--surface-5));
+
+  /* ── Semantic — action (primary button/link ladder) ── */
+  --accent-active: hsl(var(--action-9));
+  --accent-text: hsl(var(--action-8));        /* ghost/outline label color */
+  --accent-subtle-bg: hsl(var(--action-3));
+  --accent-soft: hsl(var(--action-7) / 0.10);
+  --accent-fg: #ffffff;
+
+  /* ── Secondary button ladder ── */
+  --secondary: hsl(var(--surface-4));
+  --secondary-hover: hsl(var(--surface-5));
+  --secondary-active: hsl(var(--surface-6));
+
+  /* ── Status — RAG, semantic-only (never decorative) ── */
+  --green-text: hsl(142 72% 29%);
+  --green-border: hsl(141 79% 85%);
+  --amber-text: hsl(26 91% 37%);
+  --amber-border: hsl(48 97% 77%);
+  --red-border: hsl(0 96% 89%);
+  --red-text: var(--red);          /* aliased — already dark enough */
+  --info: hsl(204 64% 44%);
+  --info-text: var(--info);        /* aliased */
+  --info-bg: hsl(214 99% 97%);
+  --info-border: hsl(213 97% 87%);
+
+  /* ── Viz palette — identity/decoration/charts ONLY, never UI/status controls ── */
+  --viz-single: 197 13% 52%;   /* Blue-Gray — default single-series / primary identity */
+  --viz-1: 30 58% 64%;         /* Warm Peach */
+  --viz-2: 9 37% 56%;          /* Rust — used for emphasis series (e.g. flagged location) */
+  --viz-3: 64 13% 45%;         /* Olive */
+  --viz-4: 345 22% 48%;        /* Mauve */
+  --viz-5: 166 13% 54%;        /* Sage */
+  --viz-6: 19 45% 72%;         /* Light Peach */
+  --viz-7: 210 2% 49%;         /* Neutral Gray — "uncategorized" slot, also chart context-lines */
+  --viz-single-bg: hsl(197 9% 93%);
+
+  /* Secondary decorative accent (Hoshin "supports" disks, quarter chips) */
+  --we-sky: 197 13% 52%;
+  --we-sky-bg: 197 9% 93%;
+
+  /* ── Sidebar (10 tokens; light spec — surface-3 fill, sage active state).
+     Not yet wired to .rail — the rail keeps its dark --ink-* look this pass. ── */
+  --sidebar-bg: hsl(var(--surface-3));
+  --sidebar-fg: hsl(var(--surface-7a));
+  --sidebar-border: hsl(var(--surface-11) / 0.08);
+  --sidebar-accent: hsl(var(--surface-4));
+  --sidebar-active-bg: hsl(var(--surface-4));
+  --sidebar-active-fg: hsl(var(--action-7));
+
+  /* ── Motion — named duration scale ── */
+  --duration-instant: 100ms;
+  --duration-fast: 150ms;
+  --duration-standard: 200ms;
+  --duration-expressive: 300ms;
+  --ease-fluid: cubic-bezier(0.3, 0, 0, 1);
+
+  /* ── Type families ── */
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-serif: "Lora", Georgia, "Times New Roman", serif;
+
+  /* ── Shell geometry (new — not yet consumed by .rail/.topbar/.canvas) ── */
+  --nav-width: 248px;
+  --top-bar-height: 56px;
+  --width-content: 1440px;
+
+  /* ══════════════════════════════════════════════════════════════════════
+     LEGACY TOKENS — kept and ALIASED onto the values above so every
+     existing view keeps rendering unchanged mid-migration.
+     ══════════════════════════════════════════════════════════════════════ */
+
   /* ── Work canvas (light) ──────────────────────────────────────── */
-  --canvas:  #f5f7fa;
-  --surface: #ffffff;
-  --surface-2: #fafbfc;
-  --line:    #e3e8ef;          /* hairline border */
-  --line-strong: #d3dae4;
-  --text:       #0f151c;
-  --text-muted: #59636f;
+  --canvas:  var(--bg);
+  --surface: var(--panel);
+  --surface-2: var(--bg-subtle);
+  --line:    var(--border);          /* hairline border */
+  --line-strong: var(--border-strong);
+  --text:       hsl(var(--surface-11));
+  --text-muted: var(--text-dim);
 
-  /* ── Accent (one electric blue) ───────────────────────────────── */
-  --accent:       #2f6bff;
-  --accent-tint:  #eaf0ff;     /* soft accent bg */
-  --accent-tint-2:#dbe6ff;
-  --accent-hover: #1f57e6;
+  /* ── Accent — flips electric blue → sage ─────────────────────── */
+  --accent:       hsl(var(--action-7));
+  --accent-tint:  var(--accent-soft);       /* soft accent bg */
+  --accent-tint-2:var(--accent-subtle-bg);
+  --accent-hover: hsl(var(--action-8));
 
-  /* ── RAG status (strict) ──────────────────────────────────────── */
-  --green:  #1f9d57;
-  --amber:  #e07a12;
-  --red:    #d92d3a;
-  --nodata: #98a2b3;
-  --green-bg:  #e8f6ee;
-  --amber-bg:  #fdf1e2;
-  --red-bg:    #fdeaec;
-  --nodata-bg: #eef1f5;
-  --red-light: #f6c9cd;
+  /* ── RAG status (strict) — new palette values ────────────────── */
+  --green:  hsl(145 63% 42%);
+  --amber:  hsl(28 80% 52%);
+  --red:    hsl(6 63% 46%);
+  --nodata: var(--text-faint);
+  --green-bg:  hsl(139 76% 97%);
+  --amber-bg:  hsl(48 100% 96%);
+  --red-bg:    hsl(0 86% 97%);
+  --nodata-bg: var(--muted);
+  --red-light: var(--red-border);
 
   /* ── Legacy RAG aliases (KEEP — used as var(--rag-${rag}) etc.) ── */
   --rag-green:  var(--green);
@@ -58,47 +199,52 @@
   --rag-red-bg:    var(--red-bg);
   --rag-nodata-bg: var(--nodata-bg);
 
-  /* ── Legacy slate ramp (KEEP — retuned to the new palette) ─────── */
-  --slate-50:  #f5f7fa;
-  --slate-100: #eef1f5;
-  --slate-200: #e3e8ef;
-  --slate-300: #d3dae4;
-  --slate-400: #b6c0cd;
-  --slate-500: #8a95a3;
-  --slate-600: #59636f;
-  --slate-700: #37424e;
-  --slate-800: #1b232d;
-  --slate-900: #0f151c;
+  /* ── Legacy slate ramp (KEEP — remapped by lightness onto the new
+     warm-neutral surface scale, so relative contrast/order is preserved) ── */
+  --slate-50:  hsl(var(--surface-1));
+  --slate-100: hsl(var(--surface-2));
+  --slate-200: hsl(var(--surface-3));
+  --slate-300: hsl(var(--surface-4));
+  --slate-400: hsl(var(--surface-5));
+  --slate-500: hsl(var(--surface-7));
+  --slate-600: hsl(var(--surface-7a));
+  --slate-700: hsl(var(--surface-8));
+  --slate-800: hsl(var(--surface-10));
+  --slate-900: hsl(var(--surface-11));
 
   /* Legacy accent aliases (KEEP) */
   --accent-light: var(--accent-tint);
-  --accent-hover: var(--accent-hover);
 
-  /* ── Typography ───────────────────────────────────────────────── */
-  --font: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-mono: "IBM Plex Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+  /* ── Typography (legacy names → new families) ──────────────────── */
+  --font: var(--font-sans);
+  --font-mono: "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
 
-  /* ── Spacing scale ────────────────────────────────────────────── */
+  /* ── Spacing scale (unchanged this pass) ─────────────────────────── */
   --sp-1: 4px;  --sp-2: 8px;  --sp-3: 12px; --sp-4: 16px;
   --sp-5: 20px; --sp-6: 24px; --sp-8: 32px; --sp-10: 40px; --sp-12: 48px;
 
-  /* ── Radius ───────────────────────────────────────────────────── */
-  --radius-sm: 5px;
+  /* ── Radius — "Balanced" posture, new values ─────────────────────── */
+  --radius-sm: 4px;
   --radius:    8px;      /* --r  */
-  --radius-lg: 14px;     /* --r-lg */
-  --r:    8px;
-  --r-lg: 14px;
+  --radius-lg: 12px;     /* --r-lg */
+  --radius-full: 9999px;
+  --r:    var(--radius);
+  --r-lg: var(--radius-lg);
 
-  /* ── Elevation (real shadows) ─────────────────────────────────── */
-  --shadow-sm: 0 1px 2px rgba(15,21,28,0.05), 0 1px 1px rgba(15,21,28,0.04);
-  --shadow:    0 2px 6px rgba(15,21,28,0.06), 0 4px 16px rgba(15,21,28,0.06);
-  --shadow-lg: 0 8px 30px rgba(15,21,28,0.12);
+  /* ── Elevation — palette-derived shadow color (warm near-black) ──── */
+  --shadow-color: 30 2% 10%;
+  --shadow-xs: 0 1px 1px 0 hsl(var(--shadow-color) / 0.05);
+  --shadow-sm: 0 1px 2px 0 hsl(var(--shadow-color) / 0.07);
+  --shadow:    0 1px 3px 0 hsl(var(--shadow-color) / 0.10), 0 1px 2px -1px hsl(var(--shadow-color) / 0.08);
+  --shadow-md: 0 4px 6px -1px hsl(var(--shadow-color) / 0.10), 0 2px 4px -2px hsl(var(--shadow-color) / 0.08);
+  --shadow-lg: 0 10px 15px -3px hsl(var(--shadow-color) / 0.10), 0 4px 6px -4px hsl(var(--shadow-color) / 0.08);
+  --shadow-ring: inset 0 0 0 1px hsl(var(--surface-11) / 0.07);
   --shadow-rail: 2px 0 16px rgba(6,10,16,0.28);
 
-  /* Motion */
-  --ease: cubic-bezier(.2,.6,.2,1);
-  --t-fast: 120ms;
-  --t: 170ms;
+  /* Motion (legacy shorthand names → new duration scale) */
+  --ease: var(--ease-fluid);
+  --t-fast: var(--duration-fast);
+  --t: var(--duration-standard);
 }
 
 /* ── Reset ──────────────────────────────────────────────────────── */
@@ -122,8 +268,11 @@ body {
 }
 
 /* ── Typography ─────────────────────────────────────────────────── */
-h1 { font-size: 1.7rem;  font-weight: 600; color: var(--text); letter-spacing: -0.02em; }
-h2 { font-size: 1.2rem;  font-weight: 600; color: var(--text); letter-spacing: -0.01em; }
+/* Display/serif (Lora) carries h1/h2 + hero numerals; Inter carries h3/h4 and
+   everything functional; JetBrains Mono stays on metric/KPI values (unchanged
+   below) — see docs/superpowers/specs/2026-07-08-artifact-design-system.md §2. */
+h1 { font-family: var(--font-serif); font-size: 1.7rem;  font-weight: 600; color: var(--text); letter-spacing: -0.02em; }
+h2 { font-family: var(--font-serif); font-size: 1.2rem;  font-weight: 600; color: var(--text); letter-spacing: -0.01em; }
 h3 { font-size: 1rem;    font-weight: 600; color: var(--text); }
 h4 { font-size: 0.875rem;font-weight: 600; color: var(--slate-700); }
 
@@ -694,7 +843,9 @@ input[type="text"]:focus, input[type="search"]:focus, select:focus {
 .myday__hero-label { font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase; color: #8794a3; }
 .myday__hero-kpi   { font-size: 1.05rem; font-weight: 600; margin-top: 4px; color: var(--rail-fg-bright); }
 .myday__hero-val {
-  font-family: var(--font-mono); font-size: 2.3rem; font-weight: 600;
+  /* Hero KPI numeral — Lora, per the editorial type pairing (regular per-KPI
+     metric values elsewhere stay JetBrains Mono, unchanged). */
+  font-family: var(--font-serif); font-size: 2.3rem; font-weight: 600;
   letter-spacing: -0.02em; font-variant-numeric: tabular-nums;
   line-height: 1; margin-top: 8px;
 }
