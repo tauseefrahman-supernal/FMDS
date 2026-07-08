@@ -183,3 +183,61 @@ node --check .bundle-check.js               # syntax gate
 *See also:* `docs/superpowers/specs/` (spec + discovery), `docs/superpowers/plans/`
 (implementation plan), `FMDS_OS_Lean_Product_Playbook.md` (canonical strategy),
 and the memory file `fmds-os-ads-prototype.md` (v1–v7 state to resume).
+
+---
+
+## 8. Session 2 (2026-07-08) — Mark (AI employee) + red-KPI accountability loop + interactive 8-step
+
+**Trigger (user):** "The major thing missing is the AI-employee chat page that can reason over the
+department context… I want a live cloud SDK… the accountability loop: where do you leave an
+explanation for a red KPI?… design the red-KPI workflow and track whether each step is being done…
+make the 8-step tracker interactive with a side chat (call him Mark) and charts… design first, then
+harden the SDK."
+
+**Process:** `brainstorming` (visual companion — 6 UI decisions mocked in-browser) → `writing-plans`
+(12-task plan, lean per owner pref: files + interfaces + test intent, no inline code) →
+`subagent-driven-development` (fresh implementer + spec/quality reviewer per task, whole-branch
+review at the end). Spec: `docs/superpowers/specs/2026-07-07-mark-accountability-8step-design.md`;
+plan: `docs/superpowers/plans/2026-07-08-mark-accountability-8step.md`.
+
+**The 6 design decisions (visual companion):** (1) Mark = a new **page** + docked 8-step panel +
+quick drawer; (2) Ask Mark page = **workspace** (queue left / chat right); (3) red-KPI response =
+**two-tier** — a required 4-field template, escalate to a full 8-step when needed; (4) tracking =
+**response lifecycle** (Detected→Responded→Action-underway→8-step→Reported→Recovered); (5) charts =
+**full set** (recovery trend / gap / Pareto / stall-funnel); (6) live SDK seam = **local `serve.py`
+`/api/mark` proxy** (Phase 2; UI ships on scripted-but-grounded replies).
+
+**Shipped (11 tasks, merged to `main` @ `a7c5c7b`; tests 75 → 154):**
+- NEW `lib/context.js` (department context Mark reasons over), `lib/accountability.js` (red-KPI
+  response store + lifecycle + escalation), `views/askmark.js` (the Ask Mark page).
+- Charts added to `lib/charts.js` (`svgRecoveryTrend`/`svgFunnel`/`svgPareto`); embedded across the
+  8-step; docked proactive Mark co-pilot + clean tracker (Linked-red-KPI column, honest open-age
+  flags, funnel) in `views/problemsolving.js`; `lib/agent.js` `liveReply` now context-grounded with
+  a `step-help` intent; `app.js` 🔔 inbox popover → live-badge shortcut to the Ask Mark queue.
+- KZ↔KPI linkage seeded in `data/kz-records.json` (`linkedKpiId` on 5 real Operations KZs).
+
+**Notable bugs caught by the review loop (not shipped):** cross-department draft leak in the response
+card (`_drafts` keyed by kpiId only); `lower_better` KPIs (HR TRIR/safety) rendering **inverted,
+un-badged** RAG dots on the recovery chart (direction wasn't threaded into `svgRecoveryTrend`); the
+escalation deep-link opening a **blank** 8-step instead of the real linked KZ; `summarizeReds`
+gluing the OTP story onto unrelated reds; a no-op lifecycle test that passed even when the transition
+was neutered. Each was fixed and re-verified.
+
+**Process notes / gotchas:** the Anthropic API had a rough window — several subagents died mid-response
+(529 / server errors) and one hit a hard **session usage limit**; recovered by resuming agents from
+their transcripts and, once, by the controller finishing a task directly (T7 escalation — reviewed +
+unit-tested, its browser-verify done later). One task (T8) ran in a **parallel git worktree** for
+speed, but the worktree was cut from an old base so `lib/agent.js` needed a hand-merge on integration
+— lesson: worktree parallelism costs an integration pass; only worth it for cleanly file-disjoint work.
+
+**Open follow-ups (non-blocking, from the whole-branch review):** rename `rollupSignal.redCount`
+(counts persisted entries, not live reds) before any dashboard reads it; tighten `isHeadlineKpi`'s
+loose `includes` match; extract a shared `unansweredRedCount(dept)` helper (duplicated in `app.js` +
+`views/askmark.js`); persist the dock dismiss state across same-step re-renders; add a
+`liveReply('step-help',{dept})` regression test; de-dupe `.mark-dock` vs `.assistant-drawer` CSS;
+`signOut()` should stop the inbox poll explicitly; remove dead `.inbox-panel` CSS. Data-quality:
+`data/kz-records.json` has duplicate `kzNumber`s (KZ-345, KZ-352).
+
+**Next frontier (unchanged):** Phase 2 — wire the live Claude call behind `liveReply` via the
+`serve.py /api/mark` proxy (holds the key server-side; hosted Artifact stays scripted since it's
+CSP-locked).
