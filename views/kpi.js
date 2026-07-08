@@ -3,29 +3,128 @@
  *
  * renderKpi(dept, mount)
  *
- * The other-department counterpart to the Operations location board: a lighter
- * connection + explanation view. Every main KPI is click-in to its sub-KPIs
- * (the L2 → main → sub cascade connection). On expand each main leads with a
- * per-KPI explanation block (measures / source / why now), then lists its
- * sub-KPIs (contributors), then a "details" toggle exposing the full KPI
- * identity (single source of truth, RAG rule, owner, cadence, context/history).
+ * The non-Operations counterpart to the Operations location board
+ * (views/teamboard-location.js): every department's main KPIs click in to
+ * their real sub-KPI contributors (dept.kpis[].contributors). Service goes
+ * one level deeper — main → team → rep → the rep's 7 real L1 day-by-day
+ * sub-KPIs — because that is the real shape of dept.kpis for Service only
+ * (see the "Sales also has repSubs" note below).
  *
- * Operations keeps its richer operator-control board (teamboard-location.js);
- * this view is the KPI-connection drill for everyone else.
+ * Markup rebuilt to the §5.2 KPI-Boards idiom (docs/redesign/DESIGN-GUIDE.md)
+ * — the same `.dt` table / `.status-cell` / `.chip` / `sparkline` / caret /
+ * `.kpi-sub` components views/teamboard-location.js already ports (Task 8),
+ * applied here to the main→sub connection drill instead of the main→location
+ * drill. Data lookups (lib/registry.js, lib/rag.js, lib/explain.js,
+ * lib/comments.js, lib/hoshin.js) and the drill/expand behavior are
+ * unchanged from before this rebuild — only the markup, plus two real
+ * data-shape bugs fixed in the process (documented below), moved.
+ *
+ * No `.seg` / adaptive chart card: unlike Operations, none of these 8
+ * departments' kpi.js switches on a location or chart-KPI dimension today
+ * (verified against every data/<dept>.json — zero location models, zero
+ * `weeklyActuals`-style multi-series objects anywhere outside
+ * data/operations.json), so per the task brief neither is added here —
+ * inventing a seg/chart-card would mean inventing a dimension these boards
+ * don't have. Every KPI's own trend is single-series, so the Trend column is
+ * always a plain `sparkline()` with no legend (§4's single-series rule).
+ *
+ * What changed vs. the pre-rebuild file (markup + two real bugs, not new
+ * data):
+ *   - The boxed "What this KPI means" explain panel and the "▸ KPI details"
+ *     identity-toggle sub-panel are gone — once teamboard-location.js's own
+ *     idiom is applied, they're exactly the "banner box that restates what a
+ *     chip can say" DESIGN-GUIDE anti-pattern (target/actual/status/source
+ *     are already the row; cascade position/RAG-rule text/cadence were
+ *     static boilerplate, not KPI-specific). The one genuinely load-bearing
+ *     bit — explainKpi(...)'s grounded "why" sentence — now surfaces as the
+ *     row's own `.kpi-flag-note` on expand, the same fallback
+ *     teamboard-location.js's weMainNoteLines/locNoteLines already use.
+ *   - Comment threads (lib/comments.js) for red/amber main KPIs are kept —
+ *     real, recently-shipped functionality with no equivalent in
+ *     teamboard-location.js to copy a convention from, so it's re-skinned in
+ *     place as its own full-width `.kpi-sub` row rather than dropped.
+ *   - BUG FIX — marketing.json series shape: 12 of its KPIs
+ *     (branded_search_volume, social_engagement_rate, social_media_growth,
+ *     pr_unique_viewers and 8 of their contributors) store `series` as
+ *     `[{week,date,target,actual}]` point objects, not the flat `number[]`
+ *     every other dept's `series` is. The pre-rebuild renderer fed that
+ *     straight into formatVal/ragStatus/svgLine, which silently rendered
+ *     "[object Object]" as the actual value and forced every one of those
+ *     KPIs red (an object coerces to NaN; ragStatus's ratio check falls
+ *     through NaN >= x to the red branch) with a blank "no data" chart.
+ *     seriesData() below normalizes both shapes to real {values,labels} —
+ *     using real week numbers for labels (so gapped weeks like 1,5,10… don't
+ *     get mislabeled by array index) — a bug fix, not new data: every value
+ *     shown already existed in the point object's own `.actual`/`.week`.
+ *   - The data-quality roll-up banner (e.g. Service's Team Noel) now renders
+ *     the flagged KPI's own real `flagDetail` text verbatim via
+ *     `.frozen-banner` (the amber alert box already used elsewhere for this
+ *     exact purpose) instead of a hand-duplicated paraphrase of the same
+ *     numbers — avoids the two ever drifting apart.
+ *   - sourceChip() drops the old red/green "manual"/"re-keyed" badge tints —
+ *     RAG hues are status-only per the redesign's global constraint; the
+ *     manual/re-keyed nuance still surfaces via the chip's title tooltip and,
+ *     for HR's 6 `manualOnly` KPIs, via their own real
+ *     `targetSource: "Manual — reported"` text.
+ *
+ * Zero-invented-data / preserved-quirk notes:
+ *   - Frozen depts (Finance: dept.frozen === true): the pre-rebuild kpi.js
+ *     applied NO gating at all — no banner, no disabled drill. That gating
+ *     only ever existed in the dead views/teamboard.js (imported in app.js
+ *     but never called — see the file's own dispatch table). Per "keep
+ *     whatever gating the current kpi.js applies," none is added here
+ *     either; Finance renders as a normal connection-drill board. Flagged in
+ *     the task report as a real gap for a follow-up task — not fixed here,
+ *     out of this task's markup-only scope.
+ *   - marketing.json's wei_leads_revenue lists a contributor id
+ *     `mkt_sourced_revenue_wei` that does not exist anywhere in
+ *     data/marketing.json (the real, unrelated KPI is `mkt_sourced_revenue`
+ *     — likely a source-data typo). contributorsOf() already returns `[]`
+ *     for it, same as before the rebuild; not "fixed" here since that would
+ *     mean editing data/marketing.json, out of this task's views/kpi.js-only
+ *     scope.
+ *   - Sales' rep_* KPIs also carry a real `repSubs` object (identical shape
+ *     to Service's), but only `dept.id === 'service'` gets the 3-level
+ *     team→rep→L1 drill below, matching the pre-rebuild file's exact gating
+ *     — Sales' repSubs stays unused here, unchanged from before.
+ *   - Sales' rev_total lists rev_outside/rev_inside as its own
+ *     "contributors" even though both are themselves real mains with their
+ *     own rep contributors — since Sales is not `service`, expanding
+ *     rev_total renders them as flat generic leaf sub-rows (no further
+ *     drill), same as before; both remain independently drillable via their
+ *     own top-level main rows. Service has the analogous case (rev_total →
+ *     rev_we/rev_hpi as "teams" → rev_jc/rev_noel mis-cast as "reps" with no
+ *     repSubs, showing the graceful "No L1 sub-KPI data" fallback) — also
+ *     unchanged from the pre-rebuild file, which had the identical
+ *     recursive-contributors behavior.
+ *   - The `illustrative` chip only renders where dept.kpis actually carries
+ *     `illustrative: true` (Logistics' 4 per-location shipping-margin subs,
+ *     IT's Sprint Burndown/Azure DevOps Points) — omitted everywhere else,
+ *     never invented.
  */
 
-import { mains, contributorsOf } from '../lib/registry.js';
-import { ragStatus }             from '../lib/rag.js';
-import { svgLine }               from '../lib/charts.js';
-import { explainKpi }            from '../lib/explain.js';
+import { mains, contributorsOf }           from '../lib/registry.js';
+import { ragStatus }                       from '../lib/rag.js';
+import { sparkline, wireChartHover }       from '../lib/charts.js';
+import { explainKpi }                      from '../lib/explain.js';
 import { commentThreadHTML, bindComments } from '../lib/comments.js';
+import { hoshinStrip, hoshinChips, wireHoshinStrip } from './hoshin.js';
+import { loadHoshin }                      from '../lib/hoshin.js';
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── Small shared helpers ───────────────────────────────────────────────────
 
-function displayActual(kpi) {
-  if (kpi.series && kpi.series.length) return kpi.series[kpi.series.length - 1];
-  return kpi.actual;
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
+
+// Right-chevron; `.kpi-name__caret.is-open` rotates it 90° to point down —
+// same SVG + behavior as views/teamboard-location.js's CARET_SVG.
+const CARET_SVG = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 3l5 5-5 5"/></svg>';
+const CARET_PLACEHOLDER = '<span style="display:inline-block;width:22px;flex-shrink:0"></span>';
+
+// ─── Value formatting ────────────────────────────────────────────────────────
 
 function formatVal(v, unit) {
   if (v == null) return '—';
@@ -41,226 +140,132 @@ function formatVal(v, unit) {
   return v.toLocaleString(undefined, { maximumFractionDigits: 2 });
 }
 
-function ragChip(status) {
-  const label = { green: '● On Track', amber: '● At Risk', red: '● Off Track', nodata: '— No Data' }[status];
-  return `<span class="rag-chip rag-chip--${status}">${label}</span>`;
+/**
+ * seriesData(kpi) → { values: (number|null)[], labels: string[] }
+ * Normalizes `kpi.series`, which is a flat number[] for every dept EXCEPT
+ * marketing.json (12 KPIs there store `[{week,date,target,actual}]` point
+ * objects instead — see file header). Real week numbers are used for labels
+ * when present so gapped weeks (e.g. 1, 5, 10…) aren't mislabeled by index.
+ */
+function seriesData(kpi) {
+  const raw = Array.isArray(kpi.series) ? kpi.series : [];
+  if (raw.length && raw[0] && typeof raw[0] === 'object') {
+    return {
+      values: raw.map((pt) => (pt && typeof pt.actual === 'number') ? pt.actual : null),
+      labels: raw.map((pt, i) => 'Wk ' + (pt && pt.week != null ? pt.week : i + 1)),
+    };
+  }
+  return { values: raw, labels: raw.map((_, i) => 'Wk ' + (i + 1)) };
 }
 
-function sourceBadge(source, kpi) {
-  const ts = (kpi && kpi.targetSource) ? kpi.targetSource : source;
+/** Last series value, falling back to kpi.actual when there's no series at all. */
+function lastValue(kpi) {
+  const { values } = seriesData(kpi);
+  return values.length ? values[values.length - 1] : (kpi.actual != null ? kpi.actual : null);
+}
+
+function sparkFor(kpi) {
+  const { values, labels } = seriesData(kpi);
+  if (!values.length) return '';
+  return sparkline(values, { w: 132, h: 34, target: kpi.target, name: kpi.name + ' trend', labels, fmt: kpi.unit });
+}
+
+// ─── Status cell / chips ─────────────────────────────────────────────────────
+
+function statusCell(rag) {
+  const label = { green: 'On Track', amber: 'At Risk', red: 'Off Track', nodata: 'No Data' }[rag] || 'No Data';
+  return `<span class="status-cell status-cell--${rag}"><span class="dot"></span>${label}</span>`;
+}
+
+/** Target-source `.chip` — plain mono chip; manual/re-keyed nuance lives in
+ *  the title tooltip, never in a borrowed RAG hue (status colors are
+ *  status-only per the redesign's global constraint). */
+function sourceChip(kpi) {
+  const ts = kpi.targetSource || kpi.source;
   if (!ts) return '';
-  const isManual = kpi && kpi.manualOnly === true;
   const label = ts.split(' / ')[0];
-  if (isManual) {
-    return `<span class="badge" title="Manual entry — no source system" style="background:var(--red-bg);color:var(--red-text);border:1px solid var(--red-border)">${label}</span>`;
-  }
-  const wasReKeyed = source && source !== ts &&
-    ['manual', 'hand-keyed', 'coo board', 'literal', 'bowler'].some(tok => source.toLowerCase().includes(tok));
-  if (wasReKeyed) {
-    return `<span class="badge" title="Target: ${ts} (today: re-keyed from ${source})" style="background:var(--green-bg);color:var(--green-text);border:1px solid var(--green-border)">${label}</span>`;
-  }
-  return `<span class="badge" title="${ts}">${label}</span>`;
+  const wasReKeyed = kpi.source && kpi.source !== ts &&
+    ['manual', 'hand-keyed', 'coo board', 'literal', 'bowler'].some((tok) => String(kpi.source).toLowerCase().includes(tok));
+  const title = wasReKeyed ? `Target: ${ts} (today: re-keyed from ${kpi.source})` : ts;
+  return `<span class="chip" title="${esc(title)}">${esc(label)}</span>`;
 }
 
-function flagIcon(flag) {
-  if (!flag) return '';
-  return `<span class="flag-icon" title="${String(flag).replace(/"/g, '&quot;')}">⚠</span>`;
-}
-
-function ragRuleText(kpi) {
-  const dir   = kpi.direction || 'higher_better';
-  const bands = kpi.bands || { green: 1.0, amber: 0.95 };
-  const dirLabel = dir === 'higher_better' ? 'Higher is better' : 'Lower is better';
-  return `${dirLabel} · Green ≥ ${(bands.green * 100).toFixed(0)}% of target · Amber ≥ ${(bands.amber * 100).toFixed(0)}% of target · Red < ${(bands.amber * 100).toFixed(0)}% of target`;
-}
-
-function cascadeLabel(level) {
-  if (level === 1) return 'Main (L1)';
-  if (level === 2) return 'Contributor (L2)';
-  if (level === 3) return 'Rep / Sub-contributor (L3)';
-  return `Level ${level}`;
-}
-
-// ─── Per-KPI explanation block ───────────────────────────────────────────────
-
-function renderExplainBlock(kpi, dept) {
-  const act = displayActual(kpi);
-  const rag = (act == null || kpi.target == null)
-    ? 'nodata'
-    : ragStatus(act, kpi.target, kpi.direction || 'higher_better');
-  const e = explainKpi(kpi, dept, { rag, actualOverride: act });
-  return `
-    <div class="kpi-explain">
-      <div class="kpi-explain__label">What this KPI means</div>
-      <div class="kpi-explain__grid">
-        <div><span class="kpi-explain__k">Measures</span> ${e.definition}</div>
-        <div><span class="kpi-explain__k">Source</span> ${e.source}</div>
-        <div><span class="kpi-explain__k">Why now</span> ${e.why}</div>
-      </div>
-    </div>`;
-}
-
-// ─── Identity details (behind a toggle) ──────────────────────────────────────
-
-function renderDetails(kpi, dept, contribs) {
-  const contribChips = contribs.length
-    ? contribs.map(c => `<span class="badge">${c.name}</span>`).join(' ')
-    : '<span class="text-muted">none</span>';
-
-  return `
-    <div class="kpi-details" data-details-for="${kpi.id}" style="display:none">
-      <div class="identity-fields">
-        <div class="identity-field">
-          <div class="identity-label">Cascade Position</div>
-          <div>${cascadeLabel(kpi.level || 1)}</div>
-        </div>
-        <div class="identity-field">
-          <div class="identity-label">Single Source of Truth</div>
-          <div><span class="badge">${kpi.targetSource || kpi.source || '—'}</span></div>
-        </div>
-        <div class="identity-field">
-          <div class="identity-label">RAG Rule</div>
-          <div class="text-small text-muted">${ragRuleText(kpi)}</div>
-        </div>
-        <div class="identity-field">
-          <div class="identity-label">Owner</div>
-          <div>${dept.lead || '—'}</div>
-        </div>
-        <div class="identity-field">
-          <div class="identity-label">Roll-up Method</div>
-          <div class="text-small text-muted">${kpi.rollupMethod || dept.mechanism || '—'}</div>
-        </div>
-        <div class="identity-field">
-          <div class="identity-label">Cadence</div>
-          <div>Weekly</div>
-        </div>
-        <div class="identity-field">
-          <div class="identity-label">Contributors</div>
-          <div class="cluster gap-1">${contribChips}</div>
-        </div>
-        ${kpi.flag ? `
-        <div class="identity-field">
-          <div class="identity-label">Data Flag</div>
-          <div class="badge badge--warning" style="display:inline-flex;max-width:100%;white-space:normal;line-height:1.4">⚠ ${kpi.flag}</div>
-        </div>` : ''}
-        ${kpi.note ? `
-        <div class="identity-field">
-          <div class="identity-label">Context / History</div>
-          <div class="text-small text-muted" style="line-height:1.5">${kpi.note}</div>
-        </div>` : ''}
-      </div>
-    </div>`;
-}
-
-// ─── Sub-KPI (contributor) row ───────────────────────────────────────────────
-
-function renderSubRow(kpi) {
-  const act   = displayActual(kpi);
-  const rag   = (act == null || kpi.target == null)
-    ? 'nodata'
-    : ragStatus(act, kpi.target, kpi.direction || 'higher_better');
-  const chart = kpi.series && kpi.series.length
-    ? svgLine(kpi.series, { target: kpi.target, width: 200, height: 56, mini: true })
+function illustrativeChip(kpi) {
+  return kpi.illustrative
+    ? `<span class="chip" title="Illustrative — placeholder trend, not a live tracked number">illustrative</span>`
     : '';
-  return `
-    <tr class="contributor-row">
-      <td style="padding-left:36px">
-        <span class="text-muted" style="font-size:0.75rem">↳</span>
-        ${kpi.name}
-        ${flagIcon(kpi.flag)}
-        ${kpi.nodata ? '<span class="badge badge--warning">no data</span>' : ''}
-      </td>
-      <td class="text-right text-mono">${formatVal(kpi.target, kpi.unit)}</td>
-      <td class="text-right text-mono">${kpi.nodata ? '—' : formatVal(act, kpi.unit)}</td>
-      <td>${kpi.nodata ? '' : ragChip(rag)}</td>
-      <td>${sourceBadge(kpi.source, kpi)}</td>
-      <td>${chart}</td>
-    </tr>`;
 }
 
-// ─── Main KPI row ────────────────────────────────────────────────────────────
+// ─── Per-KPI "why" note on expand ────────────────────────────────────────────
 
-function renderMainRow(kpi, dept, expanded) {
-  const act   = displayActual(kpi);
-  const rag   = (act == null || kpi.target == null)
-    ? 'nodata'
-    : ragStatus(act, kpi.target, kpi.direction || 'higher_better');
-  const chart = kpi.series && kpi.series.length
-    ? svgLine(kpi.series, { target: kpi.target, width: 220, height: 60, mini: false })
-    : '';
-  const toggleBtn = `<button class="btn btn--ghost expand-btn" data-kpi-id="${kpi.id}"
-               style="padding:2px 6px;font-size:0.7rem;border-radius:3px">${expanded ? '▼' : '▶'}</button>`;
-
-  return `
-    <tr class="main-row main-row--expandable" data-kpi-id="${kpi.id}">
-      <td>
-        <div style="display:flex;align-items:center;gap:6px">
-          ${toggleBtn}
-          <span style="font-weight:500">${kpi.name}</span>
-          ${flagIcon(kpi.flag)}
-          ${kpi.illustrative ? '<span class="badge badge--illustrative">illustrative</span>' : ''}
-          ${kpi.nodata ? '<span class="badge badge--warning">no data</span>' : ''}
-        </div>
-      </td>
-      <td class="text-right text-mono">${formatVal(kpi.target, kpi.unit)}</td>
-      <td class="text-right text-mono">${kpi.nodata ? '—' : formatVal(act, kpi.unit)}</td>
-      <td>${kpi.nodata ? '' : ragChip(rag)}</td>
-      <td>${sourceBadge(kpi.source, kpi)}</td>
-      <td>${chart}</td>
-    </tr>`;
+function noteLines(kpi, dept, rag) {
+  // The roll-up data-quality banner (rollupBannerHTML) already carries
+  // flagDetail's narrative below the table — don't restate it here too.
+  if (kpi.flagDetail) return [];
+  const lines = [];
+  if (kpi.note) lines.push(kpi.note);
+  if (kpi.flag && typeof kpi.flag === 'string') lines.push(kpi.flag);
+  if (kpi.nodataNote) lines.push(kpi.nodataNote);
+  if (!lines.length) {
+    const why = explainKpi(kpi, dept, { rag }).why;
+    if (why) lines.push(why);
+  }
+  return lines;
 }
 
-// ─── Off-track comment footer (KPI Boards) ───────────────────────────────────
-// Per the design: on KPI Boards, an off-track (red/amber) KPI gets a comment
-// footer where Mark and the lead leave notes. Green KPIs stay clean here — the
-// full "even green has notes" surface lives on the Overview page.
+function flagNoteHTML(kpi, dept, rag) {
+  return noteLines(kpi, dept, rag).map((n) => `<div class="kpi-flag-note">${esc(n)}</div>`).join('');
+}
 
-function renderCommentFooter(kpi, dept) {
-  const act = displayActual(kpi);
-  const rag = (act == null || kpi.target == null)
-    ? 'nodata'
-    : ragStatus(act, kpi.target, kpi.direction || 'higher_better');
-  if (rag !== 'red' && rag !== 'amber') return '';
+// ─── Comment thread row — red/amber main KPIs only ───────────────────────────
+
+function commentRowHTML(dept, kpi, rag) {
   const author = `${dept.lead || 'Lead'} (L2)`;
-  return `<div class="kpi-comment-footer" style="margin-top:12px;padding-top:2px;border-top:1px dashed var(--slate-200)">
-    ${commentThreadHTML({ deptId: dept.id, kpi, rag, author, collapsed: false })}
-  </div>`;
-}
-
-// ─── Expansion row (explanation + sub-KPIs + details toggle) ─────────────────
-
-function renderExpansion(kpi, dept) {
-  const contribs = contributorsOf(dept, kpi.id);
-  const subRows = contribs.length
-    ? contribs.map(renderSubRow).join('')
-    : '';
-  const subSection = contribs.length
-    ? `<table style="width:100%;border-collapse:collapse;margin-top:10px"><tbody>${subRows}</tbody></table>`
-    : `<p class="text-muted text-small" style="margin-top:8px">No sub-KPIs connect to this main — it is entered directly.</p>`;
-
   return `
-    <tr class="kpi-expansion-row" data-expansion-for="${kpi.id}">
-      <td colspan="6" style="padding:0">
-        <div class="kpi-expansion">
-          ${renderExplainBlock(kpi, dept)}
-          <div class="kpi-expansion__subs">
-            <div class="kpi-explain__label" style="color:var(--slate-500);margin:10px 0 2px">Sub-KPI connections</div>
-            ${subSection}
-          </div>
-          <button class="btn btn--ghost details-toggle" data-details-toggle="${kpi.id}"
-                  style="margin-top:10px;font-size:0.72rem;padding:3px 9px;border-radius:3px">
-            ▸ KPI details (source · RAG rule · owner · cadence)
-          </button>
-          ${renderDetails(kpi, dept, contribs)}
-          ${renderCommentFooter(kpi, dept)}
-        </div>
+    <tr class="kpi-sub">
+      <td colspan="6" style="padding:10px 16px 16px">
+        ${commentThreadHTML({ deptId: dept.id, kpi, rag, author, collapsed: false })}
       </td>
     </tr>`;
 }
 
-// ─── Service-only: L1 sub-KPI mini-table for a rep ───────────────────────────
-// kpi = rep KPI object (level 3, has repSubs)
-// Returns HTML string for the 7 L1 sub-KPIs mini-table.
+// ─── Roll-up data-quality banner (below the table) ───────────────────────────
+
+function rollupBannerHTML(kpi) {
+  if (!kpi || !kpi.flagDetail) return '';
+  return `
+    <div class="frozen-banner" role="status" style="align-items:flex-start; margin-top:16px">
+      <div>
+        <strong>Data quality — ${esc(kpi.name)} roll-up is incomplete</strong>
+        <div style="margin-top:4px; line-height:1.55">${esc(kpi.flagDetail)}</div>
+      </div>
+    </div>`;
+}
+
+// ─── Generic sub-row (level 2) — every dept except Service's team/rep path ──
+
+function genericSubRowHTML(dept, sub) {
+  const act = lastValue(sub);
+  const rag = ragStatus(act, sub.target, sub.direction || 'higher_better');
+  return `
+    <tr class="kpi-sub">
+      <td>
+        <div class="kpi-name">
+          ${CARET_PLACEHOLDER}
+          ${esc(sub.name)}
+          ${illustrativeChip(sub)}
+        </div>
+        ${flagNoteHTML(sub, dept, rag)}
+      </td>
+      <td class="num">${formatVal(sub.target, sub.unit)}</td>
+      <td class="num">${formatVal(act, sub.unit)}</td>
+      <td>${statusCell(rag)}</td>
+      <td>${sourceChip(sub)}</td>
+      <td>${sparkFor(sub)}</td>
+    </tr>`;
+}
+
+// ─── Service only: rep's 7 real L1 day-by-day sub-KPIs (deepest level) ──────
 
 const SUB_KPI_LABELS = {
   incomingRevenue:  'Incoming Revenue WE+HP',
@@ -282,380 +287,273 @@ const SUB_KPI_UNITS = {
   timeWithCustomer: 'count',
 };
 
-function renderRepSubKpis(rep) {
-  if (!rep.repSubs) return '<p class="text-muted text-small" style="margin:6px 0">No L1 sub-KPI data for this rep.</p>';
-
-  const rows = Object.keys(SUB_KPI_LABELS).map(key => {
-    const sub = rep.repSubs[key];
-    if (!sub) return '';
-    const series = sub.series || [];
-    const lastVal = series.filter(v => v != null).pop();
-    const unit = SUB_KPI_UNITS[key];
-    const label = SUB_KPI_LABELS[key];
-    const targetStr = formatVal(sub.target, unit);
-    const actualStr = lastVal != null ? formatVal(lastVal, unit) : '—';
-    const isGrip = key === 'grip';
-    const sourceNote = isGrip
-      ? '<span class="badge" style="font-size:0.62rem;background:var(--green-bg);color:var(--green-text)">Grip (live)</span>'
-      : '<span class="text-muted" style="font-size:0.62rem">manual</span>';
-    const chart = series.filter(v => v != null).length >= 2
-      ? svgLine(series, { target: sub.target || null, width: 160, height: 44, mini: true })
-      : '<span class="text-muted" style="font-size:0.68rem">no series</span>';
-    const noteHtml = sub.note ? `<span class="text-muted" style="font-size:0.62rem;margin-left:4px" title="${String(sub.note).replace(/"/g, '&quot;')}">ⓘ</span>` : '';
-    return `<tr class="rep-sub-row">
-      <td style="padding-left:20px;font-size:0.78rem">
-        <span class="text-muted" style="font-size:0.68rem">↦</span> ${label} ${noteHtml}
-      </td>
-      <td class="text-right text-mono" style="font-size:0.78rem">${targetStr}</td>
-      <td class="text-right text-mono" style="font-size:0.78rem">${actualStr}</td>
-      <td>${sourceNote}</td>
-      <td>${chart}</td>
-    </tr>`;
-  }).join('');
-
-  return `
-    <table style="width:100%;border-collapse:collapse;margin-top:6px">
-      <thead>
-        <tr style="font-size:0.65rem;color:var(--slate-500)">
-          <th style="text-align:left;padding:2px 8px 4px">L1 Day-by-Day KPI</th>
-          <th class="text-right">Target</th><th class="text-right">Latest</th>
-          <th>Source</th><th style="min-width:170px">Trend</th>
-        </tr>
-      </thead>
-      <tbody>${rows}</tbody>
-    </table>`;
-}
-
-// ─── Service-only: Rep row (level 3) with expand toggle ───────────────────────
-
-function renderServiceRepRow(rep, expanded) {
-  const act = displayActual(rep);
-  const rag = (act == null || rep.target == null) ? 'nodata' : ragStatus(act, rep.target, rep.direction || 'higher_better');
-  const chart = rep.series && rep.series.length ? svgLine(rep.series, { target: rep.target, width: 200, height: 56, mini: true }) : '';
-  const toggleBtn = `<button class="btn btn--ghost expand-btn-rep" data-rep-id="${rep.id}"
-    style="padding:1px 5px;font-size:0.65rem;border-radius:3px">${expanded ? '▼' : '▶'}</button>`;
-  return `
-    <tr class="contributor-row service-rep-row" data-rep-id="${rep.id}">
-      <td style="padding-left:52px">
-        <div style="display:flex;align-items:center;gap:5px">
-          ${toggleBtn}
-          <span class="text-muted" style="font-size:0.75rem">↳</span>
-          ${rep.name} ${flagIcon(rep.flag)}
-        </div>
-      </td>
-      <td class="text-right text-mono" style="font-size:0.82rem">${formatVal(rep.target, rep.unit)}</td>
-      <td class="text-right text-mono" style="font-size:0.82rem">${act == null ? '—' : formatVal(act, rep.unit)}</td>
-      <td>${act == null ? '' : ragChip(rag)}</td>
-      <td colspan="2">${chart}</td>
-    </tr>`;
-}
-
-// ─── Service-only: Rep L1 expansion row ──────────────────────────────────────
-
-function renderServiceRepExpansion(rep) {
-  return `
-    <tr class="kpi-expansion-row" data-rep-expansion-for="${rep.id}">
-      <td colspan="6" style="padding:0">
-        <div style="padding:6px 16px 10px 68px;background:var(--bg-subtle);border-bottom:1px solid var(--slate-200)">
-          <div class="kpi-explain__label" style="color:var(--slate-500);margin-bottom:4px">L1 Sub-KPIs — Day-by-Day (${rep.name.split('—')[0].trim()})</div>
-          ${renderRepSubKpis(rep)}
-          ${rep.flag ? `<div class="badge badge--warning" style="margin-top:6px;display:inline-flex;white-space:normal;line-height:1.4;max-width:100%">⚠ ${rep.flag}</div>` : ''}
-        </div>
-      </td>
-    </tr>`;
-}
-
-// ─── Service-only: Team row (level 2) with rep expansion ─────────────────────
-
-function renderServiceTeamRow(team, dept, expandedRepIds, expanded) {
-  const act = displayActual(team);
-  const rag = (act == null || team.target == null) ? 'nodata' : ragStatus(act, team.target, team.direction || 'higher_better');
-  const chart = team.series && team.series.length ? svgLine(team.series, { target: team.target, width: 200, height: 56, mini: true }) : '';
-  const hasReps = team.contributors && team.contributors.length > 0;
-  const toggleBtn = hasReps
-    ? `<button class="btn btn--ghost expand-btn-team" data-team-id="${team.id}"
-        style="padding:1px 5px;font-size:0.65rem;border-radius:3px">${expanded ? '▼' : '▶'}</button>`
+function repSubRowHTML(key, sub) {
+  const unit = SUB_KPI_UNITS[key];
+  const series = sub.series || [];
+  const lastVal = series.length ? series[series.length - 1] : null;
+  const rag = ragStatus(lastVal, sub.target, 'higher_better');
+  const isGrip = key === 'grip';
+  const chip = isGrip
+    ? `<span class="chip" style="border-color:hsl(var(--action-4));background:hsl(var(--action-1));color:var(--accent-text)" title="Live feed from the Grip system">Grip (live)</span>`
+    : `<span class="chip" title="Hand-keyed literal">manual</span>`;
+  const spark = series.filter((v) => v != null).length >= 2
+    ? sparkline(series, { w: 132, h: 34, target: sub.target, name: SUB_KPI_LABELS[key] + ' trend', labels: series.map((_, i) => 'Wk ' + (i + 1)), fmt: unit })
     : '';
-
-  const rowHtml = `
-    <tr class="contributor-row service-team-row ${hasReps ? 'service-team-row--expandable' : ''}" data-team-id="${team.id}">
-      <td style="padding-left:36px">
-        <div style="display:flex;align-items:center;gap:5px">
-          ${toggleBtn}
-          <span class="text-muted" style="font-size:0.75rem">↳</span>
-          <strong style="font-size:0.88rem">${team.name}</strong>
-          ${flagIcon(team.flag)}
-        </div>
-      </td>
-      <td class="text-right text-mono">${formatVal(team.target, team.unit)}</td>
-      <td class="text-right text-mono">${act == null ? '—' : formatVal(act, team.unit)}</td>
-      <td>${act == null ? '' : ragChip(rag)}</td>
-      <td>${sourceBadge(team.source, team)}</td>
-      <td>${chart}</td>
-    </tr>`;
-
-  if (!expanded || !hasReps) return rowHtml;
-
-  const reps = contributorsOf(dept, team.id);
-  const repRows = reps.map(rep => {
-    const repExpanded = expandedRepIds.has(rep.id);
-    let html = renderServiceRepRow(rep, repExpanded);
-    if (repExpanded) html += renderServiceRepExpansion(rep);
-    return html;
-  }).join('');
-
-  return rowHtml + repRows;
-}
-
-// ─── Service-only: Main expansion (data-quality banner + teams) ───────────────
-
-function renderServiceExpansion(kpi, dept, expandedTeamIds, expandedRepIds) {
-  const teams = contributorsOf(dept, kpi.id);
-
-  const noelBanner = kpi.flagDetail ? `
-    <div class="noel-rollup-banner" style="
-      margin:10px 0 12px;padding:10px 14px;border-radius:var(--radius);
-      background:var(--amber-bg);border:2px solid var(--amber-border);font-size:0.8rem;line-height:1.6">
-      <div style="font-weight:700;color:var(--amber-text);margin-bottom:4px">⚠ Data Quality — Team Noel Roll-Up Missing from Data Base Main</div>
-      <div style="color:var(--amber-text)">
-        The number shown (<strong>$16.10M</strong>) reflects <strong>Team JC only</strong>.
-        True combined total is <strong>$29.83M</strong>.
-        <strong>Team Noel ($13.73M — 46%)</strong> is not rolling up:
-        <em>Data Base column BQ is empty — the &lsquo;Team Noel (FMDS)&rsquo;!AF reference was never wired in.</em>
-        Click Team Noel below to see their revenue tracked accurately at the team level.
-        Fix: populate <code>Data Base!BP/BQ</code> rows 11&ndash;79 with <code>=&apos;Team Noel (FMDS)&apos;!AE{n}/AF{n}</code>.
-      </div>
-    </div>` : '';
-
-  const teamRows = teams.map(team => {
-    const teamExpanded = expandedTeamIds.has(team.id);
-    return renderServiceTeamRow(team, dept, expandedRepIds, teamExpanded);
-  }).join('');
-
-  const subSection = teams.length
-    ? `<div style="margin-top:10px">${teamRows}</div>`
-    : `<p class="text-muted text-small" style="margin-top:8px">No teams defined.</p>`;
-
-  const contribs = contributorsOf(dept, kpi.id);
   return `
-    <tr class="kpi-expansion-row" data-expansion-for="${kpi.id}">
-      <td colspan="6" style="padding:0">
-        <div class="kpi-expansion">
-          ${renderExplainBlock(kpi, dept)}
-          ${noelBanner}
-          <div class="kpi-expansion__subs">
-            <div class="kpi-explain__label" style="color:var(--slate-500);margin:10px 0 2px">Team roll-up → Reps → L1 Day-by-Day KPIs</div>
-            ${subSection}
-          </div>
-          <button class="btn btn--ghost details-toggle" data-details-toggle="${kpi.id}"
-                  style="margin-top:10px;font-size:0.72rem;padding:3px 9px;border-radius:3px">
-            ▸ KPI details (source · RAG rule · owner · cadence)
-          </button>
-          ${renderDetails(kpi, dept, contribs)}
-          ${renderCommentFooter(kpi, dept)}
-        </div>
+    <tr class="kpi-sub">
+      <td style="padding-left:88px">
+        ${esc(SUB_KPI_LABELS[key])}
+        ${sub.note ? `<div class="kpi-flag-note" style="margin-left:0">${esc(sub.note)}</div>` : ''}
       </td>
+      <td class="num">${formatVal(sub.target, unit)}</td>
+      <td class="num">${formatVal(lastVal, unit)}</td>
+      <td>${statusCell(rag)}</td>
+      <td>${chip}</td>
+      <td>${spark}</td>
     </tr>`;
 }
 
-// ─── Full table ──────────────────────────────────────────────────────────────
-
-function buildTableHTML(dept, filterText, expandedIds, expandedTeamIds = new Set(), expandedRepIds = new Set()) {
-  const mainKpis = mains(dept).filter(k =>
-    !filterText || k.name.toLowerCase().includes(filterText.toLowerCase())
-  );
-  if (!mainKpis.length) {
-    return `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--slate-500)">
-      No KPIs match "${filterText}"</td></tr>`;
+function repSubsRowsHTML(rep) {
+  if (!rep.repSubs) {
+    return `<tr class="kpi-sub"><td colspan="6" style="padding-left:88px;color:var(--text-faint);font-size:12.5px">No L1 sub-KPI data for this rep.</td></tr>`;
   }
-  // Service: 3-level drill (main → team → rep → L1 sub-KPIs)
-  if (dept.id === 'service') {
-    return mainKpis.map(kpi => {
-      const isExpanded = expandedIds.has(kpi.id);
-      let html = renderMainRow(kpi, dept, isExpanded);
-      if (isExpanded) {
-        const hasTeams = kpi.contributors && kpi.contributors.length > 0;
-        if (hasTeams) {
-          html += renderServiceExpansion(kpi, dept, expandedTeamIds, expandedRepIds);
-        } else {
-          html += renderExpansion(kpi, dept);
-        }
-      }
-      return html;
-    }).join('');
-  }
-
-  return mainKpis.map(kpi => {
-    const isExpanded = expandedIds.has(kpi.id);
-    let html = renderMainRow(kpi, dept, isExpanded);
-    if (isExpanded) html += renderExpansion(kpi, dept);
-    return html;
-  }).join('');
+  const firstName = String(rep.name || '').split('—')[0].trim();
+  const bandRow = `<tr class="kpi-cat"><td colspan="6"><span>Day-by-day — ${esc(firstName)}</span></td></tr>`;
+  const rows = Object.keys(SUB_KPI_LABELS)
+    .filter((key) => rep.repSubs[key])
+    .map((key) => repSubRowHTML(key, rep.repSubs[key]))
+    .join('');
+  return bandRow + rows;
 }
 
-// ─── Styles (injected once) ──────────────────────────────────────────────────
+// ─── Service only: rep row (level 3) — always expandable into its L1 subs ───
+//
+// Expand state is tracked in its OWN Set (state.expandedRepIds), separate
+// from the main/team Sets below. Service's data lets the same KPI id appear
+// at more than one cascade depth at once (see the rev_total → rev_we/rev_hpi
+// "team" quirk documented in the file header) — sharing a single Set across
+// levels would let expanding a real team bleed into an unrelated rep-shaped
+// render of the same id reached through that quirk. Three level-scoped Sets
+// (matching the pre-rebuild file's expandedIds/expandedTeamIds/
+// expandedRepIds) keep each cascade position's open/closed state independent.
 
-let stylesInjected = false;
-function injectStyles() {
-  if (stylesInjected) return;
-  stylesInjected = true;
-  const style = document.createElement('style');
-  style.textContent = `
-    .kpi-expansion { padding: 8px 8px 14px; background: var(--bg-subtle); }
-    .kpi-explain {
-      background: var(--accent-soft);
-      border-left: 3px solid var(--accent);
-      padding: 10px 16px 10px 22px;
-      border-radius: var(--radius);
-    }
-    .kpi-explain__label {
-      font-size: 0.62rem; font-weight: 700; letter-spacing: 0.07em;
-      text-transform: uppercase; color: var(--accent-text); margin-bottom: 6px;
-    }
-    .kpi-explain__grid { display: grid; gap: 4px; font-size: 0.8rem; line-height: 1.55; color: var(--slate-700); }
-    .kpi-explain__k {
-      display: inline-block; min-width: 66px; font-weight: 700; color: var(--text-faint);
-      font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.03em; margin-right: 6px;
-    }
-    .kpi-details { margin-top: 8px; padding: 10px 16px; background: var(--panel); border: 1px solid var(--slate-200); border-radius: var(--radius); }
-  `;
-  document.head.appendChild(style);
+function serviceRepRowHTML(dept, rep, expandedRepIds) {
+  const act = lastValue(rep);
+  const rag = ragStatus(act, rep.target, rep.direction || 'higher_better');
+  const isExpanded = expandedRepIds.has(rep.id);
+  const caret = `<button class="kpi-name__caret ${isExpanded ? 'is-open' : ''}" data-rep-row="${esc(rep.id)}" aria-expanded="${isExpanded}" aria-label="Expand ${esc(rep.name)}">${CARET_SVG}</button>`;
+  let rows = `
+    <tr class="kpi-sub">
+      <td style="padding-left:68px">
+        <div class="kpi-name">${caret}${esc(rep.name)}</div>
+        ${isExpanded ? flagNoteHTML(rep, dept, rag) : ''}
+      </td>
+      <td class="num">${formatVal(rep.target, rep.unit)}</td>
+      <td class="num">${formatVal(act, rep.unit)}</td>
+      <td>${statusCell(rag)}</td>
+      <td>${sourceChip(rep)}</td>
+      <td>${sparkFor(rep)}</td>
+    </tr>`;
+  if (isExpanded) rows += repSubsRowsHTML(rep);
+  return rows;
 }
 
-// ─── Public entry point ──────────────────────────────────────────────────────
+// ─── Service only: team row (level 2) — expandable only when it has reps ────
+
+function serviceTeamRowHTML(dept, team, expandedTeamIds, expandedRepIds) {
+  const act = lastValue(team);
+  const rag = ragStatus(act, team.target, team.direction || 'higher_better');
+  const reps = contributorsOf(dept, team.id);
+  const hasReps = reps.length > 0;
+  const isExpanded = expandedTeamIds.has(team.id);
+  const caret = hasReps
+    ? `<button class="kpi-name__caret ${isExpanded ? 'is-open' : ''}" data-team-row="${esc(team.id)}" aria-expanded="${isExpanded}" aria-label="Expand ${esc(team.name)}">${CARET_SVG}</button>`
+    : CARET_PLACEHOLDER;
+  let rows = `
+    <tr class="kpi-sub">
+      <td>
+        <div class="kpi-name">${caret}<strong>${esc(team.name)}</strong></div>
+        ${isExpanded ? flagNoteHTML(team, dept, rag) : ''}
+      </td>
+      <td class="num">${formatVal(team.target, team.unit)}</td>
+      <td class="num">${formatVal(act, team.unit)}</td>
+      <td>${statusCell(rag)}</td>
+      <td>${sourceChip(team)}</td>
+      <td>${sparkFor(team)}</td>
+    </tr>`;
+  if (isExpanded && hasReps) {
+    rows += reps.map((rep) => serviceRepRowHTML(dept, rep, expandedRepIds)).join('');
+  }
+  return rows;
+}
+
+// ─── Main row (level 1) ──────────────────────────────────────────────────────
+
+function mainRowHTML(dept, kpi, hoshin, state) {
+  const isExpanded = state.expandedIds.has(kpi.id);
+  const act = lastValue(kpi);
+  const rag = ragStatus(act, kpi.target, kpi.direction || 'higher_better');
+  const hchips = hoshin ? hoshinChips(hoshin, dept) : '';
+  const caret = `<button class="kpi-name__caret ${isExpanded ? 'is-open' : ''}" data-row="${esc(kpi.id)}" aria-expanded="${isExpanded}" aria-label="Expand ${esc(kpi.name)}">${CARET_SVG}</button>`;
+
+  let rows = `
+    <tr class="kpi-row">
+      <td>
+        <div class="kpi-name">
+          ${caret}
+          ${esc(kpi.name)}
+          ${illustrativeChip(kpi)}
+          ${hchips}
+        </div>
+        ${isExpanded ? flagNoteHTML(kpi, dept, rag) : ''}
+      </td>
+      <td class="num">${formatVal(kpi.target, kpi.unit)}</td>
+      <td class="num" style="font-weight:600">${formatVal(act, kpi.unit)}</td>
+      <td>${statusCell(rag)}</td>
+      <td>${sourceChip(kpi)}</td>
+      <td>${sparkFor(kpi)}</td>
+    </tr>`;
+
+  if (isExpanded) {
+    const children = contributorsOf(dept, kpi.id);
+    if (children.length) {
+      rows += dept.id === 'service'
+        ? children.map((team) => serviceTeamRowHTML(dept, team, state.expandedTeamIds, state.expandedRepIds)).join('')
+        : children.map((sub) => genericSubRowHTML(dept, sub)).join('');
+    } else {
+      rows += `<tr class="kpi-sub"><td colspan="6" style="text-align:center;padding:16px;color:var(--text-faint);font-size:12.5px">No sub-KPIs connect to this main — it is entered directly.</td></tr>`;
+    }
+    if (rag === 'red' || rag === 'amber') rows += commentRowHTML(dept, kpi, rag);
+  }
+  return rows;
+}
+
+// ─── Table body ──────────────────────────────────────────────────────────────
+
+function tableBodyHTML(dept, hoshin, state) {
+  const allMains = mains(dept);
+  const filtered = state.filterText
+    ? allMains.filter((k) => k.name.toLowerCase().includes(state.filterText.toLowerCase()))
+    : allMains;
+  if (!filtered.length) {
+    return `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-faint)">No KPIs match "${esc(state.filterText)}"</td></tr>`;
+  }
+  return filtered.map((k) => mainRowHTML(dept, k, hoshin, state)).join('');
+}
+
+function flaggedBannerHTML(dept, state) {
+  const flaggedMain = mains(dept).find((k) => k.flagDetail && state.expandedIds.has(k.id));
+  return rollupBannerHTML(flaggedMain);
+}
+
+// ─── Public entry point ───────────────────────────────────────────────────────
 
 export function renderKpi(dept, mount) {
-  injectStyles();
-  let filterText     = '';
-  let expandedIds    = new Set();
-  let expandedTeamIds = new Set();
-  let expandedRepIds  = new Set();
+  const state = {
+    filterText: '',
+    expandedIds: new Set(),     // main-level (level 1)
+    expandedTeamIds: new Set(), // Service team-level (level 2)
+    expandedRepIds: new Set(),  // Service rep-level (level 3)
+  };
+  let hoshin = null;
+  const hasIllustrative = (dept.kpis || []).some((k) => k.illustrative);
 
-  function render() {
-    const tbody = document.getElementById('kpi-tbody');
-    if (tbody) {
-      tbody.innerHTML = buildTableHTML(dept, filterText, expandedIds, expandedTeamIds, expandedRepIds);
-      bindRowEvents();
+  function fullHTML() {
+    return `
+    <div class="page-head">
+      <div>
+        <span class="running-head page-head__eyebrow">${esc(dept.name)} · Connection Drill</span>
+        <h1>KPI Boards</h1>
+        <p class="page-head__sub">Click any KPI's caret to see its sub-KPI connections and what's driving its status.</p>
+      </div>
+      <div class="page-head__side">
+        <button class="btn btn--secondary" data-go="team">Back to Overview</button>
+      </div>
+    </div>
+
+    ${hoshin ? hoshinStrip(hoshin, dept) : ''}
+
+    <div class="flex" style="align-items:center; justify-content:flex-end; gap:16px; margin:24px 0">
+      <input class="input" id="kpi-filter" style="max-width:220px" type="search" placeholder="Filter KPIs" aria-label="Filter KPIs" value="${esc(state.filterText)}">
+    </div>
+
+    <div class="table-wrap"><div class="table-scroll">
+      <table class="dt">
+        <thead><tr>
+          <th style="min-width:300px">KPI</th><th class="num">Target</th><th class="num">Actual</th>
+          <th>Status</th><th>Target source</th><th>Trend</th>
+        </tr></thead>
+        <tbody>${tableBodyHTML(dept, hoshin, state)}</tbody>
+      </table>
+    </div></div>
+
+    ${flaggedBannerHTML(dept, state)}
+
+    <p class="board-hint">Click a KPI's caret to expand its sub-KPI connections${dept.id === 'service' ? ' — main → team → rep → day-by-day for Incoming Revenue' : ''}.${hasIllustrative ? ' <span class="chip">illustrative</span> marks a placeholder trend, not a live tracked number.' : ''} Off-track and at-risk KPIs carry a note thread with Mark's read and space for your own.</p>
+    <div class="chart-tip" id="chart-tip"></div>`;
+  }
+
+  function paint() {
+    const prevFilter = mount.querySelector('#kpi-filter');
+    const hadFocus = !!prevFilter && document.activeElement === prevFilter;
+    const selStart = hadFocus ? prevFilter.selectionStart : null;
+
+    mount.innerHTML = fullHTML();
+
+    if (hadFocus) {
+      const inp = mount.querySelector('#kpi-filter');
+      if (inp) {
+        inp.focus();
+        try { inp.setSelectionRange(selStart, selStart); } catch { /* no-op */ }
+      }
     }
-  }
-
-  function bindRowEvents() {
-    // Comment threads inside off-track expansions — delegated once on mount.
+    const tip = mount.querySelector('#chart-tip');
+    if (tip) wireChartHover(mount, tip);
     bindComments(mount);
-    mount.querySelectorAll('.expand-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const id = btn.dataset.kpiId;
-        if (expandedIds.has(id)) expandedIds.delete(id); else expandedIds.add(id);
-        render();
-      });
-    });
-    mount.querySelectorAll('.main-row--expandable').forEach(row => {
-      row.addEventListener('click', () => {
-        const id = row.dataset.kpiId;
-        if (expandedIds.has(id)) expandedIds.delete(id); else expandedIds.add(id);
-        render();
-      });
-    });
-    // "details" toggle inside an expansion — reveal identity fields in place
-    mount.querySelectorAll('.details-toggle').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const id = btn.dataset.detailsToggle;
-        const panel = mount.querySelector(`.kpi-details[data-details-for="${id}"]`);
-        if (!panel) return;
-        const hidden = panel.style.display === 'none' || !panel.style.display;
-        panel.style.display = hidden ? 'block' : 'none';
-        btn.textContent = hidden
-          ? '▾ Hide KPI details'
-          : '▸ KPI details (source · RAG rule · owner · cadence)';
-      });
-    });
-
-    // Team-level expand (Service only)
-    mount.querySelectorAll('.expand-btn-team').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const id = btn.dataset.teamId;
-        if (expandedTeamIds.has(id)) expandedTeamIds.delete(id);
-        else expandedTeamIds.add(id);
-        render();
-      });
-    });
-    mount.querySelectorAll('.service-team-row--expandable').forEach(row => {
-      row.addEventListener('click', (e) => {
-        if (e.target.closest('.expand-btn-team, .expand-btn-rep')) return;
-        const id = row.dataset.teamId;
-        if (expandedTeamIds.has(id)) expandedTeamIds.delete(id);
-        else expandedTeamIds.add(id);
-        render();
-      });
-    });
-
-    // Rep-level expand (Service only)
-    mount.querySelectorAll('.expand-btn-rep').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const id = btn.dataset.repId;
-        if (expandedRepIds.has(id)) expandedRepIds.delete(id);
-        else expandedRepIds.add(id);
-        render();
-      });
-    });
-    mount.querySelectorAll('.service-rep-row').forEach(row => {
-      row.addEventListener('click', (e) => {
-        if (e.target.closest('.expand-btn-rep')) return;
-        const id = row.dataset.repId;
-        if (expandedRepIds.has(id)) expandedRepIds.delete(id);
-        else expandedRepIds.add(id);
-        render();
-      });
-    });
   }
 
-  mount.innerHTML = `
-    <div class="team-board">
-      <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:16px">
-        <div>
-          <h2>${dept.name} — KPI Boards</h2>
-          <p class="text-muted text-small mt-1">Click any KPI to see its sub-KPI connections + an explanation of what it measures and why it's at this status.</p>
-        </div>
-        <a href="#/dept/${dept.id}/team" class="btn btn--ghost" style="font-size:0.8rem">← Overview</a>
-      </div>
+  mount.addEventListener('click', (e) => {
+    const backBtn = e.target.closest('[data-go]');
+    if (backBtn) { location.hash = `#/dept/${dept.id}/${backBtn.dataset.go}`; return; }
 
-      <div class="filter-row" style="margin-bottom:16px">
-        <input id="kpi-filter" type="search" placeholder="Filter KPIs…" style="width:240px">
-      </div>
+    const rowBtn = e.target.closest('[data-row]');
+    if (rowBtn) {
+      const id = rowBtn.dataset.row;
+      if (state.expandedIds.has(id)) state.expandedIds.delete(id); else state.expandedIds.add(id);
+      paint();
+      return;
+    }
 
-      <div class="table-wrap">
-        <table id="kpi-table">
-          <thead>
-            <tr>
-              <th style="min-width:220px">KPI</th>
-              <th class="text-right">Target</th>
-              <th class="text-right">Actual</th>
-              <th style="min-width:110px">Status</th>
-              <th>Source</th>
-              <th style="min-width:230px">Trend (8 wk)</th>
-            </tr>
-          </thead>
-          <tbody id="kpi-tbody">
-            ${buildTableHTML(dept, filterText, expandedIds)}
-          </tbody>
-        </table>
-      </div>
+    const teamBtn = e.target.closest('[data-team-row]');
+    if (teamBtn) {
+      const id = teamBtn.dataset.teamRow;
+      if (state.expandedTeamIds.has(id)) state.expandedTeamIds.delete(id); else state.expandedTeamIds.add(id);
+      paint();
+      return;
+    }
 
-      <p class="text-muted text-small mt-4">
-        Click a main KPI to drill in: main → sub-KPI cascade connection, with a plain-language
-        explanation on top and full KPI identity behind the "details" toggle. ⚠ = data flag.
-      </p>
-    </div>`;
-
-  const filterInput = mount.querySelector('#kpi-filter');
-  filterInput.addEventListener('input', (e) => {
-    filterText = e.target.value;
-    render();
+    const repBtn = e.target.closest('[data-rep-row]');
+    if (repBtn) {
+      const id = repBtn.dataset.repRow;
+      if (state.expandedRepIds.has(id)) state.expandedRepIds.delete(id); else state.expandedRepIds.add(id);
+      paint();
+    }
   });
 
-  bindRowEvents();
+  mount.addEventListener('input', (e) => {
+    if (e.target && e.target.id === 'kpi-filter') {
+      state.filterText = e.target.value;
+      paint();
+    }
+  });
+
+  wireHoshinStrip(mount);
+
+  paint();
+
+  loadHoshin().then((h) => {
+    if (!h) return;
+    hoshin = h;
+    paint();
+  });
 }
