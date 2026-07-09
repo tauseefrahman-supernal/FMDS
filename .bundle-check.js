@@ -244,7 +244,7 @@ __M["lib/context.js"] = (function(){
  *   deptId, deptName,
  *   kpis: [{ id, name, rag, actual, target, unit, level, isMain, parentId, owner, explanation }],
  *   reds: [kpiId],
- *   reasons, comments,
+ *   reasons, comments, responses,
  *   kzRecords: [{ kzNumber, item, who, linkedKpiId, done, closed }],
  *   ownerOf(kpiId) → string,
  * }
@@ -253,6 +253,9 @@ __M["lib/context.js"] = (function(){
  *   reasons    — reason-log entries for this dept (lib/reasons.js shape), passed through untouched.
  *   comments   — comment-thread entries for this dept (lib/comments.js shape), passed through untouched.
  *   kzRecords  — raw 8-step KZ records (any dept); filtered to this dept via byDept and re-shaped.
+ *   responses  — accountability response-lifecycle entries for this dept (lib/accountability.js
+ *                getResponsesByDept shape), passed through untouched. Backs the backend's
+ *                get_response_status tool (server/mark_tools.py).
  */
 
 const { ragStatus } = __M["lib/rag.js"];
@@ -318,6 +321,7 @@ function mapKZ(kz) {
 function buildDeptContext(dept, opts = {}) {
   const reasons = opts.reasons || [];
   const comments = opts.comments || [];
+  const responses = opts.responses || [];
   const kzInput = opts.kzRecords || [];
 
   const kpis = (dept.kpis || []).map((kpi) => {
@@ -354,6 +358,7 @@ function buildDeptContext(dept, opts = {}) {
     reds,
     reasons,
     comments,
+    responses,
     kzRecords,
     ownerOf,
   };
@@ -1028,10 +1033,19 @@ __M["lib/agent.js"] = (function(){
  *
  * Exports:
  *   bakedReply(deptId, intent, ctx) → string
- *   liveReply(deptId, intent, ctx)  → string  (Ask Mark: context-grounded scripted
- *                                    reply built from lib/context.js when ctx.dept
- *                                    is supplied; still no network call — that is
- *                                    a later, deferred task)
+ *   liveReply(deptId, intent, ctx)  → Promise<string>  (Ask Mark: tries the real
+ *                                    backend agent first — POST /api/mark with
+ *                                    {deptId, context: buildDeptContext(...),
+ *                                    messages: ctx.messages} — and falls back to
+ *                                    the scripted, context-grounded reply built
+ *                                    from lib/context.js on ANY failure: no
+ *                                    `fetch` global, a rejected/timed-out fetch,
+ *                                    or a non-OK response. The fallback is exactly
+ *                                    what this module produced before the backend
+ *                                    existed, so keyless local dev and the
+ *                                    CSP-locked hosted Artifact bundle (where
+ *                                    fetch is shimmed to reject) behave identically
+ *                                    to the pre-backend prototype.)
  *
  * Intents:
  *   'explain-red'  — why a KPI is red (context-grounded per dept)
@@ -1780,29 +1794,77 @@ function groundedReply(deptId, intent, ctx, deptCtx) {
   return summarizeReds(deptCtx, dc);
 }
 
+const MARK_ENDPOINT = '/api/mark';
+// Live E2E measured ~31s for a real Operations question (opus, medium effort,
+// several tool round-trips) — 30s silently cut off real replies while the
+// server kept spending. 90s gives honest headroom; streaming is the real fix.
+const MARK_FETCH_TIMEOUT_MS = 90000;
+
 /**
- * liveReply(deptId, intent, ctx) → string
+ * fetchLiveReply(deptId, context, messages) → Promise<string|null>
+ *
+ * POSTs to the Mark backend (server/mark_agent.py, via serve.py's
+ * POST /api/mark) and resolves the reply text on success, or `null` on ANY
+ * failure — this function never throws. Callers treat `null` as the sole
+ * signal to fall back to the scripted reply. Failure modes covered:
+ *   - no `fetch` global at all (older runtimes; some Node test contexts)
+ *   - `fetch` present but rejecting (network error, or the CSP-locked hosted
+ *     Artifact bundle where fetch is shimmed to reject every call)
+ *   - non-OK status (e.g. 503 when ANTHROPIC_API_KEY is not set server-side,
+ *     or 500 on an agent-loop error)
+ *   - a malformed 200 body (missing/non-string `reply`)
+ *   - a slow backend — aborted after MARK_FETCH_TIMEOUT_MS
+ */
+async function fetchLiveReply(deptId, context, messages) {
+  if (typeof fetch !== 'function') return null;
+  const controller = typeof AbortController === 'function' ? new AbortController() : null;
+  const timer = controller ? setTimeout(() => controller.abort(), MARK_FETCH_TIMEOUT_MS) : null;
+  try {
+    const res = await fetch(MARK_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ deptId, context, messages }),
+      ...(controller ? { signal: controller.signal } : {}),
+    });
+    if (!res || !res.ok) return null;
+    const data = await res.json();
+    return data && typeof data.reply === 'string' ? data.reply : null;
+  } catch {
+    return null;
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+/**
+ * liveReply(deptId, intent, ctx) → Promise<string>
  *
  * When ctx.dept is supplied, builds this department's live context
- * (lib/context.js buildDeptContext) and produces a grounded reply keyed off
+ * (lib/context.js buildDeptContext, now also threading ctx.responses — the
+ * accountability response-lifecycle entries — so the backend's
+ * get_response_status tool has real data) and tries the real backend agent
+ * first (fetchLiveReply, above). On any failure it falls back to the same
+ * grounded-but-scripted reply this module always produced, keyed off
  * ctx.question / intent / ctx.kpi — mentioning real live figures (actual,
  * target, owner) rather than generic text. When ctx.dept is absent, falls
  * back to bakedReply so existing callers (the agent drawer) are unaffected.
- *
- * Still no network call — that is a later, deferred task.
  */
 async function liveReply(deptId, intent, ctx = {}) {
   // 'step-help' always returns stepHelpFor's structured {step,headline,note,items}
-  // object for the docked wizard panel — never grounded prose — so short-circuit
-  // to bakedReply here even when ctx.dept is supplied (the wizard dock passes
-  // ctx.dept alongside ctx.kpi/ctx.step).
+  // object for the docked wizard panel — never grounded prose, never worth a
+  // network round-trip — so short-circuit to bakedReply here even when
+  // ctx.dept is supplied (the wizard dock passes ctx.dept alongside
+  // ctx.kpi/ctx.step).
   if (intent === 'step-help') return bakedReply(deptId, intent, ctx);
   if (!ctx.dept) return bakedReply(deptId, intent, ctx);
   const deptCtx = buildDeptContext(ctx.dept, {
     reasons: ctx.reasons,
     comments: ctx.comments,
     kzRecords: ctx.kzRecords,
+    responses: ctx.responses,
   });
+  const live = await fetchLiveReply(deptId, deptCtx, ctx.messages || []);
+  if (live != null) return live;
   return groundedReply(deptId, intent, ctx, deptCtx);
 }
 
@@ -3070,8 +3132,11 @@ __M["views/askmark.js"] = (function(){
  *     lifecycleView (the 6-stage lifecycle track), linkEightStep (8-step
  *     escalation), rollupSignal (header "N stalled · M responses logged").
  *   - lib/agent.js liveReply() — every chat send still gathers the same live
- *     context (reasons, per-KPI comments, kz-records.json) and calls it
- *     unchanged.
+ *     context (reasons, per-KPI comments, kz-records.json), now also the
+ *     dept's accountability responses (getResponsesByDept) and the active
+ *     thread's message history, and calls it unchanged; liveReply itself
+ *     decides whether to hit the real backend agent or fall back to the
+ *     scripted reply.
  *   - The header's "N action required" / "M being actioned" pill math is
  *     still computed off the LIVE queue split by whether each red already
  *     has a submitted response (not off rollupSignal — see the split-queue
@@ -3099,7 +3164,7 @@ __M["views/askmark.js"] = (function(){
  * thread's title renames itself from the first message sent in it.
  */
 
-const { redKpisNeedingResponse, rollupSignal, getResponse, addResponse, advanceLifecycle, lifecycleView, linkEightStep } = __M["lib/accountability.js"];
+const { redKpisNeedingResponse, rollupSignal, getResponse, addResponse, advanceLifecycle, lifecycleView, linkEightStep, getResponsesByDept } = __M["lib/accountability.js"];
 const { liveReply } = __M["lib/agent.js"];
 const { getReasonsByDept } = __M["lib/reasons.js"];
 const { getComments, composeMarkNote } = __M["lib/comments.js"];
@@ -3744,6 +3809,26 @@ function gatherDeptComments(dept) {
 
 // ─── Chat: send + repaint ────────────────────────────────────────────────────
 
+// Shapes an in-view thread's msgs ({role:'me'|'mark', text, system?}) into the
+// backend's conversation-history contract ({role:'user'|'assistant', content}).
+// Drops the locally-injected "system confirmation" bubbles (submitResponse /
+// openEightStepForKpi push these with system:true — they never came from the
+// model, so replaying them as assistant turns would misrepresent the
+// conversation to Claude) and drops any messages before the first real user
+// turn (a greeted new thread opens with a scripted Mark intro; the Anthropic
+// Messages API requires the first turn to be 'user', so a leading assistant
+// turn would make every send on that thread fail server-side and silently
+// fall back to the scripted reply instead of actually reaching Mark).
+function toApiMessages(msgs) {
+  const real = (msgs || []).filter((m) => !m.system);
+  const firstUser = real.findIndex((m) => m.role === 'me');
+  if (firstUser === -1) return [];
+  return real.slice(firstUser).map((m) => ({
+    role: m.role === 'me' ? 'user' : 'assistant',
+    content: m.text,
+  }));
+}
+
 function scrollThreadToBottom() {
   const el = document.getElementById('askmark-thread');
   if (el) el.scrollTop = el.scrollHeight;
@@ -3800,7 +3885,9 @@ async function sendMessage() {
     const reasons   = getReasonsByDept(_dept.id);
     const comments  = gatherDeptComments(_dept);
     const kzRecords = await loadKzRecords();
-    const reply = await liveReply(_dept.id, 'ask', { dept: _dept, question, reasons, comments, kzRecords });
+    const responses = getResponsesByDept(_dept.id);
+    const messages  = toApiMessages(thread.msgs);
+    const reply = await liveReply(_dept.id, 'ask', { dept: _dept, question, reasons, comments, kzRecords, responses, messages });
     thread.msgs.push({ role: 'mark', text: reply });
   } catch (e) {
     console.warn('Ask Mark: liveReply failed', e);
