@@ -61,6 +61,16 @@ class BuildSystemTest(unittest.TestCase):
         prompt = mark_prompt.build_system("hr", {})
         self.assertIn("hr", prompt[len(mark_prompt.STABLE_PREFIX):])
 
+    def test_missing_dept_id_and_name_reads_grammatically(self):
+        # Both absent used to render "for the your department (id: unknown)" —
+        # ungrammatical and confusing. The fallback must read naturally: no
+        # "the your", and no fabricated "unknown" id.
+        prompt = mark_prompt.build_system(None, {})
+        suffix = prompt[len(mark_prompt.STABLE_PREFIX):]
+        self.assertIn("for your department", suffix)
+        self.assertNotIn("the your", suffix)
+        self.assertNotIn("unknown", suffix)
+
     def test_encodes_operating_model_and_grounding(self):
         # Spot-check that the charter actually carries the FMDS model and the
         # no-fabrication rule — the substance of the task, not just structure.

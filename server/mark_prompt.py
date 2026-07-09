@@ -123,13 +123,23 @@ def build_system(dept_id, context):
     requests; only this tail changes.
     """
     ctx = context or {}
-    dept_name = ctx.get("deptName") or dept_id or "your"
-    dept_slug = dept_id or "unknown"
+    dept_name = ctx.get("deptName") or dept_id
+    dept_slug = dept_id
+
+    # When neither a name nor an id is known, fall back to "your department"
+    # with no id parenthetical — naming an "unknown" id reads as a bug, not
+    # a graceful degradation.
+    if dept_name:
+        identity = f"the {dept_name} department"
+        if dept_slug:
+            identity += f" (id: {dept_slug})"
+    else:
+        identity = "your department"
 
     suffix = (
         "\n\n# This request\n\n"
-        f"You are the FMDS OS AI employee for the {dept_name} department "
-        f"(id: {dept_slug}). Scope your answers to this department's board and "
-        "records, and fetch its live data through your tools."
+        f"You are the FMDS OS AI employee for {identity}. Scope your answers to "
+        "this department's board and records, and fetch its live data through "
+        "your tools."
     )
     return STABLE_PREFIX + suffix

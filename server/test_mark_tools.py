@@ -194,6 +194,9 @@ class BuildToolsShapeTest(unittest.TestCase):
         tools = {t.name: t for t in mark_tools.build_tools(ctx)}
         self.assertEqual(call(tools["get_kz_records"]), [])
 
+    # The three get_hoshin tests below assert against the REAL data/hoshin.json
+    # content (block, lead, activity counts, alias resolution) — intentional
+    # coupling to live data, same as the get_kz_records disk test above.
     def test_get_hoshin_own_activities(self):
         hoshin = call(self.tools["get_hoshin"])
         self.assertTrue(len(hoshin["objectives"]) == 5)

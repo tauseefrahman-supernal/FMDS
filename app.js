@@ -49,7 +49,7 @@ import { renderStandardWork }     from './views/standardwork.js';
 import { renderSources }          from './views/sources.js';
 import { renderAskMark }          from './views/askmark.js';
 import { renderLogin, resolvePersona } from './views/login.js';
-import { redKpisNeedingResponse, getResponse } from './lib/accountability.js';
+import { unansweredRedCount } from './lib/accountability.js';
 
 const app   = document.getElementById('app');
 const store = createStore({ departments: [], dept: null, session: null });
@@ -116,6 +116,7 @@ function showLogin() {
 }
 
 function signOut() {
+  stopInboxBadgePoll();
   store.set({ session: null, dept: null });
   if (location.hash === '#/login') showLogin();
   else location.hash = '#/login';   // hashchange → route() → showLogin()
@@ -209,17 +210,6 @@ function viewLabel(dept, role, view) {
   return item ? item.label : view;
 }
 
-// ─── Ask Mark queue count ───────────────────────────────────────────────────
-// Mirrors views/askmark.js's header "N action required": live reds
-// (redKpisNeedingResponse) that have NOT yet had a response submitted
-// (getResponse(...).answered). Deliberately NOT rollupSignal().redCount —
-// that counts persisted response entries, a different number from the queue.
-function askMarkActionRequiredCount(dept) {
-  return redKpisNeedingResponse(dept).filter((item) =>
-    !(getResponse({ deptId: dept.id, kpiId: item.kpiId }) || {}).answered
-  ).length;
-}
-
 // ─── Layout: light sidebar + topbar + canvas ────────────────────────────────
 function renderLayout(dept, activeView) {
   const session = store.get().session;
@@ -232,7 +222,7 @@ function renderLayout(dept, activeView) {
   // frozen departments), so neither ever routes somewhere unreachable from
   // the sidebar nav.
   const canAskMark   = nav.some(v => v.id === 'mark');
-  const askMarkCount = canAskMark ? askMarkActionRequiredCount(dept) : 0;
+  const askMarkCount = canAskMark ? unansweredRedCount(dept) : 0;
 
   const navHtml = nav.map(v => {
     const icon = ICONS[v.icon] || '';
@@ -355,7 +345,7 @@ function startInboxBadgePoll(dept) {
   _inboxPollTimer = setInterval(() => {
     const btn = document.getElementById('inbox-btn');
     if (!btn) { stopInboxBadgePoll(); return; } // topbar re-rendered elsewhere (route change)
-    const count = askMarkActionRequiredCount(dept);
+    const count = unansweredRedCount(dept);
     let countEl = document.getElementById('inbox-btn-count');
     if (count > 0) {
       if (!countEl) {

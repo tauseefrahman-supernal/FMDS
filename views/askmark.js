@@ -57,7 +57,7 @@ import {
   redKpisNeedingResponse, rollupSignal, getResponse, addResponse,
   advanceLifecycle, lifecycleView, linkEightStep, getResponsesByDept,
 } from '../lib/accountability.js';
-import { liveReply }                       from '../lib/agent.js';
+import { liveReply, toApiMessages }        from '../lib/agent.js';
 import { getReasonsByDept }                from '../lib/reasons.js';
 import { getComments, composeMarkNote }    from '../lib/comments.js';
 import { sparkline, stepChart, VIZ }       from '../lib/charts.js';
@@ -700,26 +700,6 @@ function gatherDeptComments(dept) {
 }
 
 // ─── Chat: send + repaint ────────────────────────────────────────────────────
-
-// Shapes an in-view thread's msgs ({role:'me'|'mark', text, system?}) into the
-// backend's conversation-history contract ({role:'user'|'assistant', content}).
-// Drops the locally-injected "system confirmation" bubbles (submitResponse /
-// openEightStepForKpi push these with system:true — they never came from the
-// model, so replaying them as assistant turns would misrepresent the
-// conversation to Claude) and drops any messages before the first real user
-// turn (a greeted new thread opens with a scripted Mark intro; the Anthropic
-// Messages API requires the first turn to be 'user', so a leading assistant
-// turn would make every send on that thread fail server-side and silently
-// fall back to the scripted reply instead of actually reaching Mark).
-function toApiMessages(msgs) {
-  const real = (msgs || []).filter((m) => !m.system);
-  const firstUser = real.findIndex((m) => m.role === 'me');
-  if (firstUser === -1) return [];
-  return real.slice(firstUser).map((m) => ({
-    role: m.role === 'me' ? 'user' : 'assistant',
-    content: m.text,
-  }));
-}
 
 function scrollThreadToBottom() {
   const el = document.getElementById('askmark-thread');

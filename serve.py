@@ -74,6 +74,16 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         context = body.get('context')
         messages = body.get('messages') or []
 
+        # Reject before the (comparatively expensive) lazy mark_agent import —
+        # the live chat path always needs real turn history (see lib/agent.js
+        # liveReply's JSDoc); a client that skips it would otherwise burn a
+        # wasted Opus round-trip only to fail deep inside the agent loop. The
+        # client treats any non-OK response as a signal to fall back to the
+        # scripted reply, so failing fast here is invisible to the user.
+        if not isinstance(messages, list) or not messages:
+            self._send_json(400, {'error': 'messages must be a non-empty array.'})
+            return
+
         try:
             from server import mark_agent  # lazy import: keeps static serving anthropic-free
             reply, usage = mark_agent.run(dept_id, context, messages)

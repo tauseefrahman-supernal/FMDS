@@ -13,6 +13,7 @@ globalThis.localStorage = {
 const {
   LIFECYCLE, redKpisNeedingResponse, addResponse, getResponse, getResponsesByDept,
   advanceLifecycle, lifecycleView, linkEightStep, stalledDays, rollupSignal, seedDemoAccountability,
+  unansweredRedCount,
 } = await import('../lib/accountability.js');
 
 // Same shape as tests/context.test.mjs's operationsFixture — real WE figures
@@ -64,6 +65,21 @@ test('redKpisNeedingResponse({includeAmber:true}) also surfaces amber KPIs', () 
   const withAmber = redKpisNeedingResponse(amberFixture, { includeAmber: true });
   assert.ok(!redOnly.some(q => q.kpiId === 'otp'), 'amber excluded by default');
   assert.ok(withAmber.some(q => q.kpiId === 'otp'), 'amber included when requested');
+});
+
+// ─── unansweredRedCount ─────────────────────────────────────────────────────
+
+test('unansweredRedCount counts the red ops fixture as 1 (no response submitted yet)', () => {
+  assert.equal(unansweredRedCount(operationsFixture), 1);
+});
+
+test('unansweredRedCount drops to 0 once the red KPI has an answered response', () => {
+  addResponse({
+    deptId: 'operations', kpiId: 'otp', owner: 'Jim Kozel',
+    cause: 'Mexico dragging WE main OTP red.', action: 'Overtime + short-code SOP fix.',
+    needs8Step: false, kzNumber: null, reportBackWhen: 'Next T3 review',
+  });
+  assert.equal(unansweredRedCount(operationsFixture), 0);
 });
 
 // ─── addResponse / getResponse / getResponsesByDept ────────────────────────
@@ -283,9 +299,9 @@ test('stalledDays is 0 for a just-now stamp', () => {
 
 // ─── rollupSignal ───────────────────────────────────────────────────────────
 
-test('rollupSignal summarizes redCount/answered/beingActioned/stalled for a dept', () => {
+test('rollupSignal summarizes entryCount/answered/beingActioned/stalled for a dept', () => {
   const signal = rollupSignal('operations');
-  assert.ok(signal.redCount >= 2, 'otp + otp_fresh entries counted');
+  assert.ok(signal.entryCount >= 2, 'otp + otp_fresh entries counted');
   assert.ok(signal.answered >= 2);
   assert.ok(signal.beingActioned >= 1, 'otp_fresh is in actionUnderway');
   assert.equal(typeof signal.stalled, 'number');

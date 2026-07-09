@@ -43,6 +43,25 @@ def run(dept_id, context, messages):
     }]
     tools = mark_tools.build_tools(context)
 
+    # Cache breakpoint on the message history: without this, only the
+    # system+tools prefix (above) is cached, so a multi-turn chat re-pays the
+    # growing conversation history on every follow-up send. Marking the LAST
+    # message's content as an ephemeral breakpoint extends the cache hit past
+    # that prefix for follow-up turns (up to 4 cache breakpoints are allowed
+    # per request; system already uses one). Only rewrites when content is a
+    # plain string — a caller that already passed structured content blocks
+    # is left untouched.
+    if messages and isinstance(messages[-1].get("content"), str):
+        last = messages[-1]
+        messages = messages[:-1] + [{
+            **last,
+            "content": [{
+                "type": "text",
+                "text": last["content"],
+                "cache_control": {"type": "ephemeral"},
+            }],
+        }]
+
     runner = client.beta.messages.tool_runner(
         model=MODEL,
         max_tokens=MAX_TOKENS,

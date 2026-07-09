@@ -1,6 +1,6 @@
 import test from 'node:test'; import assert from 'node:assert';
 import { readFile } from 'node:fs/promises';
-import { liveReply } from '../lib/agent.js';
+import { liveReply, toApiMessages } from '../lib/agent.js';
 
 // ─── No ctx.dept → falls back to bakedReply (existing drawer behavior) ────────
 
@@ -319,4 +319,53 @@ test('liveReply never calls fetch when ctx.dept is absent (bakedReply path)', as
     }
   );
   assert.equal(called, false, 'no ctx.dept means no live context to post — must stay on bakedReply');
+});
+
+// ─── toApiMessages ────────────────────────────────────────────────────────────
+
+test('toApiMessages drops locally-injected system confirmation bubbles', () => {
+  const msgs = [
+    { role: 'me', text: 'why is OTP red?' },
+    { role: 'mark', text: 'Mexico is dragging it.' },
+    { role: 'mark', text: 'Response submitted for OTP.', system: true },
+  ];
+  const out = toApiMessages(msgs);
+  assert.deepEqual(out, [
+    { role: 'user', content: 'why is OTP red?' },
+    { role: 'assistant', content: 'Mexico is dragging it.' },
+  ]);
+});
+
+test('toApiMessages drops any messages before the first real user turn', () => {
+  const msgs = [
+    { role: 'mark', text: "Hi, I'm Mark. Ask me anything." }, // scripted intro, no user turn yet
+    { role: 'me', text: 'what is red?' },
+    { role: 'mark', text: 'OTP is red.' },
+  ];
+  const out = toApiMessages(msgs);
+  assert.deepEqual(out, [
+    { role: 'user', content: 'what is red?' },
+    { role: 'assistant', content: 'OTP is red.' },
+  ]);
+});
+
+test('toApiMessages passes a normal alternating thread through unchanged (mapped to user/assistant)', () => {
+  const msgs = [
+    { role: 'me', text: 'question one' },
+    { role: 'mark', text: 'answer one' },
+    { role: 'me', text: 'question two' },
+    { role: 'mark', text: 'answer two' },
+  ];
+  assert.deepEqual(toApiMessages(msgs), [
+    { role: 'user', content: 'question one' },
+    { role: 'assistant', content: 'answer one' },
+    { role: 'user', content: 'question two' },
+    { role: 'assistant', content: 'answer two' },
+  ]);
+});
+
+test('toApiMessages returns an empty array for empty/no-user-turn input', () => {
+  assert.deepEqual(toApiMessages([]), []);
+  assert.deepEqual(toApiMessages(undefined), []);
+  assert.deepEqual(toApiMessages([{ role: 'mark', text: 'only a scripted intro' }]), []);
 });
