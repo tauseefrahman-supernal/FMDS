@@ -294,3 +294,21 @@ cheap hardening (max_iterations=10 cap, stop_reason surfacing in reply+usage, `a
 (a) spend limit on the key + accept (or gate with a shared-secret header) the unauthenticated
 endpoint; (b) known cost-leak: a client abort doesn't cancel the server-side API call; (c)
 fast-follows: cache breakpoint on messages history, streaming (SSE) for long replies.
+
+**Follow-up punch list — DONE (2026-07-09):** all 10 logged review follow-ups applied @ d688f55 +
+04d6747 (tests 212 JS / 31 Py): isHeadlineKpi exact-match (hr/it corpus values fixed to 'TRIR
+Overall' / '% Uptime'), toApiMessages moved to lib/agent.js + tested, /api/mark 400s on empty
+messages, shared unansweredRedCount() in lib/accountability.js, rollupSignal.redCount →
+entryCount, signOut() stops the inbox poll, dead .assistant-drawer CSS removed, mark_prompt
+degenerate-grammar fix, cache breakpoint on the messages history (multi-turn cache extension,
+verified live: 4133-token prefix written), hoshin-test intent comments. Bundle rebuilt +
+republished. **DATA-QUALITY FLAG for World Emblem (like Team Noel — surface, don't edit):**
+data/kz-records.json carries duplicate kzNumbers straight from the client tracker — KZ-339
+(operations AND finance), KZ-345 ×2 (operations), KZ-352 ×2 (operations). Deep-links resolve to
+the first match; ask Ricardo which rows are canonical before renumbering.
+
+**Remaining backlog (product frontiers, need owner data/direction):** feed Mark the T2/T3/huddle
+meeting transcripts (Granola) → context + action tracking; activity/training-tracking layer
+(RH-FR-6.2-001); WPS→KPI mapping (blocked on WPS schema); FMDS-OS-Order-Form-v3; Railway deploy
+(owner: spend cap on key, then point Railway at the repo — railway.json/requirements.txt/
+.python-version are in place).

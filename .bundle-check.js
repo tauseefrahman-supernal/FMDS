@@ -661,10 +661,23 @@ function stalledDays(entry, now = new Date()) {
   return Math.floor(diffMs / (24 * 60 * 60 * 1000));
 }
 
+// ─── Ask Mark queue count ───────────────────────────────────────────────────
+
+// Mirrors views/askmark.js's header "N action required": live reds
+// (redKpisNeedingResponse) that have NOT yet had a response submitted
+// (getResponse(...).answered). Deliberately NOT rollupSignal().entryCount —
+// that counts persisted response entries, a different number from the
+// unanswered-reds queue.
+function unansweredRedCount(dept) {
+  return redKpisNeedingResponse(dept).filter((item) =>
+    !(getResponse({ deptId: dept.id, kpiId: item.kpiId }) || {}).answered
+  ).length;
+}
+
 // ─── Roll-up signal ─────────────────────────────────────────────────────────
 
 /**
- * rollupSignal(deptId) → {redCount, answered, beingActioned, stalled}
+ * rollupSignal(deptId) → {entryCount, answered, beingActioned, stalled}
  *
  * Summarizes the persisted response entries for a dept — i.e. reds that
  * already have an accountability record, not a live board scan (use
@@ -674,7 +687,7 @@ function stalledDays(entry, now = new Date()) {
  */
 function rollupSignal(deptId) {
   const entries = getResponsesByDept(deptId);
-  const redCount = entries.length;
+  const entryCount = entries.length;
   const answered = entries.filter((e) => e.answered).length;
   const beingActioned = entries.filter(
     (e) => e.lifecycle && e.lifecycle.actionUnderway && e.lifecycle.actionUnderway.done
@@ -684,7 +697,7 @@ function rollupSignal(deptId) {
     (e) => !(e.lifecycle && e.lifecycle.recovered && e.lifecycle.recovered.done)
       && stalledDays(e) > STALL_THRESHOLD_DAYS
   ).length;
-  return { redCount, answered, beingActioned, stalled };
+  return { entryCount, answered, beingActioned, stalled };
 }
 
 // ─── Seed ───────────────────────────────────────────────────────────────────
@@ -737,7 +750,7 @@ if (typeof __ls !== 'undefined') {
   try { seedDemoAccountability(); } catch { /* __ls unavailable */ }
 }
 
-;return { LIFECYCLE, redKpisNeedingResponse, addResponse, getResponse, getResponsesByDept, advanceLifecycle, linkEightStep, lifecycleView, stalledDays, rollupSignal, seedDemoAccountability };
+;return { LIFECYCLE, redKpisNeedingResponse, addResponse, getResponse, getResponsesByDept, advanceLifecycle, linkEightStep, lifecycleView, stalledDays, unansweredRedCount, rollupSignal, seedDemoAccountability };
 })();
 
 /* ==== lib/comments.js ==== */
@@ -1125,7 +1138,7 @@ and Satisfaction (4.42–4.61 vs 4.50 target) are within range.
 No HR-specific 8-step is open in the tracker (HR tab was blank in workbook).`,
     sopId: null,
     sopTitle: null,
-    redKpi: 'TRIR',
+    redKpi: 'TRIR Overall', // exact data/hr.json KPI name (isHeadlineKpi is exact-match)
     redActual: 30.80,
     redTarget: 0,
   },
@@ -1175,7 +1188,7 @@ IT uses lower_better direction for ticket closure time (target 240 min; illustra
 No IT-specific 8-step is open in the tracker (IT tab was blank in workbook).`,
     sopId: null,
     sopTitle: null,
-    redKpi: 'Uptime',
+    redKpi: '% Uptime', // exact data/it.json KPI name (isHeadlineKpi is exact-match)
     redActual: null,
     redTarget: 0.998,
   },
@@ -1700,7 +1713,7 @@ function findMentionedKpi(kpis, question) {
 function isHeadlineKpi(dc, kpi) {
   if (!dc || !dc.redKpi || !kpi) return false;
   const redKpi = String(dc.redKpi).toLowerCase();
-  return shortName(kpi.name).toLowerCase() === redKpi || String(kpi.name || '').toLowerCase().includes(redKpi);
+  return shortName(kpi.name).toLowerCase() === redKpi || String(kpi.name || '').toLowerCase() === redKpi;
 }
 
 /** Most recent (max ts) entry of a list, or null. Tolerates missing/unsorted ts. */
@@ -1837,6 +1850,30 @@ async function fetchLiveReply(deptId, context, messages) {
 }
 
 /**
+ * toApiMessages(msgs) → [{role, content}]
+ *
+ * Shapes an in-view thread's msgs ({role:'me'|'mark', text, system?}) into the
+ * backend's conversation-history contract ({role:'user'|'assistant', content}).
+ * Drops the locally-injected "system confirmation" bubbles (submitResponse /
+ * openEightStepForKpi push these with system:true — they never came from the
+ * model, so replaying them as assistant turns would misrepresent the
+ * conversation to Claude) and drops any messages before the first real user
+ * turn (a greeted new thread opens with a scripted Mark intro; the Anthropic
+ * Messages API requires the first turn to be 'user', so a leading assistant
+ * turn would make every send on that thread fail server-side and silently
+ * fall back to the scripted reply instead of actually reaching Mark).
+ */
+function toApiMessages(msgs) {
+  const real = (msgs || []).filter((m) => !m.system);
+  const firstUser = real.findIndex((m) => m.role === 'me');
+  if (firstUser === -1) return [];
+  return real.slice(firstUser).map((m) => ({
+    role: m.role === 'me' ? 'user' : 'assistant',
+    content: m.text,
+  }));
+}
+
+/**
  * liveReply(deptId, intent, ctx) → Promise<string>
  *
  * When ctx.dept is supplied, builds this department's live context
@@ -1848,6 +1885,9 @@ async function fetchLiveReply(deptId, context, messages) {
  * ctx.question / intent / ctx.kpi — mentioning real live figures (actual,
  * target, owner) rather than generic text. When ctx.dept is absent, falls
  * back to bakedReply so existing callers (the agent drawer) are unaffected.
+ * The live path requires ctx.messages (a non-empty [{role,content}] array,
+ * e.g. built via toApiMessages) — without it the backend rejects the call
+ * and this falls back to groundedReply.
  */
 async function liveReply(deptId, intent, ctx = {}) {
   // 'step-help' always returns stepHelpFor's structured {step,headline,note,items}
@@ -2011,7 +2051,7 @@ function draftStep(deptId, stepN, ctx = {}) {
   }
 }
 
-;return { bakedReply, liveReply, draftStep };
+;return { bakedReply, toApiMessages, liveReply, draftStep };
 })();
 
 /* ==== lib/charts.js ==== */
@@ -3165,7 +3205,7 @@ __M["views/askmark.js"] = (function(){
  */
 
 const { redKpisNeedingResponse, rollupSignal, getResponse, addResponse, advanceLifecycle, lifecycleView, linkEightStep, getResponsesByDept } = __M["lib/accountability.js"];
-const { liveReply } = __M["lib/agent.js"];
+const { liveReply, toApiMessages } = __M["lib/agent.js"];
 const { getReasonsByDept } = __M["lib/reasons.js"];
 const { getComments, composeMarkNote } = __M["lib/comments.js"];
 const { sparkline, stepChart, VIZ } = __M["lib/charts.js"];
@@ -3808,26 +3848,6 @@ function gatherDeptComments(dept) {
 }
 
 // ─── Chat: send + repaint ────────────────────────────────────────────────────
-
-// Shapes an in-view thread's msgs ({role:'me'|'mark', text, system?}) into the
-// backend's conversation-history contract ({role:'user'|'assistant', content}).
-// Drops the locally-injected "system confirmation" bubbles (submitResponse /
-// openEightStepForKpi push these with system:true — they never came from the
-// model, so replaying them as assistant turns would misrepresent the
-// conversation to Claude) and drops any messages before the first real user
-// turn (a greeted new thread opens with a scripted Mark intro; the Anthropic
-// Messages API requires the first turn to be 'user', so a leading assistant
-// turn would make every send on that thread fail server-side and silently
-// fall back to the scripted reply instead of actually reaching Mark).
-function toApiMessages(msgs) {
-  const real = (msgs || []).filter((m) => !m.system);
-  const firstUser = real.findIndex((m) => m.role === 'me');
-  if (firstUser === -1) return [];
-  return real.slice(firstUser).map((m) => ({
-    role: m.role === 'me' ? 'user' : 'assistant',
-    content: m.text,
-  }));
-}
 
 function scrollThreadToBottom() {
   const el = document.getElementById('askmark-thread');
@@ -10137,7 +10157,7 @@ const { renderStandardWork } = __M["views/standardwork.js"];
 const { renderSources } = __M["views/sources.js"];
 const { renderAskMark } = __M["views/askmark.js"];
 const { renderLogin, resolvePersona } = __M["views/login.js"];
-const { redKpisNeedingResponse, getResponse } = __M["lib/accountability.js"];
+const { unansweredRedCount } = __M["lib/accountability.js"];
 
 const app   = document.getElementById('app');
 const store = createStore({ departments: [], dept: null, session: null });
@@ -10204,6 +10224,7 @@ function showLogin() {
 }
 
 function signOut() {
+  stopInboxBadgePoll();
   store.set({ session: null, dept: null });
   if (location.hash === '#/login') showLogin();
   else location.hash = '#/login';   // hashchange → route() → showLogin()
@@ -10297,17 +10318,6 @@ function viewLabel(dept, role, view) {
   return item ? item.label : view;
 }
 
-// ─── Ask Mark queue count ───────────────────────────────────────────────────
-// Mirrors views/askmark.js's header "N action required": live reds
-// (redKpisNeedingResponse) that have NOT yet had a response submitted
-// (getResponse(...).answered). Deliberately NOT rollupSignal().redCount —
-// that counts persisted response entries, a different number from the queue.
-function askMarkActionRequiredCount(dept) {
-  return redKpisNeedingResponse(dept).filter((item) =>
-    !(getResponse({ deptId: dept.id, kpiId: item.kpiId }) || {}).answered
-  ).length;
-}
-
 // ─── Layout: light sidebar + topbar + canvas ────────────────────────────────
 function renderLayout(dept, activeView) {
   const session = store.get().session;
@@ -10320,7 +10330,7 @@ function renderLayout(dept, activeView) {
   // frozen departments), so neither ever routes somewhere unreachable from
   // the sidebar nav.
   const canAskMark   = nav.some(v => v.id === 'mark');
-  const askMarkCount = canAskMark ? askMarkActionRequiredCount(dept) : 0;
+  const askMarkCount = canAskMark ? unansweredRedCount(dept) : 0;
 
   const navHtml = nav.map(v => {
     const icon = ICONS[v.icon] || '';
@@ -10443,7 +10453,7 @@ function startInboxBadgePoll(dept) {
   _inboxPollTimer = setInterval(() => {
     const btn = document.getElementById('inbox-btn');
     if (!btn) { stopInboxBadgePoll(); return; } // topbar re-rendered elsewhere (route change)
-    const count = askMarkActionRequiredCount(dept);
+    const count = unansweredRedCount(dept);
     let countEl = document.getElementById('inbox-btn-count');
     if (count > 0) {
       if (!countEl) {
