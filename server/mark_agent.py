@@ -13,6 +13,10 @@ from server import mark_prompt, mark_tools
 
 MODEL = "claude-opus-4-8"
 MAX_TOKENS = 16000
+# Bound the tool-use loop: read-only tools converge in a handful of calls;
+# a cap turns any pathological re-query loop into a bounded spend, not an
+# open-ended one (SDK verifier recommendation).
+MAX_ITERATIONS = 10
 
 
 def run(dept_id, context, messages):
@@ -42,6 +46,7 @@ def run(dept_id, context, messages):
     runner = client.beta.messages.tool_runner(
         model=MODEL,
         max_tokens=MAX_TOKENS,
+        max_iterations=MAX_ITERATIONS,
         system=system,
         thinking={"type": "adaptive"},
         output_config={"effort": "medium"},
@@ -57,6 +62,12 @@ def run(dept_id, context, messages):
         return "", None
 
     reply = next((block.text for block in final.content if block.type == "text"), "")
+    stop_reason = getattr(final, "stop_reason", None)
+    if stop_reason not in (None, "end_turn"):
+        # Surface a non-normal ending (max_tokens truncation, refusal, the
+        # iteration cap) instead of passing off a partial reply as complete.
+        note = f"[reply ended early: {stop_reason}]"
+        reply = f"{reply}\n\n{note}" if reply else note
     usage = None
     if getattr(final, "usage", None) is not None:
         u = final.usage
@@ -65,5 +76,6 @@ def run(dept_id, context, messages):
             "output_tokens": getattr(u, "output_tokens", None),
             "cache_creation_input_tokens": getattr(u, "cache_creation_input_tokens", None),
             "cache_read_input_tokens": getattr(u, "cache_read_input_tokens", None),
+            "stop_reason": stop_reason,
         }
     return reply, usage

@@ -45,8 +45,8 @@
 
 ### Task 5: End-to-end test with the real key + verifier
 **Files:** none (verification) + update `docs/BUILD-JOURNAL.md` run steps.
-- [ ] With the owner's `ANTHROPIC_API_KEY` exported: start the backend, open Ask Mark (Operations L2), ask "why is OTP red and what should I do?" → confirm Mark calls tools (get_red_kpis/get_kpi/get_kz_records/get_hoshin), reasons over the REAL Mexico/OTP data, and answers as a company employee; ask a Hoshin question → confirm it uses `get_hoshin`. Confirm the scripted fallback still works with the key unset.
-- [ ] Run the `agent-sdk-dev` verifier (Python) against `server/`; fix anything it flags. Confirm `node --test tests/*.test.mjs` stays green. Commit + document the exact run command for the owner (`ANTHROPIC_API_KEY=… python3 serve.py`).
+- [x] With the owner's `ANTHROPIC_API_KEY` exported: start the backend, open Ask Mark (Operations L2), ask "why is OTP red and what should I do?" → confirm Mark calls tools (get_red_kpis/get_kpi/get_kz_records/get_hoshin), reasons over the REAL Mexico/OTP data, and answers as a company employee; ask a Hoshin question → confirm it uses `get_hoshin`. Confirm the scripted fallback still works with the key unset.
+- [x] Run the `agent-sdk-dev` verifier (Python) against `server/`; fix anything it flags. Confirm `node --test tests/*.test.mjs` stays green. Commit + document the exact run command for the owner (`ANTHROPIC_API_KEY=… python3 serve.py`).
 
 ## Open decisions (confirm at build time)
 - **Streaming vs. complete reply:** Phase D returns the tool-runner's final message (simplest). Token-streaming to the chat (manual agentic loop + SSE) is a fast-follow if the latency feels long.

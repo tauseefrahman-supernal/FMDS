@@ -280,3 +280,17 @@ deploy (accepted-risk sign-off); (b) measure real agent latency — likely raise
 `MARK_FETCH_TIMEOUT_MS` 30s→60–90s (streaming is the durable fix); (c) add a `cache_control`
 breakpoint on `system=` and verify `usage.cache_read_input_tokens>0` (4096-token min prefix);
 (d) run the agent-sdk-dev Python verifier. Follow-ups + triage detail: `.superpowers/sdd/progress.md`.
+
+**Task 5 E2E — DONE (2026-07-09, owner key):** first live run caught a real integration bug —
+@beta_tool functions returning raw dicts/lists 400 the API ('tool_result.content.0.type: Field
+required'); all 8 tools now return JSON strings (`_as_json`). Verified live: OTP question →
+fully grounded reply (0.863/0.750 story, KZ-337/346/348, Galls surge, zero fabrication; even
+flagged that WE-main OTP has no linked open A3); Hoshin question → get_hoshin (Jim Kozel + the
+6 real activities); in-app Ask Mark chat verified in Playwright; keyless 503 → scripted fallback
+verified in-app. Prompt cache CONFIRMED: `cache_read_input_tokens=4019` on follow-ups. Latency
+14–31s → client timeout raised 30s→90s. agent-sdk verifier: READY, no criticals; applied its
+cheap hardening (max_iterations=10 cap, stop_reason surfacing in reply+usage, `anthropic~=0.116.0`,
+`.python-version` 3.12 for Railway). **Remaining owner decisions before the Railway deploy:**
+(a) spend limit on the key + accept (or gate with a shared-secret header) the unauthenticated
+endpoint; (b) known cost-leak: a client abort doesn't cancel the server-side API call; (c)
+fast-follows: cache breakpoint on messages history, streaming (SSE) for long replies.
