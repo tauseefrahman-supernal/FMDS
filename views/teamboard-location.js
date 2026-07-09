@@ -249,16 +249,23 @@ function locNoteLines(kpi, dept, rag) {
 
 function weMainSubRow(dept, mainKpi, sub) {
   const isNoData = sub.nodata || sub.actual == null;
-  const rag = isNoData ? 'nodata' : ragStatus(sub.actual, mainKpi.target, mainKpi.direction || 'higher_better');
+  // Prefer the sub's own real `target` field — OTP/PPLH/Materials location subs
+  // happen to carry the same target as their main (one WPS target for all
+  // locations), but Gross Margin's subs carry genuinely different per-location
+  // targets (Jet Report), so falling back to mainKpi.target only when a sub
+  // has none keeps both cases correct instead of always overriding with the
+  // main's number.
+  const subTarget = sub.target != null ? sub.target : mainKpi.target;
+  const rag = isNoData ? 'nodata' : ragStatus(sub.actual, subTarget, mainKpi.direction || 'higher_better');
   const label = locLabel(sub.location) || sub.name;
   const series = sub.series || [];
   const spark = series.length
-    ? sparkline(series, { w: 132, h: 34, target: mainKpi.target, name: `${label} ${mainKpi.name}`, labels: series.map((_, i) => 'Wk ' + (i + 1)), fmt: mainKpi.unit })
+    ? sparkline(series, { w: 132, h: 34, target: subTarget, name: `${label} ${mainKpi.name}`, labels: series.map((_, i) => 'Wk ' + (i + 1)), fmt: mainKpi.unit })
     : '';
   return `
     <tr class="kpi-sub">
       <td>${esc(label)}${sub.flag ? `<div class="kpi-flag-note" style="margin-left:0">${esc(sub.flag)}</div>` : ''}</td>
-      <td class="num">${formatVal(mainKpi.target, mainKpi.unit)}</td>
+      <td class="num">${formatVal(subTarget, mainKpi.unit)}</td>
       <td class="num">${isNoData ? '—' : formatVal(sub.actual, mainKpi.unit)}</td>
       <td>${statusCell(rag)}</td>
       <td>${subSourceChip(sub)}</td>
@@ -272,7 +279,9 @@ function weMainRow(dept, kpi, hoshin, expandedIds) {
   const rag = isNoData ? 'nodata' : ragStatus(kpi.actual, kpi.target, kpi.direction || 'higher_better');
   const mechChip = kpi.rollupMethod === 'independent'
     ? `<span class="chip" title="${esc(dept.mechanismNote || '')}">Mechanism B</span>`
-    : '';
+    : kpi.rollupMethod === 'weighted'
+      ? entryChip('formula')
+      : '';
   const hchips = hoshin ? hoshinChips(hoshin, dept) : '';
   const series = kpi.series || [];
   const spark = series.length
@@ -323,6 +332,58 @@ function storyPanelHTML(story) {
     </section>`;
 }
 
+// ─── Gross Margin "drivers" card ─────────────────────────────────────────────
+// Not hardcoded to gross_margin's id — detected from the real `.drivers`
+// field any main's contributor subs actually carry (currently only the GM
+// location subs: gm_mexico/gm_houston/gm_norcross/gm_canada).
+
+/** Contributor subs of `kpi` that carry a real $ driver breakdown. */
+function driverSubsFor(dept, kpi) {
+  return (kpi.contributors || []).map((cid) => byId(dept, cid)).filter((s) => s && s.drivers);
+}
+
+/** True whole-dollar formatting (thousands separators, no k/M abbreviation) —
+ *  distinct from formatVal's abbreviated `$989k` style, which would hide the
+ *  real Jet Report figures this card exists to show. */
+function fmtDollar(v) {
+  if (v == null) return '—';
+  return '$' + Math.round(v).toLocaleString();
+}
+
+function gmDriversPanelHTML(dept, gmKpi) {
+  const subs = driverSubsFor(dept, gmKpi);
+  if (!subs.length) return '';
+  const rows = subs.map((s) => {
+    const d = s.drivers;
+    return `
+      <tr>
+        <td>${esc(locLabel(s.location) || s.name)}</td>
+        <td class="num">${fmtDollar(d.revenue)}</td>
+        <td class="num">${fmtDollar(d.labor)}</td>
+        <td class="num">${fmtDollar(d.materials)}</td>
+        <td class="num">${fmtDollar(d.freight)}</td>
+        <td class="num">${fmtDollar(d.grossProfit)}</td>
+        <td class="num" style="font-weight:600">${formatVal(s.actual, s.unit || 'ratio')}</td>
+      </tr>`;
+  }).join('');
+  const shortName = gmKpi.name.split(' (')[0];
+  return `
+    <section class="card card--pad" style="margin-top:16px">
+      <span class="running-head">${esc(shortName)} — what's driving each location</span>
+      <div class="table-wrap" style="margin-top:12px"><div class="table-scroll">
+        <table class="dt">
+          <thead><tr>
+            <th>Location</th><th class="num">Revenue</th><th class="num">Labor</th>
+            <th class="num">Materials</th><th class="num">Freight</th>
+            <th class="num">Gross Profit</th><th class="num">GM %</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div></div>
+      <p class="page-head__sub" style="margin-top:10px">Gross Margin = Revenue − Labor − Materials − Freight, as a % of Revenue · wk13 (end-March '26)</p>
+    </section>`;
+}
+
 // ─── Adaptive chart card (WE Main) ───────────────────────────────────────────
 
 /** Contributor subs whose computed RAG is red — the data-driven "drag" set
@@ -330,8 +391,10 @@ function storyPanelHTML(story) {
 function dragSubsFor(dept, kpi) {
   if (!(kpi.weeklyActuals && kpi.weeklyActuals.weeks)) return [];
   const subs = (kpi.contributors || []).map((cid) => byId(dept, cid)).filter(Boolean);
+  // Each sub's own `target` wins when it has one — see weMainSubRow's note;
+  // same rationale (Gross Margin's per-location targets genuinely differ).
   return subs.filter((s) => !s.nodata && s.actual != null &&
-    ragStatus(s.actual, kpi.target, kpi.direction || 'higher_better') === 'red');
+    ragStatus(s.actual, s.target != null ? s.target : kpi.target, kpi.direction || 'higher_better') === 'red');
 }
 
 function chartMetaFor(dept, kpi) {
@@ -451,6 +514,7 @@ function weMainSectionHTML(dept, hoshin, state) {
     : `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-faint)">No KPIs match "${esc(state.filterText)}"</td></tr>`;
 
   const storyKpi = allMains.find((k) => k.story && state.expandedIds.has(k.id));
+  const driversKpi = allMains.find((k) => driverSubsFor(dept, k).length && state.expandedIds.has(k.id));
 
   return `
   ${chartHtml}
@@ -464,6 +528,7 @@ function weMainSectionHTML(dept, hoshin, state) {
     </table>
   </div></div>
   ${storyKpi ? storyPanelHTML(storyKpi.story) : ''}
+  ${driversKpi ? gmDriversPanelHTML(dept, driversKpi) : ''}
   <p class="board-hint"><b>WE Main</b> is entered independently on the COO Board (${esc(dept.mechanismNote || 'Mechanism B')}). <b>Location tabs</b> open each per-location FMDS board — real KPI sets differ by location. <span class="chip">hand-keyed</span> marks a manual literal; a sage-tinted <span class="chip" style="border-color:hsl(var(--action-4));background:hsl(var(--action-1));color:var(--accent-text)">formula</span> chip marks a computed roll-up. Click a row's caret to expand.</p>`;
 }
 
