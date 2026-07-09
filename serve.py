@@ -76,7 +76,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
         try:
             from server import mark_agent  # lazy import: keeps static serving anthropic-free
-            reply = mark_agent.run(dept_id, context, messages)
+            reply, usage = mark_agent.run(dept_id, context, messages)
         except Exception:
             # Never leak internals (stack traces, key fragments) to the public
             # client; the real error goes to the server's own log.
@@ -84,7 +84,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self._send_json(500, {'error': 'Mark agent failed — see server log.'})
             return
 
-        self._send_json(200, {'reply': reply})
+        self._send_json(200, {'reply': reply, 'usage': usage})
 
 
 http.server.ThreadingHTTPServer.allow_reuse_address = True

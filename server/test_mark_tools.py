@@ -11,7 +11,15 @@ below invokes real Python code, not the runner's JSON-validated `.call()`.
 
 import unittest
 
+import json
 from server import mark_tools
+
+def call(tool, **kwargs):
+    """Invoke a @beta_tool's underlying function and parse its JSON-string
+    result — tools return JSON strings (Messages API tool_result contract),
+    so shape assertions below operate on the parsed payload."""
+    return json.loads(tool(**kwargs))
+
 
 FIXTURE_CONTEXT = {
     "deptId": "operations",
@@ -120,8 +128,16 @@ class BuildToolsShapeTest(unittest.TestCase):
         self.tools = {t.name: t for t in tools}
         self.assertEqual(len(tools), 8)
 
+    def test_tool_schemas_generate(self):
+        # The runner serializes each tool via to_dict() (schema inference
+        # from signature + docstring) at request time — assert it doesn't
+        # raise and yields a correctly named tool param for all 8 tools.
+        for name, tool in self.tools.items():
+            schema = tool.to_dict()
+            self.assertEqual(schema.get("name"), name)
+
     def test_get_department_snapshot(self):
-        snap = self.tools["get_department_snapshot"]()
+        snap = call(self.tools["get_department_snapshot"])
         self.assertEqual(snap["deptId"], "operations")
         self.assertEqual(snap["deptName"], "Operations")
         self.assertEqual(snap["kpiCount"], 3)
@@ -129,13 +145,13 @@ class BuildToolsShapeTest(unittest.TestCase):
         self.assertEqual([k["id"] for k in snap["kpis"]], ["otp", "otp_mexico", "pplh"])
 
     def test_get_kpi_found(self):
-        kpi = self.tools["get_kpi"](kpi_id="otp_mexico")
+        kpi = call(self.tools["get_kpi"], kpi_id="otp_mexico")
         self.assertTrue(kpi["found"])
         self.assertEqual(kpi["owner"], "M. Valdez")
         self.assertEqual(kpi["rag"], "red")
 
     def test_get_kpi_not_found_is_explicit(self):
-        kpi = self.tools["get_kpi"](kpi_id="does_not_exist")
+        kpi = call(self.tools["get_kpi"], kpi_id="does_not_exist")
         self.assertEqual(kpi, {
             "found": False,
             "kpiId": "does_not_exist",
@@ -143,30 +159,30 @@ class BuildToolsShapeTest(unittest.TestCase):
         })
 
     def test_get_red_kpis(self):
-        reds = self.tools["get_red_kpis"]()
+        reds = call(self.tools["get_red_kpis"])
         self.assertEqual({k["id"] for k in reds}, {"otp", "otp_mexico"})
 
     def test_get_red_kpis_empty_when_no_reds(self):
         ctx = dict(FIXTURE_CONTEXT, reds=[])
         tools = {t.name: t for t in mark_tools.build_tools(ctx)}
-        self.assertEqual(tools["get_red_kpis"](), [])
+        self.assertEqual(call(tools["get_red_kpis"]), [])
 
     def test_get_reasons_sorted_newest_first(self):
-        reasons = self.tools["get_reasons"](kpi_id="otp_mexico")
+        reasons = call(self.tools["get_reasons"], kpi_id="otp_mexico")
         self.assertEqual([r["id"] for r in reasons], ["r2", "r1"])
 
     def test_get_reasons_empty_for_unknown_kpi(self):
-        self.assertEqual(self.tools["get_reasons"](kpi_id="pplh"), [])
+        self.assertEqual(call(self.tools["get_reasons"], kpi_id="pplh"), [])
 
     def test_get_comments_sorted_oldest_first(self):
-        comments = self.tools["get_comments"](kpi_id="otp_mexico")
+        comments = call(self.tools["get_comments"], kpi_id="otp_mexico")
         self.assertEqual([c["id"] for c in comments], ["c1", "c2"])
 
     def test_get_comments_empty_for_unknown_kpi(self):
-        self.assertEqual(self.tools["get_comments"](kpi_id="pplh"), [])
+        self.assertEqual(call(self.tools["get_comments"], kpi_id="pplh"), [])
 
     def test_get_kz_records_scoped_to_dept_from_disk(self):
-        records = self.tools["get_kz_records"]()
+        records = call(self.tools["get_kz_records"])
         self.assertTrue(len(records) > 0)
         self.assertTrue(all(r["deptId"] == "operations" for r in records))
         # Sanity: comes from disk (richer shape than context.kzRecords), not
@@ -176,10 +192,10 @@ class BuildToolsShapeTest(unittest.TestCase):
     def test_get_kz_records_dept_with_no_records_is_empty(self):
         ctx = dict(FIXTURE_CONTEXT, deptId="hr")
         tools = {t.name: t for t in mark_tools.build_tools(ctx)}
-        self.assertEqual(tools["get_kz_records"](), [])
+        self.assertEqual(call(tools["get_kz_records"]), [])
 
     def test_get_hoshin_own_activities(self):
-        hoshin = self.tools["get_hoshin"]()
+        hoshin = call(self.tools["get_hoshin"])
         self.assertTrue(len(hoshin["objectives"]) == 5)
         self.assertEqual(hoshin["department"]["block"], "OPERATIONS")
         self.assertEqual(hoshin["department"]["functionalLead"], "Jim Kozel")
@@ -189,7 +205,7 @@ class BuildToolsShapeTest(unittest.TestCase):
     def test_get_hoshin_resolves_alias(self):
         ctx = dict(FIXTURE_CONTEXT, deptId="service")
         tools = {t.name: t for t in mark_tools.build_tools(ctx)}
-        hoshin = tools["get_hoshin"]()
+        hoshin = call(tools["get_hoshin"])
         self.assertEqual(hoshin["department"]["aliasOf"], "sales")
         # Service's own block has zero activities; resolves through to Sales's.
         self.assertTrue(len(hoshin["department"]["activities"]) > 0)
@@ -197,18 +213,18 @@ class BuildToolsShapeTest(unittest.TestCase):
     def test_get_hoshin_genuinely_blank_dept_stays_empty(self):
         ctx = dict(FIXTURE_CONTEXT, deptId="finance")
         tools = {t.name: t for t in mark_tools.build_tools(ctx)}
-        hoshin = tools["get_hoshin"]()
+        hoshin = call(tools["get_hoshin"])
         self.assertIsNone(hoshin["department"]["aliasOf"])
         self.assertEqual(hoshin["department"]["activities"], [])
 
     def test_get_response_status_returns_newest_entry(self):
-        status = self.tools["get_response_status"](kpi_id="otp_mexico")
+        status = call(self.tools["get_response_status"], kpi_id="otp_mexico")
         self.assertTrue(status["found"])
         self.assertEqual(status["cause"], "Mexico backlog.")
         self.assertEqual(status["ts"], "2026-06-01T00:00:00.000Z")
 
     def test_get_response_status_not_found_is_explicit(self):
-        status = self.tools["get_response_status"](kpi_id="pplh")
+        status = call(self.tools["get_response_status"], kpi_id="pplh")
         self.assertEqual(status, {
             "found": False,
             "kpiId": "pplh",
@@ -218,7 +234,7 @@ class BuildToolsShapeTest(unittest.TestCase):
     def test_get_response_status_absent_field_is_no_data_not_error(self):
         ctx = {k: v for k, v in FIXTURE_CONTEXT.items() if k != "responses"}
         tools = {t.name: t for t in mark_tools.build_tools(ctx)}
-        status = tools["get_response_status"](kpi_id="otp_mexico")
+        status = call(tools["get_response_status"], kpi_id="otp_mexico")
         self.assertFalse(status["found"])
 
 
@@ -230,34 +246,34 @@ class BuildToolsNoneContextTest(unittest.TestCase):
         self.tools = {t.name: t for t in mark_tools.build_tools(None)}
 
     def test_snapshot_is_empty_not_fabricated(self):
-        snap = self.tools["get_department_snapshot"]()
+        snap = call(self.tools["get_department_snapshot"])
         self.assertIsNone(snap["deptId"])
         self.assertEqual(snap["kpiCount"], 0)
         self.assertEqual(snap["kpis"], [])
 
     def test_get_kpi_not_found(self):
-        self.assertFalse(self.tools["get_kpi"](kpi_id="otp")["found"])
+        self.assertFalse(call(self.tools["get_kpi"], kpi_id="otp")["found"])
 
     def test_get_red_kpis_empty(self):
-        self.assertEqual(self.tools["get_red_kpis"](), [])
+        self.assertEqual(call(self.tools["get_red_kpis"]), [])
 
     def test_get_reasons_and_comments_empty(self):
-        self.assertEqual(self.tools["get_reasons"](kpi_id="otp"), [])
-        self.assertEqual(self.tools["get_comments"](kpi_id="otp"), [])
+        self.assertEqual(call(self.tools["get_reasons"], kpi_id="otp"), [])
+        self.assertEqual(call(self.tools["get_comments"], kpi_id="otp"), [])
 
     def test_get_kz_records_returns_all_when_no_dept(self):
         # No deptId to scope by — falls back to the full on-disk set rather
         # than silently returning [] as if nothing exists.
-        records = self.tools["get_kz_records"]()
+        records = call(self.tools["get_kz_records"])
         self.assertTrue(len(records) > 0)
 
     def test_get_hoshin_department_is_empty_shape(self):
-        hoshin = self.tools["get_hoshin"]()
+        hoshin = call(self.tools["get_hoshin"])
         self.assertTrue(len(hoshin["objectives"]) == 5)
         self.assertEqual(hoshin["department"]["activities"], [])
 
     def test_get_response_status_not_found(self):
-        self.assertFalse(self.tools["get_response_status"](kpi_id="otp")["found"])
+        self.assertFalse(call(self.tools["get_response_status"], kpi_id="otp")["found"])
 
 
 if __name__ == "__main__":

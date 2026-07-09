@@ -39,6 +39,14 @@ def _load_json(name):
         return json.load(fh)
 
 
+def _as_json(payload):
+    """Serialize a tool result for the Messages API. tool_result content must
+    be a string (or typed content blocks) — the SDK passes raw dicts/lists
+    through as content blocks, which the API rejects with
+    'tool_result.content.0.type: Field required' (found in the live E2E)."""
+    return json.dumps(payload, ensure_ascii=False)
+
+
 def _hoshin_activities_for(hoshin, dept_id, seen=None):
     """Mirror lib/hoshin.js's activitiesFor(): a dept's own activities, or —
     when its own block is empty and it carries an `aliasOf` pointer (e.g.
@@ -85,7 +93,7 @@ def build_tools(context):
         return next((k for k in kpis if k.get("id") == kpi_id), None)
 
     @anthropic.beta_tool
-    def get_department_snapshot() -> dict:
+    def get_department_snapshot() -> str:
         """Get a whole-department overview: name, KPI count, red count, and
         every KPI's live id/name/rag/actual/target/owner.
 
@@ -95,16 +103,16 @@ def build_tools(context):
         get_kpi. Returns an explicit empty kpis list if the posted context
         has no KPIs — never a fabricated department state.
         """
-        return {
+        return _as_json({
             "deptId": dept_id,
             "deptName": dept_name,
             "kpiCount": len(kpis),
             "redCount": len(reds),
             "kpis": kpis,
-        }
+        })
 
     @anthropic.beta_tool
-    def get_kpi(kpi_id: str) -> dict:
+    def get_kpi(kpi_id: str) -> str:
         """Get one KPI's full live record (rag, actual, target, unit, level,
         owner, and its computed explanation) by id.
 
@@ -116,15 +124,15 @@ def build_tools(context):
         """
         kpi = _find_kpi(kpi_id)
         if kpi is None:
-            return {
+            return _as_json({
                 "found": False,
                 "kpiId": kpi_id,
                 "note": "No KPI with this id in the posted department context.",
-            }
-        return {"found": True, **kpi}
+            })
+        return _as_json({"found": True, **kpi})
 
     @anthropic.beta_tool
-    def get_red_kpis() -> list:
+    def get_red_kpis() -> str:
         """Get the full live records for every KPI currently red in this
         department.
 
@@ -133,10 +141,10 @@ def build_tools(context):
         get_response_status calls to the KPIs that actually matter right
         now. Returns [] (not a fabricated red) when nothing is red.
         """
-        return [k for k in kpis if k.get("id") in reds]
+        return _as_json([k for k in kpis if k.get("id") in reds])
 
     @anthropic.beta_tool
-    def get_reasons(kpi_id: str) -> list:
+    def get_reasons(kpi_id: str) -> str:
         """Get the floor-level reason-log entries logged against one KPI
         (a rep/location's free-text explanation for a status), newest first.
 
@@ -146,10 +154,10 @@ def build_tools(context):
         when no reasons are logged for this KPI in the posted context.
         """
         matches = [r for r in reasons if r.get("kpiId") == kpi_id]
-        return sorted(matches, key=lambda r: r.get("ts") or "", reverse=True)
+        return _as_json(sorted(matches, key=lambda r: r.get("ts") or "", reverse=True))
 
     @anthropic.beta_tool
-    def get_comments(kpi_id: str) -> list:
+    def get_comments(kpi_id: str) -> str:
         """Get the comment thread posted against one KPI (Mark's and/or a
         human's notes — "what's driving this", actions, tracking notes),
         oldest first so it reads as a conversation.
@@ -160,10 +168,10 @@ def build_tools(context):
         comments are on file for this KPI in the posted context.
         """
         matches = [c for c in comments if c.get("kpiId") == kpi_id]
-        return sorted(matches, key=lambda c: c.get("ts") or "")
+        return _as_json(sorted(matches, key=lambda c: c.get("ts") or ""))
 
     @anthropic.beta_tool
-    def get_kz_records() -> list:
+    def get_kz_records() -> str:
         """Get every 8-step (KZ) problem-solving record on file for this
         department, straight off data/kz-records.json — kzNumber, title,
         who's driving it, per-step (1-8) progress, and whether it's
@@ -177,11 +185,11 @@ def build_tools(context):
         """
         all_records = _load_json("kz-records.json")
         if not dept_id:
-            return all_records
-        return [r for r in all_records if r.get("deptId") == dept_id]
+            return _as_json(all_records)
+        return _as_json([r for r in all_records if r.get("deptId") == dept_id])
 
     @anthropic.beta_tool
-    def get_hoshin() -> dict:
+    def get_hoshin() -> str:
         """Get this department's 2026 Hoshin (annual policy-deployment) plan
         straight off data/hoshin.json: the 5 WE 2026 objectives, and this
         department's functional lead + annual activities (each with its
@@ -202,7 +210,7 @@ def build_tools(context):
         ]
         dept_block = (hoshin.get("departments") or {}).get(dept_id) or {}
         activities = _hoshin_activities_for(hoshin, dept_id) if dept_id else []
-        return {
+        return _as_json({
             "objectives": objectives,
             "department": {
                 "deptId": dept_id,
@@ -211,10 +219,10 @@ def build_tools(context):
                 "aliasOf": dept_block.get("aliasOf"),
                 "activities": activities,
             },
-        }
+        })
 
     @anthropic.beta_tool
-    def get_response_status(kpi_id: str) -> dict:
+    def get_response_status(kpi_id: str) -> str:
         """Get the red-KPI accountability response for one KPI: the owner's
         4-field answer (cause, action, needs8Step, reportBackWhen) and its
         lifecycle stage (detected -> responded -> actionUnderway ->
@@ -229,13 +237,13 @@ def build_tools(context):
         """
         matches = [r for r in responses if r.get("kpiId") == kpi_id]
         if not matches:
-            return {
+            return _as_json({
                 "found": False,
                 "kpiId": kpi_id,
                 "note": "No accountability response on file for this KPI in the posted context.",
-            }
+            })
         latest = sorted(matches, key=lambda r: r.get("ts") or "", reverse=True)[0]
-        return {"found": True, **latest}
+        return _as_json({"found": True, **latest})
 
     return [
         get_department_snapshot,
