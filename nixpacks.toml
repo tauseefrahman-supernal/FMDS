@@ -1,0 +1,4 @@
+# Force the Python provider: the root package.json ({"type":"module"}, for the
+# Node-based test runner) otherwise makes Nixpacks build a Node image with no
+# python3, so Railway's start command `python3 serve.py` dies on boot.
+providers = ["python"]
